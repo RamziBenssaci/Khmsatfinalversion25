@@ -855,7 +855,7 @@ export default function Warehouse() {
         </div>
         <div className="stat-card">
           <div className="stat-number text-success">
-            {inventoryItems.reduce((sum, item) => sum + (item.availableQty || 0), 0)}
+          {inventoryItems.reduce((sum, item) => sum + (parseFloat(item.availableQty) || 0), 0)}
           </div>
           <div className="stat-label">إجمالي الكمية المتاحة</div>
         </div>
