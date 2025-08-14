@@ -391,10 +391,8 @@ export default function TrackOrders() {
             </div>
             <div class="section-content">
               <div class="info-grid">
-                <div class="info-item">
                   <label>حالة الطلب</label>
                   <span class="status-badge ${getStatusClass(order.status)}">${order.status || '-'}</span>
-                </div>
               </div>
             </div>
           </div>
