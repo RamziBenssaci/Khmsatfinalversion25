@@ -586,7 +586,8 @@ export default function DentalContracts() {
         editingContract.id,
         {
           newStatus: statusUpdateData.newStatus,
-          statusNote: statusUpdateData.statusNote
+          statusNote: statusUpdateData.statusNote,
+          statusDate: statusUpdateData.statusDate
         }
       );
       
