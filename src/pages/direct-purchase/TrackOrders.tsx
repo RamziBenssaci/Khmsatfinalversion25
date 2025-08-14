@@ -345,6 +345,24 @@ export default function TrackOrders() {
             </div>
           </div>
 
+          <div class="section">
+            <div class="section-header">
+              <h2>المعلومات المالية</h2>
+            </div>
+            <div class="section-content">
+              <div class="info-grid">
+                <div class="info-item">
+                  <label>رقم التعميد المالي</label>
+                  <span>${order.financialApprovalNumber || '-'}</span>
+                </div>
+                <div class="info-item">
+                  <label>تاريخ التعميد</label>
+                  <span>${order.financialApprovalDate || '-'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           ${order.supplier_name ? `
           <div class="section">
             <div class="section-header">
@@ -692,6 +710,8 @@ export default function TrackOrders() {
                     <th className="p-3">اسم الصنف</th>
                     <th className="p-3 mobile-hidden">الجهة المستفيدة</th>
                     <th className="p-3 mobile-hidden">الكمية</th>
+                    <th className="p-3 mobile-hidden">رقم التعميد المالي</th>
+                    <th className="p-3 mobile-hidden">تاريخ التعميد</th>
                     <th className="p-3">الحالة</th>
                     <th className="p-3 mobile-hidden">التكلفة</th>
                     <th className="p-3">الإجراءات</th>
@@ -705,6 +725,8 @@ export default function TrackOrders() {
                       <td className="p-3">{order.item_name}</td>
                       <td className="p-3 mobile-hidden">{order.beneficiary_facility}</td>
                       <td className="p-3 mobile-hidden">{order.quantity}</td>
+                      <td className="p-3 mobile-hidden">{order.financialApprovalNumber || '-'}</td>
+                      <td className="p-3 mobile-hidden">{order.financialApprovalDate || '-'}</td>
                       <td className="p-3">
                         <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(order.status)}`}>
                           {order.status}
@@ -763,7 +785,7 @@ export default function TrackOrders() {
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-6 rounded-lg border">
                 <h3 className="text-lg font-bold mb-4 text-right text-blue-800 dark:text-blue-200">المعلومات الأساسية</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-right">
+                  <div className="text-right">
                     <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">رقم الطلب</label>
                     <p className="font-semibold text-lg bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.order_number || selectedOrder.id}</p>
                   </div>
@@ -788,6 +810,21 @@ export default function TrackOrders() {
                     <p className="font-semibold text-lg bg-white dark:bg-gray-800 p-2 rounded">
                       {selectedOrder.total_cost ? `${Number(selectedOrder.total_cost).toLocaleString()} ريال` : '-'}
                     </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Information Section */}
+              <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-6 rounded-lg border">
+                <h3 className="text-lg font-bold mb-4 text-right text-green-800 dark:text-green-200">المعلومات المالية</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="text-right">
+                    <label className="block text-sm font-medium text-green-600 dark:text-green-300 mb-2">رقم التعميد المالي</label>
+                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.financialApprovalNumber || '-'}</p>
+                  </div>
+                  <div className="text-right">
+                    <label className="block text-sm font-medium text-green-600 dark:text-green-300 mb-2">تاريخ التعميد</label>
+                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.financialApprovalDate || '-'}</p>
                   </div>
                 </div>
               </div>
