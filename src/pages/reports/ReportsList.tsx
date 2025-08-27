@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { Search, Filter, Download, Eye, Edit, Trash2, Printer, X, Save, Loader2, AlertTriangle, FileText, Clock } from 'lucide-react';
+import { Search, Filter, Download, Eye, Edit, Trash2, Printer, X, Save, Loader2, AlertTriangle, FileText, Clock, Settings } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { reportsApi } from '@/lib/api';
 
@@ -152,6 +151,7 @@ export default function ReportsList() {
   const [deleteConfirmReport, setDeleteConfirmReport] = useState(null);
   const [viewingReport, setViewingReport] = useState(null);
   const [modifyingReport, setModifyingReport] = useState(null);
+  const [fullEditingReport, setFullEditingReport] = useState(null);
   const [modifyFormData, setModifyFormData] = useState({
     status: '',
     resolution: '',
@@ -164,6 +164,26 @@ export default function ReportsList() {
       status: report.status || '',
       resolution: report.resolution || '',
       resolved_at: ''
+    });
+  };
+
+  const handleFullEditClick = (report) => {
+    setFullEditingReport(report);
+    setEditFormData({
+      category: report.category || '',
+      device_name: report.device_name || '',
+      serial_number: report.serial_number || '',
+      problem_description: report.problem_description || '',
+      under_warranty: report.under_warranty || '',
+      repair_company: report.repair_company || '',
+      contact_number: report.contact_number || '',
+      email: report.email || '',
+      reporter_name: report.reporter_name || '',
+      reporter_contact: report.reporter_contact || '',
+      status: report.status || '',
+      notes: report.notes || '',
+      resolution: report.resolution || '',
+      resolved_by: report.resolved_by || ''
     });
   };
 
@@ -199,6 +219,53 @@ export default function ReportsList() {
         );
         
         setModifyingReport(null);
+      } else {
+        toast({
+          title: "خطأ في تحديث البلاغ",
+          description: response.message,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "خطأ في تحديث البلاغ",
+        description: error.message || "فشل في تحديث البلاغ",
+        variant: "destructive"
+      });
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  const handleFullEditSubmit = async (e) => {
+    e.preventDefault();
+    setUpdateLoading(true);
+
+    try {
+      // Add resolved_at timestamp when status changes to closed or paused
+      const updateData: any = { ...editFormData, update: 'new' };
+      if ((editFormData.status === 'مغلق' || editFormData.status === 'مكهن') && 
+          fullEditingReport.status === 'مفتوح') {
+        updateData.resolved_at = new Date().toISOString();
+      }
+
+      const response = await reportsApi.updateReport(fullEditingReport.id, updateData);
+      
+      if (response.success) {
+        toast({
+          title: "تم تحديث البلاغ بنجاح",
+          description: "تم حفظ التغييرات على البلاغ",
+        });
+
+        setReports(prev => 
+          prev.map(report => 
+            report.id === fullEditingReport.id 
+              ? { ...report, ...updateData }
+              : report
+          )
+        );
+        
+        setFullEditingReport(null);
       } else {
         toast({
           title: "خطأ في تحديث البلاغ",
@@ -290,6 +357,7 @@ export default function ReportsList() {
 
   // Get unique values for filters
   const facilities = [...new Set(reports.map(r => r.facility?.name).filter(Boolean))];
+  const categories = [...new Set(reports.map(r => r.category).filter(Boolean))];
 
   const handleEditClick = (report) => {
     setEditingReport(report);
@@ -674,7 +742,7 @@ export default function ReportsList() {
               className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">جميع التصنيفات</option>
-              {predefinedCategories.map(category => (
+              {categories.map(category => (
                 <option key={category} value={category}>{category}</option>
               ))}
             </select>
@@ -785,8 +853,15 @@ export default function ReportsList() {
                           <Edit size={16} />
                         </button>
                         <button 
+                          onClick={() => handleFullEditClick(report)}
+                          className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/20 rounded transition-colors" 
+                          title="تعديل كامل"
+                        >
+                          <Settings size={16} />
+                        </button>
+                        <button 
                           onClick={() => handlePrintReport(report)}
-                          className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded transition-colors hidden sm:inline-block" 
+                          className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded transition-colors" 
                           title="طباعة"
                         >
                           <Printer size={16} />
@@ -794,7 +869,7 @@ export default function ReportsList() {
                         <button 
                           onClick={() => handleDeleteClick(report)}
                           disabled={deleteLoading === report.id}
-                          className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors hidden sm:inline-block" 
+                          className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors" 
                           title="حذف"
                         >
                           {deleteLoading === report.id ? (
@@ -815,7 +890,7 @@ export default function ReportsList() {
         {filteredReports.length === 0 && (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
             <FileText size={48} className="mx-auto mb-4 opacity-50" />
-            <p className="text-lg">لا توجد بلاغات تطابق معايير البحث</p>
+            <p className="text-lg">لا توجد بلاغات تطابق معاييير البحث</p>
           </div>
         )}
       </div>
@@ -927,6 +1002,64 @@ export default function ReportsList() {
                   {viewingReport.problem_description}
                 </p>
               </div>
+
+              {/* Request Status Log */}
+              {(viewingReport.creation_date || viewingReport.contract_approval_date || viewingReport.contract_date || 
+                viewingReport.contract_delivery_date || viewingReport.rejection_date) && (
+                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                  <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-4 flex items-center gap-2">
+                    <Clock size={20} />
+                    سجل حالات الطلب
+                  </h3>
+                  <div className="space-y-3">
+                    {viewingReport.creation_date && (
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+                        <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الإنشاء:</span>
+                        <span className="text-gray-700 dark:text-gray-300">{viewingReport.creation_date}</span>
+                        {viewingReport.creation_date_note && (
+                          <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.creation_date_note})</span>
+                        )}
+                      </div>
+                    )}
+                    {viewingReport.contract_approval_date && (
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+                        <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الموافقة على العقد:</span>
+                        <span className="text-gray-700 dark:text-gray-300">{viewingReport.contract_approval_date}</span>
+                        {viewingReport.contract_approval_date_note && (
+                          <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.contract_approval_date_note})</span>
+                        )}
+                      </div>
+                    )}
+                    {viewingReport.contract_date && (
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+                        <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ العقد:</span>
+                        <span className="text-gray-700 dark:text-gray-300">{viewingReport.contract_date}</span>
+                        {viewingReport.contract_date_note && (
+                          <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.contract_date_note})</span>
+                        )}
+                      </div>
+                    )}
+                    {viewingReport.contract_delivery_date && (
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+                        <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ تسليم العقد:</span>
+                        <span className="text-gray-700 dark:text-gray-300">{viewingReport.contract_delivery_date}</span>
+                        {viewingReport.contract_delivery_date_note && (
+                          <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.contract_delivery_date_note})</span>
+                        )}
+                      </div>
+                    )}
+                    {viewingReport.rejection_date && (
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+                        <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الرفض:</span>
+                        <span className="text-gray-700 dark:text-gray-300">{viewingReport.rejection_date}</span>
+                        {viewingReport.rejection_date_note && (
+                          <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.rejection_date_note})</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Notes */}
               {viewingReport.notes && (
@@ -1066,7 +1199,7 @@ export default function ReportsList() {
               </button>
             </div>
             
-            <form onSubmit={handleEditSubmit} className="p-6 space-y-6">
+            <form onSubmit={handleEditSubmit} className="p-4 md:p-6 space-y-6">
               {/* Status Change Notice */}
               {editFormData.status !== editingReport.status && 
                (editFormData.status === 'مغلق' || editFormData.status === 'مكهن') && (
@@ -1080,7 +1213,7 @@ export default function ReportsList() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">التصنيف</label>
                   <select
@@ -1205,116 +1338,6 @@ export default function ReportsList() {
                 )}
               </div>
               
-              <div>
-                <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">وصف المشكلة</label>
-                <textarea
-                  value={editFormData.problem_description}
-                  onChange={(e) => handleEditInputChange('problem_description', e.target.value)}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  rows={4}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">ملاحظات</label>
-                <textarea
-                  value={editFormData.notes}
-                  onChange={(e) => handleEditInputChange('notes', e.target.value)}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  rows={3}
-                />
-              </div>
-
-              {(editFormData.status === 'مغلق' || editFormData.status === 'مكهن') && (
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">تفاصيل الحل</label>
-                  <textarea
-                    value={editFormData.resolution}
-                    onChange={(e) => handleEditInputChange('resolution', e.target.value)}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    rows={3}
-                    placeholder="وصف تفصيلي للحل المتخذ..."
-                  />
-                </div>
-              )}
-
-              {/* Downtime Display */}
-              <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <Clock size={20} className="text-gray-600 dark:text-gray-400" />
-                  <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">فترة التوقف الحالية</h4>
-                    <p className="text-gray-600 dark:text-gray-400">
-                      {calculateDowntimePeriod(editingReport.report_date, editingReport.report_time, editingReport.resolved_at)}
-                      من تاريخ الإنشاء {editingReport.resolved_at ? 'حتى تاريخ الإغلاق' : 'حتى الآن'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  type="button"
-                  onClick={() => setEditingReport(null)}
-                  className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  disabled={updateLoading}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {updateLoading ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      جاري الحفظ...
-                    </>
-                  ) : (
-                    <>
-                      <Save size={18} />
-                      حفظ التغييرات
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modify Status Modal */}
-      {modifyingReport && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md shadow-2xl">
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                <Edit size={20} />
-                تعديل حالة البلاغ رقم {modifyingReport.id}
-              </h2>
-              <button 
-                onClick={() => setModifyingReport(null)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleModifySubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">الحالة</label>
-                <select
-                  value={modifyFormData.status}
-                  onChange={(e) => setModifyFormData(prev => ({ ...prev, status: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  required
-                >
-                  {predefinedStatuses.map(status => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">تاريخ الحل</label>
                 <input
