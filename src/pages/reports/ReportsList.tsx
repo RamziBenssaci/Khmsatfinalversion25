@@ -1,5 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, Download, Eye, Edit, Trash2, Printer, X, Save, Loader2, AlertTriangle, FileText, Clock, Settings } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  Download,
+  Eye,
+  Edit,
+  Trash2,
+  Printer,
+  X,
+  Save,
+  Loader2,
+  AlertTriangle,
+  FileText,
+  Clock,
+  Settings
+} from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { reportsApi } from '@/lib/api';
 
@@ -11,7 +26,7 @@ const calculateDowntimePeriod = (reportDate: string, reportTime: string, resolve
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   const diffHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const diffMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
-  
+
   if (diffDays > 0) {
     return `${diffDays} يوم ${diffHours} ساعة`;
   } else if (diffHours > 0) {
@@ -147,7 +162,7 @@ export default function ReportsList() {
   const [editingReport, setEditingReport] = useState(null);
   const [updateLoading, setUpdateLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(null);
-  
+
   const [deleteConfirmReport, setDeleteConfirmReport] = useState(null);
   const [viewingReport, setViewingReport] = useState(null);
   const [modifyingReport, setModifyingReport] = useState(null);
@@ -192,32 +207,31 @@ export default function ReportsList() {
     setUpdateLoading(true);
 
     try {
-      const updateData: any = {
+      const updateData = {
         status: modifyFormData.status,
         resolution: modifyFormData.resolution
       };
 
-      // Add resolved_at from form input if provided
       if (modifyFormData.resolved_at) {
         updateData.resolved_at = modifyFormData.resolved_at;
       }
 
       const response = await reportsApi.updateReport(modifyingReport.id, updateData);
-      
+
       if (response.success) {
         toast({
           title: "تم تحديث البلاغ بنجاح",
           description: "تم حفظ التغييرات على البلاغ",
         });
 
-        setReports(prev => 
-          prev.map(report => 
-            report.id === modifyingReport.id 
+        setReports(prev =>
+          prev.map(report =>
+            report.id === modifyingReport.id
               ? { ...report, ...updateData }
               : report
           )
         );
-        
+
         setModifyingReport(null);
       } else {
         toast({
@@ -242,29 +256,28 @@ export default function ReportsList() {
     setUpdateLoading(true);
 
     try {
-      // Add resolved_at timestamp when status changes to closed or paused
-      const updateData: any = { ...editFormData, update: 'new' };
-      if ((editFormData.status === 'مغلق' || editFormData.status === 'مكهن') && 
-          fullEditingReport.status === 'مفتوح') {
+      const updateData = { ...editFormData, update: 'new' };
+      if ((editFormData.status === 'مغلق' || editFormData.status === 'مكهن') &&
+        fullEditingReport.status === 'مفتوح') {
         updateData.resolved_at = new Date().toISOString();
       }
 
       const response = await reportsApi.updateReport(fullEditingReport.id, updateData);
-      
+
       if (response.success) {
         toast({
           title: "تم تحديث البلاغ بنجاح",
           description: "تم حفظ التغييرات على البلاغ",
         });
 
-        setReports(prev => 
-          prev.map(report => 
-            report.id === fullEditingReport.id 
+        setReports(prev =>
+          prev.map(report =>
+            report.id === fullEditingReport.id
               ? { ...report, ...updateData }
               : report
           )
         );
-        
+
         setFullEditingReport(null);
       } else {
         toast({
@@ -301,17 +314,15 @@ export default function ReportsList() {
     resolved_by: ''
   });
 
-  // Predefined categories
   const predefinedCategories = [
     'صيانة طبية',
-    'صيانة عامة', 
+    'صيانة عامة',
     'تقنية المعلومات',
     'أمن وسلامة',
     'التموين الطبي',
     'أخرى'
   ];
 
-  // Predefined statuses
   const predefinedStatuses = ['مفتوح', 'مغلق', 'مكهن'];
 
   useEffect(() => {
@@ -341,21 +352,19 @@ export default function ReportsList() {
     loadReports();
   }, [toast]);
 
-  // Filter reports based on search and filters
   const filteredReports = reports.filter(report => {
     return (
-      (searchTerm === '' || 
-       report.facility?.name?.includes(searchTerm) || 
-       report.problem_description?.includes(searchTerm) ||
-       report.device_name?.includes(searchTerm) ||
-       report.id?.toString().includes(searchTerm)) &&
+      (searchTerm === '' ||
+        report.facility?.name?.includes(searchTerm) ||
+        report.problem_description?.includes(searchTerm) ||
+        report.device_name?.includes(searchTerm) ||
+        report.id?.toString().includes(searchTerm)) &&
       (selectedFacility === '' || report.facility?.name === selectedFacility) &&
       (selectedCategory === '' || report.category === selectedCategory) &&
       (selectedStatus === '' || report.status === selectedStatus)
     );
   });
 
-  // Get unique values for filters
   const facilities = [...new Set(reports.map(r => r.facility?.name).filter(Boolean))];
   const categories = [...new Set(reports.map(r => r.category).filter(Boolean))];
 
@@ -384,29 +393,28 @@ export default function ReportsList() {
     setUpdateLoading(true);
 
     try {
-      // Add resolved_at timestamp when status changes to closed or paused
-      const updateData: any = { ...editFormData };
-      if ((editFormData.status === 'مغلق' || editFormData.status === 'مكهن') && 
-          editingReport.status === 'مفتوح') {
+      const updateData = { ...editFormData };
+      if ((editFormData.status === 'مغلق' || editFormData.status === 'مكهن') &&
+        editingReport.status === 'مفتوح') {
         updateData.resolved_at = new Date().toISOString();
       }
 
       const response = await reportsApi.updateReport(editingReport.id, updateData);
-      
+
       if (response.success) {
         toast({
           title: "تم تحديث البلاغ بنجاح",
           description: "تم حفظ التغييرات على البلاغ",
         });
 
-        setReports(prev => 
-          prev.map(report => 
-            report.id === editingReport.id 
+        setReports(prev =>
+          prev.map(report =>
+            report.id === editingReport.id
               ? { ...report, ...updateData }
               : report
           )
         );
-        
+
         setEditingReport(null);
       } else {
         toast({
@@ -437,7 +445,7 @@ export default function ReportsList() {
 
     try {
       const response = await reportsApi.deleteReport(deleteConfirmReport.id);
-      
+
       if (response.success) {
         toast({
           title: "تم حذف البلاغ بنجاح",
@@ -478,7 +486,6 @@ export default function ReportsList() {
       report.report_time,
       report.resolved_at
     );
-
     const printContent = `
       <!DOCTYPE html>
       <html dir="rtl">
@@ -532,7 +539,7 @@ export default function ReportsList() {
           <h1>تقرير بلاغ رقم ${report.id}</h1>
           <p>تاريخ الطباعة: ${new Date().toLocaleDateString('ar-SA')}</p>
         </div>
-        
+
         <div class="info-grid">
           <div class="info-item">
             <div class="info-label">رقم البلاغ:</div>
@@ -551,7 +558,7 @@ export default function ReportsList() {
             <div>
               <span class="status ${
                 report.status === 'مفتوح' ? 'status-open' :
-                report.status === 'مغلق' ? 'status-closed' : 'status-paused'
+                  report.status === 'مغلق' ? 'status-closed' : 'status-paused'
               }">
                 ${report.status}
               </span>
@@ -619,7 +626,7 @@ export default function ReportsList() {
       </body>
       </html>
     `;
-    
+
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(printContent);
@@ -642,7 +649,7 @@ export default function ReportsList() {
         reportDate: `${report.report_date} ${report.report_time}`,
         downtimeDays: calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)
       }));
-      
+
       exportToExcel(exportData, 'قائمة_البلاغات');
       toast({
         title: "تم تصدير البيانات بنجاح",
@@ -669,7 +676,7 @@ export default function ReportsList() {
         reportDate: `${report.report_date} ${report.report_time}`,
         downtimeDays: calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)
       }));
-      
+
       exportToPDF(exportData, 'قائمة_البلاغات');
       toast({
         title: "تم تصدير البيانات بنجاح",
@@ -703,7 +710,7 @@ export default function ReportsList() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className=" bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <Filter size={20} />
             البحث والتصفية
@@ -762,7 +769,7 @@ export default function ReportsList() {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-6">
-            <button 
+            <button
               onClick={handleExportExcel}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2 text-sm transition-colors"
             >
@@ -770,7 +777,7 @@ export default function ReportsList() {
               <span className="hidden sm:inline">تصدير Excel</span>
               <span className="sm:hidden">Excel</span>
             </button>
-            <button 
+            <button
               onClick={handleExportPDF}
               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2 text-sm transition-colors"
             >
@@ -782,8 +789,87 @@ export default function ReportsList() {
         </div>
       </div>
 
-      {/* Reports Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+      {/* Reports Table or Cards */}
+      {/* Mobile: Cards layout */}
+      <div className="md:hidden space-y-4">
+        {filteredReports.length === 0 && (
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <FileText size={48} className="mx-auto mb-4 opacity-50" />
+            <p className="text-lg">لا توجد بلاغات تطابق معاييير البحث</p>
+          </div>
+        )}
+
+        {filteredReports.map(report => {
+          const downtimePeriod = calculateDowntimePeriod(
+            report.report_date,
+            report.report_time,
+            report.resolved_at
+          );
+          return (
+            <div key={report.id} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex flex-col space-y-2 text-right">
+              <div className="flex justify-between items-center">
+                <div className="text-blue-600 dark:text-blue-400 font-bold text-lg">بلاغ #{report.id}</div>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => handleViewClick(report)}
+                    title="عرض"
+                    className="p-1 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded transition-colors"
+                  >
+                    <Eye size={20} />
+                  </button>
+                  <button
+                    onClick={() => handleModifyClick(report)}
+                    title="تعديل الحالة"
+                    className="p-1 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded transition-colors"
+                  >
+                    <Edit size={20} />
+                  </button>
+                  <button
+                    onClick={() => handleFullEditClick(report)}
+                    title="تعديل كامل"
+                    className="p-1 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/20 rounded transition-colors"
+                  >
+                    <Settings size={20} />
+                  </button>
+                  <button
+                    onClick={() => handlePrintReport(report)}
+                    title="طباعة"
+                    className="p-1 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded transition-colors"
+                  >
+                    <Printer size={20} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(report)}
+                    disabled={deleteLoading === report.id}
+                    title="حذف"
+                    className="p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors"
+                  >
+                    {deleteLoading === report.id ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={20} />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div><strong>المنشأة:</strong> {report.facility?.name || 'غير محدد'}</div>
+              <div><strong>التصنيف:</strong> {report.category}</div>
+              <div><strong>اسم الجهاز:</strong> {report.device_name}</div>
+              <div><strong>وصف المشكلة:</strong> {report.problem_description || 'غير محدد'}</div>
+              <div><strong>التاريخ:</strong> {report.report_date}</div>
+              <div><strong>الحالة:</strong> <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                report.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                  report.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                    'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+              }`}>{report.status}</span></div>
+              <div><strong>فترة التوقف:</strong> {downtimePeriod}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop/Tablet: Original Table */}
+      <div className="hidden md:block bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <FileText size={20} />
@@ -812,7 +898,7 @@ export default function ReportsList() {
                   report.report_time,
                   report.resolved_at
                 );
-                
+
                 return (
                   <tr key={report.id} className="border-b border-gray-200 dark:border-gray-700 text-right hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <td className="p-4 font-medium text-blue-600 dark:text-blue-400">{report.id}</td>
@@ -824,8 +910,8 @@ export default function ReportsList() {
                     <td className="p-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                         report.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                        report.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
-                        'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                          report.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                            'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
                       }`}>
                         {report.status}
                       </span>
@@ -838,38 +924,38 @@ export default function ReportsList() {
                     </td>
                     <td className="p-4">
                       <div className="flex gap-1 justify-center flex-wrap">
-                        <button 
+                        <button
                           onClick={() => handleViewClick(report)}
-                          className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded transition-colors" 
+                          className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded transition-colors"
                           title="عرض"
                         >
                           <Eye size={16} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleModifyClick(report)}
-                          className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded transition-colors" 
+                          className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded transition-colors"
                           title="تعديل الحالة"
                         >
                           <Edit size={16} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleFullEditClick(report)}
-                          className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/20 rounded transition-colors" 
+                          className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/20 rounded transition-colors"
                           title="تعديل كامل"
                         >
                           <Settings size={16} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handlePrintReport(report)}
-                          className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded transition-colors" 
+                          className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded transition-colors"
                           title="طباعة"
                         >
                           <Printer size={16} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDeleteClick(report)}
                           disabled={deleteLoading === report.id}
-                          className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors" 
+                          className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors"
                           title="حذف"
                         >
                           {deleteLoading === report.id ? (
@@ -886,7 +972,7 @@ export default function ReportsList() {
             </tbody>
           </table>
         </div>
-        
+
         {filteredReports.length === 0 && (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
             <FileText size={48} className="mx-auto mb-4 opacity-50" />
@@ -904,14 +990,14 @@ export default function ReportsList() {
                 <FileText size={24} />
                 تفاصيل البلاغ رقم {viewingReport.id}
               </h2>
-              <button 
+              <button
                 onClick={() => setViewingReport(null)}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
               >
                 <X size={24} />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-6">
               {/* Downtime Counter */}
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -928,7 +1014,7 @@ export default function ReportsList() {
               </div>
 
               {/* Basic Info Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-right">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-600 dark:text-gray-400">رقم البلاغ</label>
                   <p className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md font-mono text-blue-600 dark:text-blue-400">{viewingReport.id}</p>
@@ -954,8 +1040,8 @@ export default function ReportsList() {
                   <div className="p-3">
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                       viewingReport.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                      viewingReport.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
-                      'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                        viewingReport.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                          'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
                     }`}>
                       {viewingReport.status}
                     </span>
@@ -1004,62 +1090,62 @@ export default function ReportsList() {
               </div>
 
               {/* Request Status Log */}
-              {(viewingReport.creation_date || viewingReport.contract_approval_date || viewingReport.contract_date || 
+              {(viewingReport.creation_date || viewingReport.contract_approval_date || viewingReport.contract_date ||
                 viewingReport.contract_delivery_date || viewingReport.rejection_date) && (
-                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-                  <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-4 flex items-center gap-2">
-                    <Clock size={20} />
-                    سجل حالات الطلب
-                  </h3>
-                  <div className="space-y-3">
-                    {viewingReport.creation_date && (
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
-                        <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الإنشاء:</span>
-                        <span className="text-gray-700 dark:text-gray-300">{viewingReport.creation_date}</span>
-                        {viewingReport.creation_date_note && (
-                          <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.creation_date_note})</span>
-                        )}
-                      </div>
-                    )}
-                    {viewingReport.contract_approval_date && (
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
-                        <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الموافقة على العقد:</span>
-                        <span className="text-gray-700 dark:text-gray-300">{viewingReport.contract_approval_date}</span>
-                        {viewingReport.contract_approval_date_note && (
-                          <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.contract_approval_date_note})</span>
-                        )}
-                      </div>
-                    )}
-                    {viewingReport.contract_date && (
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
-                        <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ العقد:</span>
-                        <span className="text-gray-700 dark:text-gray-300">{viewingReport.contract_date}</span>
-                        {viewingReport.contract_date_note && (
-                          <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.contract_date_note})</span>
-                        )}
-                      </div>
-                    )}
-                    {viewingReport.contract_delivery_date && (
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
-                        <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ تسليم العقد:</span>
-                        <span className="text-gray-700 dark:text-gray-300">{viewingReport.contract_delivery_date}</span>
-                        {viewingReport.contract_delivery_date_note && (
-                          <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.contract_delivery_date_note})</span>
-                        )}
-                      </div>
-                    )}
-                    {viewingReport.rejection_date && (
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
-                        <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الرفض:</span>
-                        <span className="text-gray-700 dark:text-gray-300">{viewingReport.rejection_date}</span>
-                        {viewingReport.rejection_date_note && (
-                          <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.rejection_date_note})</span>
-                        )}
-                      </div>
-                    )}
+                  <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                    <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-4 flex items-center gap-2">
+                      <Clock size={20} />
+                      سجل حالات الطلب
+                    </h3>
+                    <div className="space-y-3">
+                      {viewingReport.creation_date && (
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+                          <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الإنشاء:</span>
+                          <span className="text-gray-700 dark:text-gray-300">{viewingReport.creation_date}</span>
+                          {viewingReport.creation_date_note && (
+                            <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.creation_date_note})</span>
+                          )}
+                        </div>
+                      )}
+                      {viewingReport.contract_approval_date && (
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+                          <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الموافقة على العقد:</span>
+                          <span className="text-gray-700 dark:text-gray-300">{viewingReport.contract_approval_date}</span>
+                          {viewingReport.contract_approval_date_note && (
+                            <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.contract_approval_date_note})</span>
+                          )}
+                        </div>
+                      )}
+                      {viewingReport.contract_date && (
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+                          <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ العقد:</span>
+                          <span className="text-gray-700 dark:text-gray-300">{viewingReport.contract_date}</span>
+                          {viewingReport.contract_date_note && (
+                            <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.contract_date_note})</span>
+                          )}
+                        </div>
+                      )}
+                      {viewingReport.contract_delivery_date && (
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+                          <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ تسليم العقد:</span>
+                          <span className="text-gray-700 dark:text-gray-300">{viewingReport.contract_delivery_date}</span>
+                          {viewingReport.contract_delivery_date_note && (
+                            <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.contract_delivery_date_note})</span>
+                          )}
+                        </div>
+                      )}
+                      {viewingReport.rejection_date && (
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+                          <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الرفض:</span>
+                          <span className="text-gray-700 dark:text-gray-300">{viewingReport.rejection_date}</span>
+                          {viewingReport.rejection_date_note && (
+                            <span className="text-sm text-gray-500 dark:text-gray-400 italic">({viewingReport.rejection_date_note})</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Notes */}
               {viewingReport.notes && (
@@ -1085,7 +1171,7 @@ export default function ReportsList() {
               {(viewingReport.resolved_at || viewingReport.resolved_by) && (
                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                   <h3 className="font-semibold text-green-900 dark:text-green-100 mb-3">تفاصيل الإغلاق/التكهين</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">
                     {viewingReport.resolved_at && (
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-green-700 dark:text-green-300">تاريخ الإغلاق/التكهين</label>
@@ -1128,14 +1214,14 @@ export default function ReportsList() {
                 <AlertTriangle size={20} />
                 تأكيد الحذف
               </h2>
-              <button 
+              <button
                 onClick={() => setDeleteConfirmReport(null)}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <div className="text-center space-y-4">
                 <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto">
@@ -1191,35 +1277,34 @@ export default function ReportsList() {
                 <Edit size={24} />
                 تعديل البلاغ رقم {editingReport.id}
               </h2>
-              <button 
+              <button
                 onClick={() => setEditingReport(null)}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
               >
                 <X size={24} />
               </button>
             </div>
-            
-            <form onSubmit={handleEditSubmit} className="p-4 md:p-6 space-y-6">
-              {/* Status Change Notice */}
-              {editFormData.status !== editingReport.status && 
-               (editFormData.status === 'مغلق' || editFormData.status === 'مكهن') && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                    <Clock size={20} />
-                    <span className="font-medium">
-                      سيتم تسجيل تاريخ {editFormData.status === 'مغلق' ? 'الإغلاق' : 'التكهين'} تلقائياً عند الحفظ
-                    </span>
-                  </div>
-                </div>
-              )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleEditSubmit} className="p-4 md:p-6 space-y-6">
+              {(editFormData.status !== editingReport.status &&
+                (editFormData.status === 'مغلق' || editFormData.status === 'مكهن')) && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                      <Clock size={20} />
+                      <span className="font-medium">
+                        سيتم تسجيل تاريخ {editFormData.status === 'مغلق' ? 'الإغلاق' : 'التكهين'} تلقائياً عند الحفظ
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">التصنيف</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">التصنيف</label>
                   <select
                     value={editFormData.category}
                     onChange={(e) => handleEditInputChange('category', e.target.value)}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">اختر التصنيف</option>
                     {predefinedCategories.map(category => (
@@ -1227,133 +1312,133 @@ export default function ReportsList() {
                     ))}
                   </select>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">اسم الجهاز</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">اسم الجهاز</label>
                   <input
                     type="text"
                     value={editFormData.device_name}
                     onChange={(e) => handleEditInputChange('device_name', e.target.value)}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">الرقم التسلسلي</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">الرقم التسلسلي</label>
                   <input
                     type="text"
                     value={editFormData.serial_number}
                     onChange={(e) => handleEditInputChange('serial_number', e.target.value)}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">تحت الضمان</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">تحت الضمان</label>
                   <select
                     value={editFormData.under_warranty}
                     onChange={(e) => handleEditInputChange('under_warranty', e.target.value)}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">غير محدد</option>
                     <option value="yes">نعم</option>
                     <option value="no">لا</option>
                   </select>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">شركة الصيانة</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">شركة الصيانة</label>
                   <input
                     type="text"
                     value={editFormData.repair_company}
                     onChange={(e) => handleEditInputChange('repair_company', e.target.value)}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">رقم الاتصال</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">رقم الاتصال</label>
                   <input
                     type="text"
                     value={editFormData.contact_number}
                     onChange={(e) => handleEditInputChange('contact_number', e.target.value)}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">البريد الإلكتروني</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">البريد الإلكتروني</label>
                   <input
                     type="email"
                     value={editFormData.email}
                     onChange={(e) => handleEditInputChange('email', e.target.value)}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">اسم المبلغ</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">اسم المبلغ</label>
                   <input
                     type="text"
                     value={editFormData.reporter_name}
                     onChange={(e) => handleEditInputChange('reporter_name', e.target.value)}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">رقم اتصال المبلغ</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">رقم اتصال المبلغ</label>
                   <input
                     type="text"
                     value={editFormData.reporter_contact}
                     onChange={(e) => handleEditInputChange('reporter_contact', e.target.value)}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">الحالة</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">الحالة</label>
                   <select
                     value={editFormData.status}
                     onChange={(e) => handleEditInputChange('status', e.target.value)}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     {predefinedStatuses.map(status => (
                       <option key={status} value={status}>{status}</option>
                     ))}
                   </select>
                 </div>
-                
+
                 {(editFormData.status === 'مغلق' || editFormData.status === 'مكهن') && (
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">تم الحل بواسطة</label>
+                    <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">تم الحل بواسطة</label>
                     <input
                       type="text"
                       value={editFormData.resolved_by}
                       onChange={(e) => handleEditInputChange('resolved_by', e.target.value)}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="اسم الشخص المسؤول عن الحل"
                     />
                   </div>
                 )}
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">تاريخ الحل</label>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">تاريخ الحل</label>
                 <input
                   type="date"
                   value={modifyFormData.resolved_at}
                   onChange={(e) => setModifyFormData(prev => ({ ...prev, resolved_at: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-right text-gray-700 dark:text-gray-300">ملاحظة</label>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">ملاحظة</label>
                 <textarea
                   value={modifyFormData.resolution}
                   onChange={(e) => setModifyFormData(prev => ({ ...prev, resolution: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   rows={3}
                   placeholder="أدخل ملاحظة حول التغيير..."
                 />
@@ -1389,6 +1474,103 @@ export default function ReportsList() {
           </div>
         </div>
       )}
-    </div>
+
+          {/* Modify Modal (status modify) */}
+      {modifyingReport && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40 px-6 py-4 border-b border-green-200 dark:border-green-800 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-green-900 dark:text-green-100 flex items-center gap-2">
+                <Edit size={24} />
+                تعديل حالة البلاغ رقم {modifyingReport.id}
+              </h2>
+              <button
+                onClick={() => setModifyingReport(null)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                aria-label="Close modify modal"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleModifySubmit} className="p-4 md:p-6 space-y-6 text-right" dir="rtl">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">الحالة</label>
+                <select
+                  value={modifyFormData.status}
+                  onChange={(e) => setModifyFormData(prev => ({ ...prev, status: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  required
+                >
+                  {predefinedStatuses.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">تم الحل بواسطة</label>
+                <input
+                  type="text"
+                  value={modifyFormData.resolved_by || ''}
+                  onChange={(e) => setModifyFormData(prev => ({ ...prev, resolved_by: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  placeholder="اسم الشخص المسؤول عن الحل"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">تاريخ الحل</label>
+                <input
+                  type="date"
+                  value={modifyFormData.resolved_at}
+                  onChange={(e) => setModifyFormData(prev => ({ ...prev, resolved_at: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">ملاحظة</label>
+                <textarea
+                  value={modifyFormData.resolution}
+                  onChange={(e) => setModifyFormData(prev => ({ ...prev, resolution: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  rows={3}
+                  placeholder="أدخل ملاحظة حول التغيير..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setModifyingReport(null)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateLoading}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  {updateLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      جاري الحفظ...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      حفظ التغييرات
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div >
   );
 }
