@@ -18,7 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { reportsApi } from '@/lib/api';
 
-// Utility to calculate downtime period
+// Utility function to calculate downtime period
 const calculateDowntimePeriod = (reportDate, reportTime, resolvedAt) => {
   const startDateTime = new Date(`${reportDate}T${reportTime}`);
   const endDateTime = resolvedAt ? new Date(resolvedAt) : new Date();
@@ -27,16 +27,16 @@ const calculateDowntimePeriod = (reportDate, reportTime, resolvedAt) => {
   const diffHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const diffMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
 
-  if(diffDays > 0){
+  if (diffDays > 0) {
     return `${diffDays} يوم ${diffHours} ساعة`;
-  }else if(diffHours > 0){
+  } else if (diffHours > 0) {
     return `${diffHours} ساعة ${diffMinutes} دقيقة`;
-  }else{
+  } else {
     return `${diffMinutes} دقيقة`;
   }
 };
 
-// Export to PDF excluding سجل حالات الطلب and notes
+// PDF export with سجل حالات الطلب removed and notes removed
 const exportToPDF = (data, filename) => {
   const printContent = `
     <!DOCTYPE html>
@@ -132,14 +132,14 @@ const exportToPDF = (data, filename) => {
   `;
 
   const printWindow = window.open('', '_blank');
-  if(printWindow){
+  if(printWindow) {
     printWindow.document.write(printContent);
     printWindow.document.close();
     setTimeout(() => { printWindow.print(); }, 500);
   }
-}
+};
 
-// Export to Excel unchanged
+// Excel export function (unchanged)
 const exportToExcel = (data, filename) => {
   const csvContent = [
     ['رقم البلاغ', 'المنشأة', 'التصنيف', 'اسم الجهاز', 'وصف المشكلة', 'الحالة', 'تاريخ البلاغ', 'فترة التوقف (أيام)'],
@@ -153,33 +153,31 @@ const exportToExcel = (data, filename) => {
       report.reportDate,
       report.downtimeDays
     ])
-  ].map(row => row.join(',')).join('\n')
+  ].map(row => row.join(',')).join('\n');
 
-  const blob = new Blob(['\uFEFF' + csvContent], {type: 'text/csv;charset=utf-8;'});
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = `${filename}.csv`;
   link.click();
   URL.revokeObjectURL(link.href);
-}
+};
 
-export default function ReportsList(){
+export default function ReportsList() {
   const { toast } = useToast();
-
-  // All states here:
   const [loading,setLoading] = useState(true);
   const [reports,setReports] = useState([]);
   const [searchTerm,setSearchTerm] = useState('');
   const [selectedFacility,setSelectedFacility] = useState('');
   const [selectedCategory,setSelectedCategory] = useState('');
   const [selectedStatus,setSelectedStatus] = useState('');
+  const [editingReport,setEditingReport] = useState(null);
   const [modifyingReport,setModifyingReport] = useState(null);
   const [fullEditingReport,setFullEditingReport] = useState(null);
   const [deleteConfirmReport,setDeleteConfirmReport] = useState(null);
   const [viewingReport,setViewingReport] = useState(null);
   const [updateLoading,setUpdateLoading] = useState(false);
   const [deleteLoading,setDeleteLoading] = useState(null);
-
   const [modifyFormData,setModifyFormData] = useState({
     status: '',
     resolution: '',
@@ -212,16 +210,15 @@ export default function ReportsList(){
     'أمن وسلامة',
     'التموين الطبي',
     'أخرى'
-  ]
+  ];
 
-  const predefinedStatuses = ['مفتوح', 'مغلق', 'مكهن']
+  const predefinedStatuses = ['مفتوح', 'مغلق', 'مكهن'];
 
-  // Initial load reports
   useEffect(() => {
     const loadReports = async () => {
       try {
         const response = await reportsApi.getReports();
-        if(response.success){
+        if (response.success) {
           setReports(response.data || []);
         } else {
           toast({
@@ -230,38 +227,186 @@ export default function ReportsList(){
             variant: "destructive"
           });
         }
-      } catch(e){
+      } catch(e) {
         toast({
           title: "خطأ في تحميل البلاغات",
           description: e.message || "فشل في تحميل قائمة البلاغات",
-          variant: "destructive"
+          variant:"destructive"
         });
       } finally {
         setLoading(false);
       }
     }
     loadReports();
-  }, [toast]);
+  },[toast]);
 
-  // Filtered reports
   const filteredReports = reports.filter(r => {
     return (
       (searchTerm === '' ||
-      r.facility?.name?.includes(searchTerm) ||
-      r.problem_description?.includes(searchTerm) ||
-      r.device_name?.includes(searchTerm) ||
-      r.id?.toString().includes(searchTerm))
-      && (selectedFacility === '' || r.facility?.name === selectedFacility)
-      && (selectedCategory === '' || r.category === selectedCategory)
-      && (selectedStatus === '' || r.status === selectedStatus)
-    )
+       r.facility?.name?.includes(searchTerm) ||
+       r.problem_description?.includes(searchTerm) ||
+       r.device_name?.includes(searchTerm) ||
+       r.id?.toString().includes(searchTerm))
+      &&
+      (selectedFacility === '' || r.facility?.name === selectedFacility)
+      &&
+      (selectedCategory === '' || r.category === selectedCategory)
+      &&
+      (selectedStatus === '' || r.status === selectedStatus)
+    );
   });
 
   const facilities = [...new Set(reports.map(r => r.facility?.name).filter(Boolean))];
   const categories = [...new Set(reports.map(r => r.category).filter(Boolean))];
 
-  // View modal "سجل حالات الطلب" JSX generator
+  const handleModifyClick = (report) => {
+    setModifyingReport(report);
+    setModifyFormData({
+      status: report.status || '',
+      resolution: report.resolution || '',
+      resolved_at: report.resolved_at ? report.resolved_at.split('T')[0] : '',
+      resolved_by: report.resolved_by || ''
+    });
+  };
+
+  const handleFullEditClick = (report) => {
+    setFullEditingReport(report);
+    setEditFormData({
+      report_date: report.report_date || '',
+      report_time: report.report_time || '',
+      category: report.category || '',
+      device_name: report.device_name || '',
+      problem_description: report.problem_description || '',
+      under_warranty: report.under_warranty || '',
+      repair_company: report.repair_company || '',
+      contact_number: report.contact_number || '',
+      email: report.email || '',
+      reporter_name: report.reporter_name || '',
+      reporter_contact: report.reporter_contact || '',
+      status: report.status || '',
+      notes: report.notes || '',
+      resolution: report.resolution || '',
+      resolved_by: report.resolved_by || ''
+    });
+  };
+
+  const handleModifySubmit = async(e) => {
+    e.preventDefault();
+    setUpdateLoading(true);
+    try {
+      const updateData = {
+        status: modifyFormData.status,
+        resolution: modifyFormData.resolution,
+        resolved_at: modifyFormData.resolved_at || undefined,
+        resolved_by: modifyFormData.resolved_by || undefined,
+      };
+      const response = await reportsApi.updateReport(modifyingReport.id, updateData);
+      if(response.success){
+        toast({
+          title:"تم تحديث البلاغ بنجاح",
+          description:"تم حفظ التغييرات على البلاغ"
+        });
+        setReports(prev => prev.map(r => r.id === modifyingReport.id ? {...r, ...updateData } : r));
+        setModifyingReport(null);
+      } else {
+        toast({
+          title:"خطأ في تحديث البلاغ",
+          description: response.message,
+          variant:"destructive"
+        });
+      }
+    } catch(error){
+      toast({
+        title:"خطأ في تحديث البلاغ",
+        description: error.message || "فشل في تحديث البلاغ",
+        variant: "destructive"
+      });
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  const handleFullEditSubmit = async(e) => {
+    e.preventDefault();
+    setUpdateLoading(true);
+    try {
+      const updateData = {...editFormData};
+      if(['مغلق','مكهن'].includes(editFormData.status) && fullEditingReport.status === 'مفتوح'){
+        updateData.resolved_at = new Date().toISOString();
+      }
+      const response = await reportsApi.updateReport(fullEditingReport.id, updateData);
+      if(response.success){
+        toast({
+          title:"تم تحديث البلاغ بنجاح",
+          description:"تم حفظ التغييرات على البلاغ"
+        });
+        setReports(prev => prev.map(r => r.id === fullEditingReport.id ? {...r, ...updateData} : r));
+        setFullEditingReport(null);
+      } else {
+        toast({
+          title:"خطأ في تحديث البلاغ",
+          description: response.message,
+          variant: "destructive"
+        });
+      }
+    } catch(error){
+      toast({
+        title:"خطأ في تحديث البلاغ",
+        description: error.message || "فشل في تحديث البلاغ",
+        variant: "destructive"
+      });
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  const handleDeleteClick = (report) => {
+    setDeleteConfirmReport(report);
+  };
+
+  const handleDeleteConfirm = async() => {
+    if(!deleteConfirmReport) return;
+    setDeleteLoading(deleteConfirmReport.id);
+    try {
+      const response = await reportsApi.deleteReport(deleteConfirmReport.id);
+      if(response.success){
+        toast({
+          title:"تم حذف البلاغ بنجاح",
+          description:"تم حذف البلاغ من النظام"
+        });
+        setReports(prev => prev.filter(r => r.id !== deleteConfirmReport.id));
+        setDeleteConfirmReport(null);
+      } else {
+        toast({
+          title:"خطأ في حذف البلاغ",
+          description: response.message,
+          variant:"destructive"
+        });
+      }
+    } catch(error){
+      toast({
+        title:"خطأ في حذف البلاغ",
+        description: error.message || "فشل في حذف البلاغ",
+        variant:"destructive"
+      });
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
+  const handleViewClick = (report) => {
+    setViewingReport(report);
+  };
+
+  const handleEditInputChange = (field, value) => {
+    setEditFormData(prev => ({...prev, [field]: value}));
+  };
+
+  // Function to generate سجل حالات الطلب HTML for show modal and print
   const generateStatusLogHTML = (report) => {
+    // returns JSX for show modal (React) or HTML string for print (string)
+    const isPrint = typeof report === 'string' || report instanceof String;
+
     const creationDate = report.creation_date;
     const creationNote = report.creation_date_note;
     const approvalDate = report.contract_approval_date;
@@ -269,83 +414,79 @@ export default function ReportsList(){
     const rejectionDate = report.rejection_date;
     const rejectionNote = report.rejection_date_note;
 
-    if(!creationDate && !approvalDate && !rejectionDate){
-      return null;
-    }
-
-    return (
-      <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 text-right">
-        <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-4 flex items-center gap-2"><Clock size={20} />سجل حالات الطلب</h3>
-        <div className="space-y-3">
-          {creationDate && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
-              <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الإنشاء:</span>
-              <span className="text-gray-700 dark:text-gray-300">{creationDate}</span>
-              {creationNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({creationNote})</span>}
-            </div>
-          )}
-          {approvalDate && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
-              <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الموافقة على العقد:</span>
-              <span className="text-gray-700 dark:text-gray-300">{approvalDate}</span>
-              {approvalNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({approvalNote})</span>}
-            </div>
-          )}
-          {rejectionDate && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
-              <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الرفض:</span>
-              <span className="text-gray-700 dark:text-gray-300">{rejectionDate}</span>
-              {rejectionNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({rejectionNote})</span>}
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // Generate سجل حالات الطلب HTML string for print
-  const generateStatusLogHTMLPrint = (report) => {
-    const creationDate = report.creation_date;
-    const creationNote = report.creation_date_note;
-    const approvalDate = report.contract_approval_date;
-    const approvalNote = report.contract_approval_date_note;
-    const rejectionDate = report.rejection_date;
-    const rejectionNote = report.rejection_date_note;
-
+    // Early return empty if none
     if(!creationDate && !approvalDate && !rejectionDate) {
-      return '';
+      return isPrint ? '' : null;
     }
 
-    let html = `
-    <div style="background:#e9d5ff; border:1px solid #c4b5fd; border-radius:8px; padding:16px; margin:12px 0; direction:rtl; font-family:Arial, sans-serif;">
-      <h3 style="color:#5b21b6; margin-bottom:16px;">
-        <svg xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 8c-1.104 0-2 .896-2 2v4h-2v2h6v-2h-2v-4c0-1.104-.896-2-2-2z"></path>
-          <circle cx="12" cy="4" r="2"></circle>
-          <path d="M4 20h16v2H4z"></path>
-        </svg> سجل حالات الطلب
-      </h3>
-    `;
+    if(isPrint) {
+      // HTML string for print
+      let html = `
+      <div style="background:#e9d5ff; border:1px solid #c4b5fd; border-radius:8px; padding:16px; margin:12px 0; direction:rtl; font-family:Arial, sans-serif;">
+        <h3 style="color:#5b21b6; margin-bottom:16px;"><svg xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c-1.104 0-2 .896-2 2v4h-2v2h6v-2h-2v-4c0-1.104-.896-2-2-2z"></path><circle cx="12" cy="4" r="2"></circle><path d="M4 20h16v2H4z"></path></svg> سجل حالات الطلب</h3>
+      `;
 
-    if(creationDate) {
-      html += `<div style="margin-bottom:8px;"><strong>تاريخ الإنشاء:</strong> ${creationDate}${creationNote ? ` <em style="font-style: italic; color: #555;">(${creationNote})</em>` : ''}</div>`;
+      if(report.status === 'مفتوح' && creationDate) {
+        html += `
+          <div style="margin-bottom:8px;">
+            <strong>تاريخ الإنشاء:</strong> ${creationDate}
+            ${creationNote ? `<em style="font-style: italic; color: #555;">(${creationNote})</em>` : ''}
+          </div>`;
+      }
+      if(report.status === 'مغلق' && approvalDate) {
+        html += `
+          <div style="margin-bottom:8px;">
+            <strong>تاريخ الموافقة على العقد:</strong> ${approvalDate}
+            ${approvalNote ? `<em style="font-style: italic; color: #555;">(${approvalNote})</em>` : ''}
+          </div>`;
+      }
+      if(report.status === 'مكهن' && rejectionDate) {
+        html += `
+          <div style="margin-bottom:8px;">
+            <strong>تاريخ الرفض:</strong> ${rejectionDate}
+            ${rejectionNote ? `<em style="font-style: italic; color: #555;">(${rejectionNote})</em>` : ''}
+          </div>`;
+      }
+      html += '</div>';
+      return html;
+    } else {
+      // Return JSX for React show modal
+      return (
+        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 text-right">
+          <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-4 flex items-center gap-2"><Clock size={20} />سجل حالات الطلب</h3>
+          <div className="space-y-3">
+            {report.status === 'مفتوح' && creationDate && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+                <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الإنشاء:</span>
+                <span className="text-gray-700 dark:text-gray-300">{creationDate}</span>
+                {creationNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({creationNote})</span>}
+              </div>
+            )}
+            {report.status === 'مغلق' && approvalDate && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+                <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الموافقة على العقد:</span>
+                <span className="text-gray-700 dark:text-gray-300">{approvalDate}</span>
+                {approvalNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({approvalNote})</span>}
+              </div>
+            )}
+            {report.status === 'مكهن' && rejectionDate && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+                <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الرفض:</span>
+                <span className="text-gray-700 dark:text-gray-300">{rejectionDate}</span>
+                {rejectionNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({rejectionNote})</span>}
+              </div>
+            )}
+          </div>
+        </div>
+      )
     }
-    if(approvalDate) {
-      html += `<div style="margin-bottom:8px;"><strong>تاريخ الموافقة على العقد:</strong> ${approvalDate}${approvalNote ? ` <em style="font-style: italic; color: #555;">(${approvalNote})</em>` : ''}</div>`;
-    }
-    if(rejectionDate) {
-      html += `<div style="margin-bottom:8px;"><strong>تاريخ الرفض:</strong> ${rejectionDate}${rejectionNote ? ` <em style="font-style: italic; color: #555;">(${rejectionNote})</em>` : ''}</div>`;
-    }
+  };
 
-    html += '</div>'
-    return html;
-  }
-
-  // Print report function
   const handlePrintReport = (report) => {
     const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
 
-    const statusLogHTML = generateStatusLogHTMLPrint(report);
+    // generate سجل حالات الطلب HTML only for print
+    const statusLogHTML = generateStatusLogHTML(report);
 
     const printContent = `
       <!DOCTYPE html>
@@ -405,7 +546,10 @@ export default function ReportsList(){
           <div class="info-item"><div class="info-label">المنشأة:</div><div>${report.facility?.name || 'غير محدد'}</div></div>
           <div class="info-item"><div class="info-label">تاريخ البلاغ:</div><div>${report.report_date} ${report.report_time}</div></div>
           <div class="info-item"><div class="info-label">الحالة:</div><div>
-            <span class="status ${report.status === 'مفتوح' ? 'status-open' : report.status === 'مغلق' ? 'status-closed' : 'status-paused'}">${report.status}</span>
+            <span class="status ${
+              report.status === 'مفتوح' ? 'status-open' :
+              report.status === 'مغلق' ? 'status-closed' : 'status-paused'
+            }">${report.status}</span>
           </div></div>
           <div class="info-item"><div class="info-label">التصنيف:</div><div>${report.category}</div></div>
           <div class="info-item"><div class="info-label">اسم الجهاز:</div><div>${report.device_name}</div></div>
@@ -418,6 +562,7 @@ export default function ReportsList(){
           <div class="info-item"><div class="info-label">اسم المبلغ:</div><div>${report.reporter_name || 'غير محدد'}</div></div>
           <div class="info-item"><div class="info-label">رقم اتصال المبلغ:</div><div>${report.reporter_contact || 'غير محدد'}</div></div>
 
+          <!-- سجل حالات الطلب inserted here -->
           ${statusLogHTML}
 
           ${report.notes ? `<div class="info-item full-width"><div class="info-label">ملاحظات:</div><div>${report.notes}</div></div>` : ''}
@@ -430,20 +575,20 @@ export default function ReportsList(){
     `;
 
     const printWindow = window.open('', '_blank');
-    if(printWindow){
+    if(printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
-      setTimeout(() => { printWindow.print(); }, 500);
+      setTimeout(() => { printWindow.print() }, 500);
     }
   };
 
   if(loading){
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin"/>
+        <Loader2 className="h-8 w-8 animate-spin" />
         <span className="mr-3">جاري تحميل البلاغات...</span>
       </div>
-    )
+    );
   }
 
   return (
@@ -457,15 +602,16 @@ export default function ReportsList(){
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className=" bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Filter size={20} /> البحث والتصفية
+            <Filter size={20} />
+            البحث والتصفية
           </h2>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="relative">
-              <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground"/>
+              <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="البحث في البلاغات..."
@@ -612,7 +758,7 @@ export default function ReportsList(){
               }`}>{report.status}</span></div>
               <div><strong>فترة التوقف:</strong> {downtimePeriod}</div>
             </div>
-          )
+          );
         })}
       </div>
 
@@ -691,7 +837,7 @@ export default function ReportsList(){
         </div>
         {filteredReports.length === 0 && (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            <FileText size={48} className="mx-auto mb-4 opacity-50"/>
+            <FileText size={48} className="mx-auto mb-4 opacity-50" />
             <p className="text-lg">لا توجد بلاغات تطابق معاييير البحث</p>
           </div>
         )}
@@ -711,14 +857,14 @@ export default function ReportsList(){
               </button>
             </div>
             <div className="p-6 space-y-6 text-right">
-
               {/* Downtime Counter */}
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-center gap-3">
-                <Clock size={24} className="text-blue-600 dark:text-blue-400"/>
+                <Clock size={24} className="text-blue-600 dark:text-blue-400" />
                 <div>
                   <h3 className="font-semibold text-blue-900 dark:text-blue-100">عداد فترة التوقف</h3>
                   <p className="text-blue-700 dark:text-blue-300">
-                    {calculateDowntimePeriod(viewingReport.report_date, viewingReport.report_time, viewingReport.resolved_at)} من تاريخ الإنشاء {viewingReport.resolved_at ? 'حتى تاريخ الإغلاق' : 'حتى الآن'}
+                    {calculateDowntimePeriod(viewingReport.report_date, viewingReport.report_time, viewingReport.resolved_at)}
+                    من تاريخ الإنشاء {viewingReport.resolved_at ? 'حتى تاريخ الإغلاق' : 'حتى الآن'}
                   </p>
                 </div>
               </div>
@@ -726,25 +872,30 @@ export default function ReportsList(){
               {/* Basic Info Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
-                  {label: 'رقم البلاغ', value: viewingReport.id, mono: true},
-                  {label: 'المنشأة', value: viewingReport.facility?.name || 'غير محدد'},
-                  {label: 'تاريخ البلاغ', value: viewingReport.report_date},
-                  {label: 'وقت البلاغ', value: viewingReport.report_time},
-                  {label: 'التصنيف', value: viewingReport.category},
-                  {label: 'الحالة', value: (
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${viewingReport.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' : viewingReport.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'}`}>
-                      {viewingReport.status}
-                    </span>
-                  )},
-                  {label: 'اسم الجهاز', value: viewingReport.device_name},
-                  {label: 'الرقم التسلسلي', value: viewingReport.serial_number || 'غير محدد'},
-                  {label: 'تحت الضمان', value: viewingReport.under_warranty || 'غير محدد'},
-                  {label: 'شركة الصيانة', value: viewingReport.repair_company || 'غير محدد'},
-                  {label: 'رقم الاتصال', value: viewingReport.contact_number || 'غير محدد'},
-                  {label: 'البريد الإلكتروني', value: viewingReport.email || 'غير محدد'},
-                  {label: 'اسم المبلغ', value: viewingReport.reporter_name || 'غير محدد'},
-                  {label: 'رقم اتصال المبلغ', value: viewingReport.reporter_contact || 'غير محدد'}
-                ].map(({label,value,mono}) => (
+                  { label: 'رقم البلاغ', value: viewingReport.id, mono: true },
+                  { label: 'المنشأة', value: viewingReport.facility?.name || 'غير محدد' },
+                  { label: 'تاريخ البلاغ', value: viewingReport.report_date },
+                  { label: 'وقت البلاغ', value: viewingReport.report_time },
+                  { label: 'التصنيف', value: viewingReport.category },
+                  {
+                    label: 'الحالة',
+                    value: (
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        viewingReport.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                        viewingReport.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                      }`}>
+                        {viewingReport.status}
+                      </span>)
+                  },
+                  { label: 'اسم الجهاز', value: viewingReport.device_name },
+                  { label: 'الرقم التسلسلي', value: viewingReport.serial_number || 'غير محدد' },
+                  { label: 'تحت الضمان', value: viewingReport.under_warranty || 'غير محدد' },
+                  { label: 'شركة الصيانة', value: viewingReport.repair_company || 'غير محدد' },
+                  { label: 'رقم الاتصال', value: viewingReport.contact_number || 'غير محدد' },
+                  { label: 'البريد الإلكتروني', value: viewingReport.email || 'غير محدد' },
+                  { label: 'اسم المبلغ', value: viewingReport.reporter_name || 'غير محدد' },
+                  { label: 'رقم اتصال المبلغ', value: viewingReport.reporter_contact || 'غير محدد' }
+                ].map(({ label, value, mono }) => (
                   <div key={label} className="space-y-2 text-right">
                     <label className="text-sm font-medium text-gray-600 dark:text-gray-400">{label}</label>
                     <p className={`p-3 rounded-md bg-gray-50 dark:bg-gray-800 ${mono ? 'font-mono text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>{value}</p>
@@ -755,17 +906,21 @@ export default function ReportsList(){
               {/* Problem Description */}
               <div className="space-y-2 text-right">
                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400">وصف المشكلة</label>
-                <p className="p-4 bg-gray-50 dark:bg-gray-800 rounded-md leading-relaxed min-h-[100px] border-l-4 border-blue-500">{viewingReport.problem_description}</p>
+                <p className="p-4 bg-gray-50 dark:bg-gray-800 rounded-md leading-relaxed min-h-[100px] border-l-4 border-blue-500">
+                  {viewingReport.problem_description}
+                </p>
               </div>
 
-              {/* سجل حالات الطلب */}
+              {/* سجل حالات الطلب - show conditionally */}
               {generateStatusLogHTML(viewingReport)}
 
               {/* Notes */}
               {viewingReport.notes && (
                 <div className="space-y-2 text-right">
                   <label className="text-sm font-medium text-gray-600 dark:text-gray-400">ملاحظات</label>
-                  <p className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-md leading-relaxed border-l-4 border-yellow-500">{viewingReport.notes}</p>
+                  <p className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-md leading-relaxed border-l-4 border-yellow-500">
+                    {viewingReport.notes}
+                  </p>
                 </div>
               )}
 
@@ -773,11 +928,13 @@ export default function ReportsList(){
               {viewingReport.resolution && (
                 <div className="space-y-2 text-right">
                   <label className="text-sm font-medium text-gray-600 dark:text-gray-400">الحل</label>
-                  <p className="p-4 bg-green-50 dark:bg-green-900/20 rounded-md leading-relaxed border-l-4 border-green-500">{viewingReport.resolution}</p>
+                  <p className="p-4 bg-green-50 dark:bg-green-900/20 rounded-md leading-relaxed border-l-4 border-green-500">
+                    {viewingReport.resolution}
+                  </p>
                 </div>
               )}
 
-              {/* Details about closed/decommissioned */}
+              {/* تفاصيل الإغلاق/التكهين: show only if status is NOT "مفتوح" */}
               {(viewingReport.status !== 'مفتوح' && (viewingReport.resolved_at || viewingReport.resolved_by)) && (
                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-right">
                   <h3 className="font-semibold text-green-900 dark:text-green-100 mb-3">تفاصيل الإغلاق/التكهين</h3>
@@ -785,7 +942,7 @@ export default function ReportsList(){
                     {viewingReport.resolved_at && (
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-green-700 dark:text-green-300">تاريخ الإغلاق/التكهين</label>
-                        <p className="p-3 bg-white dark:bg-gray-800 rounded-md">{new Date(viewingReport.resolved_at).toLocaleDateString('ar-SA')}</p>
+                        <p className="p-3 bg-white dark:bg-gray-800 rounded-md">{viewingReport.resolved_at}</p>
                       </div>
                     )}
                     {viewingReport.resolved_by && (
@@ -798,9 +955,11 @@ export default function ReportsList(){
                 </div>
               )}
 
-              {/* Close button */}
+              {/* Actions */}
               <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <button type="button" onClick={() => setViewingReport(null)} className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">إغلاق</button>
+                <button type="button" onClick={() => setViewingReport(null)} className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  إغلاق
+                </button>
               </div>
             </div>
           </div>
@@ -813,9 +972,12 @@ export default function ReportsList(){
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md shadow-2xl">
             <div className="bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-lg font-semibold text-red-700 dark:text-red-400 flex items-center gap-2">
-                <AlertTriangle size={20} /> تأكيد الحذف
+                <AlertTriangle size={20} />
+                تأكيد الحذف
               </h2>
-              <button onClick={() => setDeleteConfirmReport(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"><X size={20} /></button>
+              <button onClick={() => setDeleteConfirmReport(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                <X size={20} />
+              </button>
             </div>
             <div className="p-6 space-y-4 text-center">
               <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto">
@@ -835,11 +997,13 @@ export default function ReportsList(){
                 <button onClick={handleDeleteConfirm} disabled={deleteLoading === deleteConfirmReport.id} className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2 transition-colors">
                   {deleteLoading === deleteConfirmReport.id ? (
                     <>
-                      <Loader2 size={16} className="animate-spin" /> جاري الحذف...
+                      <Loader2 size={16} className="animate-spin" />
+                      جاري الحذف...
                     </>
                   ) : (
                     <>
-                      <Trash2 size={16} /> حذف نهائي
+                      <Trash2 size={16} />
+                      حذف نهائي
                     </>
                   )}
                 </button>
@@ -849,13 +1013,14 @@ export default function ReportsList(){
         </div>
       )}
 
-      {/* Status Modify Modal */}
+      {/* Edit Modal (status modify) */}
       {modifyingReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40 px-6 py-4 border-b border-green-200 dark:border-green-800 flex justify-between items-center">
               <h2 className="text-xl font-semibold text-green-900 dark:text-green-100 flex items-center gap-2">
-                <Edit size={24} /> تعديل حالة البلاغ رقم {modifyingReport.id}
+                <Edit size={24} />
+                تعديل حالة البلاغ رقم {modifyingReport.id}
               </h2>
               <button onClick={() => setModifyingReport(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors" aria-label="Close modify modal">
                 <X size={24} />
@@ -864,9 +1029,9 @@ export default function ReportsList(){
             <form onSubmit={handleModifySubmit} className="p-4 md:p-6 space-y-6 text-right" dir="rtl">
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">الحالة</label>
-                <select 
-                  value={modifyFormData.status} 
-                  onChange={e => setModifyFormData(prev => ({...prev, status: e.target.value}))} 
+                <select
+                  value={modifyFormData.status}
+                  onChange={e => setModifyFormData(prev => ({ ...prev, status: e.target.value }))}
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   required
                 >
@@ -877,36 +1042,36 @@ export default function ReportsList(){
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">تم الحل بواسطة</label>
-                <input 
-                  type="text" 
-                  value={modifyFormData.resolved_by || ''} 
-                  onChange={e => setModifyFormData(prev => ({...prev, resolved_by: e.target.value}))} 
+                <input
+                  type="text"
+                  value={modifyFormData.resolved_by || ''}
+                  onChange={e => setModifyFormData(prev => ({ ...prev, resolved_by: e.target.value }))}
                   placeholder="اسم الشخص المسؤول عن الحل"
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">تاريخ الحل</label>
-                <input 
-                  type="date" 
-                  value={modifyFormData.resolved_at || ''} 
-                  onChange={e => setModifyFormData(prev => ({...prev, resolved_at: e.target.value}))} 
+                <input
+                  type="date"
+                  value={modifyFormData.resolved_at}
+                  onChange={e => setModifyFormData(prev => ({ ...prev, resolved_at: e.target.value }))}
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">ملاحظة</label>
-                <textarea 
-                  value={modifyFormData.resolution} 
-                  onChange={e => setModifyFormData(prev => ({...prev, resolution: e.target.value}))} 
-                  rows={3} 
-                  placeholder="أدخل ملاحظة حول التغيير..." 
+                <textarea
+                  value={modifyFormData.resolution}
+                  onChange={e => setModifyFormData(prev => ({ ...prev, resolution: e.target.value }))}
+                  rows={3}
+                  placeholder="أدخل ملاحظة حول التغيير..."
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button type="button" onClick={() => setModifyingReport(null)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">إلغاء</button>
-                <button disabled={updateLoading} type="submit" className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                <button type="submit" disabled={updateLoading} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
                   {updateLoading ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
@@ -925,7 +1090,7 @@ export default function ReportsList(){
         </div>
       )}
 
-      {/* Full Edit Modal */}
+      {/* Full Edit Modal (general modify, Settings icon) */}
       {fullEditingReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -939,7 +1104,7 @@ export default function ReportsList(){
               </button>
             </div>
             <form onSubmit={handleFullEditSubmit} className="p-4 md:p-6 space-y-6" dir="rtl">
-           
+
               {/* 2. تاريخ إنشاء البلاغ + الوقت */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
