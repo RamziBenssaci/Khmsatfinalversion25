@@ -303,6 +303,7 @@ export default function ReportsList() {
           title:"تم تحديث البلاغ بنجاح",
           description:"تم حفظ التغييرات على البلاغ"
         });
+        window.location.reload();
         setReports(prev => prev.map(r => r.id === modifyingReport.id ? {...r, ...updateData } : r));
         setModifyingReport(null);
       } else {
@@ -337,6 +338,7 @@ export default function ReportsList() {
           title:"تم تحديث البلاغ بنجاح",
           description:"تم حفظ التغييرات على البلاغ"
         });
+        window.location.reload();
         setReports(prev => prev.map(r => r.id === fullEditingReport.id ? {...r, ...updateData} : r));
         setFullEditingReport(null);
       } else {
@@ -416,27 +418,27 @@ export default function ReportsList() {
     if(isPrint) {
       let html = `
       <div style="background:#e9d5ff; border:1px solid #c4b5fd; border-radius:8px; padding:16px; margin:12px 0; direction:rtl; font-family:Arial, sans-serif;">
-        <h3 style="color:#5b21b6; margin-bottom:16px;"><svg xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c-1.104 0-2 .896-2 2v4h-2v2h6v-2h-2v-4c0-1.104-.896-2-2-2z"></path><circle cx="12" cy="4" r="2"></circle><path d="M4 20h16v2H4z"></path></svg> سجل حالات الطلب</h3>
+        <h3 style="color:#5b21b6; margin-bottom:16px;"><svg xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c-1.104 0-2 .896-2 2v4h-2v2h6v-2h-2v-4c0-1.104-.896-2-2-2z"></path><circle cx="12" cy="4" r="2"></circle><path d="M4 20h16v2H4z"></path></svg> سجل حالات البلاغ</h3>
       `;
 
       if (creationDate) {
         html += `
           <div style="margin-bottom:8px;">
-            <strong>تاريخ الإنشاء:</strong> ${creationDate}
+            <strong>تاريخ فتح البلاغ:</strong> ${creationDate}
             ${creationNote ? `<em style="font-style: italic; color: #555;">(${creationNote})</em>` : ''}
           </div>`;
       }
       if (approvalDate) {
         html += `
           <div style="margin-bottom:8px;">
-            <strong>تاريخ الموافقة على العقد:</strong> ${approvalDate}
+            <strong>تاريخ الغلق:</strong> ${approvalDate}
             ${approvalNote ? `<em style="font-style: italic; color: #555;">(${approvalNote})</em>` : ''}
           </div>`;
       }
       if (rejectionDate) {
         html += `
           <div style="margin-bottom:8px;">
-            <strong>تاريخ الرفض:</strong> ${rejectionDate}
+            <strong>تاريخ التكهين:</strong> ${rejectionDate}
             ${rejectionNote ? `<em style="font-style: italic; color: #555;">(${rejectionNote})</em>` : ''}
           </div>`;
       }
@@ -445,25 +447,25 @@ export default function ReportsList() {
     } else {
       return (
         <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 text-right">
-          <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-4 flex items-center gap-2"><Clock size={20} />سجل حالات الطلب</h3>
+          <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-4 flex items-center gap-2"><Clock size={20} />سجل حالات البلاغ</h3>
           <div className="space-y-3">
             {creationDate && (
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
-                <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الإنشاء:</span>
+                <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ فتح البلاغ:</span>
                 <span className="text-gray-700 dark:text-gray-300">{creationDate}</span>
                 {creationNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({creationNote})</span>}
               </div>
             )}
             {approvalDate && (
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
-                <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الموافقة على العقد:</span>
+                <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الغلق:</span>
                 <span className="text-gray-700 dark:text-gray-300">{approvalDate}</span>
                 {approvalNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({approvalNote})</span>}
               </div>
             )}
             {rejectionDate && (
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
-                <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الرفض:</span>
+                <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ التكهين:</span>
                 <span className="text-gray-700 dark:text-gray-300">{rejectionDate}</span>
                 {rejectionNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({rejectionNote})</span>}
               </div>
