@@ -215,8 +215,6 @@ export default function ReportsList() {
   const [viewingReport,setViewingReport] = useState(null);
   const [updateLoading,setUpdateLoading] = useState(false);
   const [deleteLoading,setDeleteLoading] = useState(null);
-  const [facilities, setFacilities] = useState([]);
-  const [facilitiesLoading, setFacilitiesLoading] = useState(true);
   const [modifyFormData,setModifyFormData] = useState({
     status: '',
     resolution: '',
