@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { reportsApi } from '@/lib/api';
 
 // Utility function to calculate downtime period
-const calculateDowntimePeriod = (reportDate: string, reportTime: string, resolvedAt?: string) => {
+const calculateDowntimePeriod = (reportDate, reportTime, resolvedAt) => {
   const startDateTime = new Date(`${reportDate}T${reportTime}`);
   const endDateTime = resolvedAt ? new Date(resolvedAt) : new Date();
   const diffTime = Math.abs(endDateTime.getTime() - startDateTime.getTime());
@@ -199,7 +199,6 @@ const exportToExcel = (data, filename) => {
   URL.revokeObjectURL(link.href);
 };
 
-
 export default function ReportsList() {
   const { toast } = useToast();
   const [loading,setLoading] = useState(true);
@@ -223,9 +222,10 @@ export default function ReportsList() {
   });
 
   const [editFormData,setEditFormData] = useState({
+    report_date: '',
+    report_time: '',
     category: '',
     device_name: '',
-    serial_number: '',
     problem_description: '',
     under_warranty: '',
     repair_company: '',
@@ -249,6 +249,7 @@ export default function ReportsList() {
   ];
 
   const predefinedStatuses = ['مفتوح', 'مغلق', 'مكهن'];
+
   useEffect(() => {
     const loadReports = async () => {
       try {
@@ -306,23 +307,24 @@ export default function ReportsList() {
 
   const handleFullEditClick = (report) => {
     setFullEditingReport(report);
-  setEditFormData({
-  report_date: report.report_date || '',
-  report_time: report.report_time || '',
-  category: report.category || '',
-  device_name: report.device_name || '',
-  problem_description: report.problem_description || '',
-  under_warranty: report.under_warranty || '',
-  repair_company: report.repair_company || '',
-  contact_number: report.contact_number || '',
-  email: report.email || '',
-  reporter_name: report.reporter_name || '',
-  reporter_contact: report.reporter_contact || '',
-  status: report.status || '',
-  notes: report.notes || '',
-  resolution: report.resolution || '',
-  resolved_by: report.resolved_by || ''
-});
+    setEditFormData({
+      report_date: report.report_date || '',
+      report_time: report.report_time || '',
+      category: report.category || '',
+      device_name: report.device_name || '',
+      problem_description: report.problem_description || '',
+      under_warranty: report.under_warranty || '',
+      repair_company: report.repair_company || '',
+      contact_number: report.contact_number || '',
+      email: report.email || '',
+      reporter_name: report.reporter_name || '',
+      reporter_contact: report.reporter_contact || '',
+      status: report.status || '',
+      notes: report.notes || '',
+      resolution: report.resolution || '',
+      resolved_by: report.resolved_by || ''
+    });
+  };
 
   const handleModifySubmit = async(e) => {
     e.preventDefault();
@@ -787,7 +789,6 @@ export default function ReportsList() {
             <tbody>
               {filteredReports.map(report => {
                 const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
-
                 return (
                   <tr key={report.id} className="border-b border-gray-200 dark:border-gray-700 text-right hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <td className="p-4 font-medium text-blue-600 dark:text-blue-400">{report.id}</td>
@@ -799,8 +800,7 @@ export default function ReportsList() {
                     <td className="p-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                         report.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                        report.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
-                        'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                        report.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
                       }`}>
                         {report.status}
                       </span>
@@ -1155,218 +1155,218 @@ export default function ReportsList() {
                 <X size={24} />
               </button>
             </div>
-        <form onSubmit={handleFullEditSubmit} className="p-4 md:p-6 space-y-6" dir="rtl">
-  {/* 2. تاريخ إنشاء البلاغ + الوقت */}
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٢- تاريخ إنشاء البلاغ *</label>
-      <input
-        type="date"
-        value={editFormData.report_date}
-        onChange={e => handleEditInputChange('report_date', e.target.value)}
-        className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        required
-      />
-    </div>
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">الوقت *</label>
-      <input
-        type="time"
-        value={editFormData.report_time}
-        onChange={e => handleEditInputChange('report_time', e.target.value)}
-        className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        required
-      />
-    </div>
-  </div>
+            <form onSubmit={handleFullEditSubmit} className="p-4 md:p-6 space-y-6" dir="rtl">
 
-  {/* 3. تصنيف البلاغ */}
-  <div className="space-y-2">
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٣- تصنيف البلاغ *</label>
-    <select
-      value={editFormData.category}
-      onChange={e => handleEditInputChange('category', e.target.value)}
-      className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-      required
-    >
-      <option value="">اختر تصنيف البلاغ</option>
-      {predefinedCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-    </select>
-  </div>
+              {/* 2. تاريخ إنشاء البلاغ + الوقت */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٢- تاريخ إنشاء البلاغ *</label>
+                  <input
+                    type="date"
+                    value={editFormData.report_date}
+                    onChange={e => handleEditInputChange('report_date', e.target.value)}
+                    className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">الوقت *</label>
+                  <input
+                    type="time"
+                    value={editFormData.report_time}
+                    onChange={e => handleEditInputChange('report_time', e.target.value)}
+                    className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+              </div>
 
-  {/* 4. اسم الجهاز */}
-  <div className="space-y-2">
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٤- اسم الجهاز أو الصنف *</label>
-    <input
-      type="text"
-      value={editFormData.device_name}
-      onChange={e => handleEditInputChange('device_name', e.target.value)}
-      placeholder="اسم الجهاز أو نوع الصنف"
-      className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-      required
-    />
-  </div>
+              {/* 3. تصنيف البلاغ */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٣- تصنيف البلاغ *</label>
+                <select
+                  value={editFormData.category}
+                  onChange={e => handleEditInputChange('category', e.target.value)}
+                  className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">اختر تصنيف البلاغ</option>
+                  {predefinedCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+              </div>
 
-  {/* 5. وصف المشكلة */}
-  <div className="space-y-2">
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٥- وصف مشكلة البلاغ *</label>
-    <textarea
-      rows={3}
-      value={editFormData.problem_description}
-      onChange={e => handleEditInputChange('problem_description', e.target.value)}
-      placeholder="وصف مفصل للمشكلة أو العطل..."
-      className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[120px]"
-      required
-    />
-  </div>
+              {/* 4. اسم الجهاز */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٤- اسم الجهاز أو الصنف *</label>
+                <input
+                  type="text"
+                  value={editFormData.device_name}
+                  onChange={e => handleEditInputChange('device_name', e.target.value)}
+                  placeholder="اسم الجهاز أو نوع الصنف"
+                  className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
 
-  {/* 6. هل الجهاز تحت الضمان */}
-  <div className="space-y-2">
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٦- هل الجهاز تحت الضمان؟</label>
-    <select
-      value={editFormData.under_warranty}
-      onChange={e => handleEditInputChange('under_warranty', e.target.value)}
-      className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-    >
-      <option value="">اختر حالة الضمان</option>
-      <option value="yes">نعم</option>
-      <option value="no">لا</option>
-    </select>
-  </div>
+              {/* 5. وصف المشكلة */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٥- وصف مشكلة البلاغ *</label>
+                <textarea
+                  rows={3}
+                  value={editFormData.problem_description}
+                  onChange={e => handleEditInputChange('problem_description', e.target.value)}
+                  placeholder="وصف مفصل للمشكلة أو العطل..."
+                  className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[120px]"
+                  required
+                />
+              </div>
 
-  {/* 7. اسم الإدارة/الشركة */}
-  <div className="space-y-2">
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٧- اسم الإدارة / الشركة المختصة بالإصلاح</label>
-    <input
-      type="text"
-      value={editFormData.repair_company}
-      onChange={e => handleEditInputChange('repair_company', e.target.value)}
-      placeholder="اسم الإدارة أو الشركة المسؤولة عن الإصلاح"
-      className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-    />
-  </div>
+              {/* 6. هل الجهاز تحت الضمان */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٦- هل الجهاز تحت الضمان؟</label>
+                <select
+                  value={editFormData.under_warranty}
+                  onChange={e => handleEditInputChange('under_warranty', e.target.value)}
+                  className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">اختر حالة الضمان</option>
+                  <option value="yes">نعم</option>
+                  <option value="no">لا</option>
+                </select>
+              </div>
 
-  {/* 8. رقم الاتصال + الإيميل */}
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٨- رقم الاتصال</label>
-      <input
-        type="text"
-        value={editFormData.contact_number}
-        onChange={e => handleEditInputChange('contact_number', e.target.value)}
-        placeholder="رقم الهاتف للتواصل"
-        className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-      />
-    </div>
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">الإيميل</label>
-      <input
-        type="email"
-        value={editFormData.email}
-        onChange={e => handleEditInputChange('email', e.target.value)}
-        placeholder="البريد الإلكتروني"
-        className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-      />
-    </div>
-  </div>
+              {/* 7. اسم الإدارة/الشركة */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٧- اسم الإدارة / الشركة المختصة بالإصلاح</label>
+                <input
+                  type="text"
+                  value={editFormData.repair_company}
+                  onChange={e => handleEditInputChange('repair_company', e.target.value)}
+                  placeholder="اسم الإدارة أو الشركة المسؤولة عن الإصلاح"
+                  className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
 
-  {/* 9. اسم المبلغ + رقم الاتصال */}
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٩- اسم المبلغ</label>
-      <input
-        type="text"
-        value={editFormData.reporter_name}
-        onChange={e => handleEditInputChange('reporter_name', e.target.value)}
-        placeholder="الاسم الكامل للمبلغ"
-        className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-      />
-    </div>
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">رقم الاتصال</label>
-      <input
-        type="text"
-        value={editFormData.reporter_contact}
-        onChange={e => handleEditInputChange('reporter_contact', e.target.value)}
-        placeholder="رقم جوال المبلغ"
-        className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-      />
-    </div>
-  </div>
+              {/* 8. رقم الاتصال + الإيميل */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٨- رقم الاتصال</label>
+                  <input
+                    type="text"
+                    value={editFormData.contact_number}
+                    onChange={e => handleEditInputChange('contact_number', e.target.value)}
+                    placeholder="رقم الهاتف للتواصل"
+                    className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">الإيميل</label>
+                  <input
+                    type="email"
+                    value={editFormData.email}
+                    onChange={e => handleEditInputChange('email', e.target.value)}
+                    placeholder="البريد الإلكتروني"
+                    className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
 
-  {/* 10. حالة البلاغ */}
-  <div className="space-y-2">
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١٠- حالة البلاغ</label>
-    <select
-      value={editFormData.status}
-      onChange={e => handleEditInputChange('status', e.target.value)}
-      className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-    >
-      {predefinedStatuses.map(status => <option key={status} value={status}>{status}</option>)}
-    </select>
-  </div>
+              {/* 9. اسم المبلغ + رقم الاتصال */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٩- اسم المبلغ</label>
+                  <input
+                    type="text"
+                    value={editFormData.reporter_name}
+                    onChange={e => handleEditInputChange('reporter_name', e.target.value)}
+                    placeholder="الاسم الكامل للمبلغ"
+                    className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">رقم الاتصال</label>
+                  <input
+                    type="text"
+                    value={editFormData.reporter_contact}
+                    onChange={e => handleEditInputChange('reporter_contact', e.target.value)}
+                    placeholder="رقم جوال المبلغ"
+                    className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
 
-  {/* 11. ملاحظات */}
-  <div className="space-y-2">
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١١- ملاحظات</label>
-    <textarea
-      value={editFormData.notes}
-      onChange={e => handleEditInputChange('notes', e.target.value)}
-      placeholder="أي ملاحظات إضافية مهمة..."
-      className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-    />
-  </div>
+              {/* 10. حالة البلاغ */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١٠- حالة البلاغ</label>
+                <select
+                  value={editFormData.status}
+                  onChange={e => handleEditInputChange('status', e.target.value)}
+                  className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {predefinedStatuses.map(status => <option key={status} value={status}>{status}</option>)}
+                </select>
+              </div>
 
-  {/* Conditional resolution fields */}
-  {['مغلق', 'مكهن'].includes(editFormData.status) && (
-    <>
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">الحل</label>
-        <textarea
-          value={editFormData.resolution}
-          onChange={e => handleEditInputChange('resolution', e.target.value)}
-          placeholder="وصف الحل المطبق..."
-          className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">تم الحل بواسطة</label>
-        <input
-          type="text"
-          value={editFormData.resolved_by}
-          onChange={e => handleEditInputChange('resolved_by', e.target.value)}
-          placeholder="اسم الشخص المسؤول عن الحل"
-          className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-      </div>
-    </>
-  )}
+              {/* 11. ملاحظات */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١١- ملاحظات</label>
+                <textarea
+                  value={editFormData.notes}
+                  onChange={e => handleEditInputChange('notes', e.target.value)}
+                  placeholder="أي ملاحظات إضافية مهمة..."
+                  className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
 
-  {/* Submit buttons remain the same */}
-  <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-    <button type="button" onClick={() => setFullEditingReport(null)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">
-      إلغاء
-    </button>
-    <button type="submit" disabled={updateLoading} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
-      {updateLoading ? (
-        <>
-          <Loader2 size={16} className="animate-spin" />
-          جاري الحفظ...
-        </>
-      ) : (
-        <>
-          <Save size={16} />
-          حفظ التغييرات
-        </>
-      )}
-    </button>
-  </div>
-</form>
+              {/* Conditional resolution fields */}
+              {['مغلق', 'مكهن'].includes(editFormData.status) && (
+                <>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">الحل</label>
+                    <textarea
+                      value={editFormData.resolution}
+                      onChange={e => handleEditInputChange('resolution', e.target.value)}
+                      placeholder="وصف الحل المطبق..."
+                      className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">تم الحل بواسطة</label>
+                    <input
+                      type="text"
+                      value={editFormData.resolved_by}
+                      onChange={e => handleEditInputChange('resolved_by', e.target.value)}
+                      placeholder="اسم الشخص المسؤول عن الحل"
+                      className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Submit buttons remain the same */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" onClick={() => setFullEditingReport(null)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">
+                  إلغاء
+                </button>
+                <button type="submit" disabled={updateLoading} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                  {updateLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      جاري الحفظ...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      حفظ التغييرات
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
     </div>
   );
-}
 }
