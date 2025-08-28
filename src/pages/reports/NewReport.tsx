@@ -35,7 +35,9 @@ export default function NewReport() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [facilitiesLoading, setFacilitiesLoading] = useState(true);
+  const [serialNumbersLoading, setSerialNumbersLoading] = useState(true);
   const [facilities, setFacilities] = useState<any[]>([]);
+  const [serialNumbers, setSerialNumbers] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     facilityName: '',
     reportDate: new Date().toISOString().split('T')[0],
@@ -54,32 +56,52 @@ export default function NewReport() {
     notes: ''
   });
 
-  // Load facilities on component mount
+  // Load facilities and serial numbers on component mount
   useEffect(() => {
-    const loadFacilities = async () => {
+    const loadData = async () => {
       try {
-        const response = await reportsApi.getFacilities();
-        if (response.success) {
-          setFacilities(response.data || []);
+        // Load facilities
+        const facilitiesResponse = await reportsApi.getFacilities();
+        if (facilitiesResponse.success) {
+          setFacilities(facilitiesResponse.data || []);
         } else {
           toast({
             title: "خطأ في تحميل المنشآت",
-            description: response.message,
+            description: facilitiesResponse.message,
+            variant: "destructive"
+          });
+        }
+
+        // Load assets for serial numbers
+        const assetsResponse = await reportsApi.getAssets();
+        if (assetsResponse.success) {
+          // Extract unique serial numbers
+          const uniqueSerialNumbers = [...new Set(
+            assetsResponse.data
+              ?.filter(asset => asset.serialNumber) // Filter out null/undefined serial numbers
+              ?.map(asset => asset.serialNumber) || []
+          )];
+          setSerialNumbers(uniqueSerialNumbers);
+        } else {
+          toast({
+            title: "خطأ في تحميل الأرقام التسلسلية",
+            description: assetsResponse.message,
             variant: "destructive"
           });
         }
       } catch (error: any) {
         toast({
-          title: "خطأ في تحميل المنشآت",
-          description: error.message || "فشل في تحميل قائمة المنشآت",
+          title: "خطأ في تحميل البيانات",
+          description: error.message || "فشل في تحميل البيانات المطلوبة",
           variant: "destructive"
         });
       } finally {
         setFacilitiesLoading(false);
+        setSerialNumbersLoading(false);
       }
     };
 
-    loadFacilities();
+    loadData();
   }, [toast]);
 
   const handleInputChange = (field: string, value: string) => {
@@ -91,7 +113,7 @@ export default function NewReport() {
 
   const handleSubmit = async () => {
     
-    if (!formData.facilityName || !formData.category || !formData.deviceName || !formData.problemDescription) {
+    if (!formData.facilityName || !formData.category || !formData.deviceName || !formData.serialNumber || !formData.problemDescription) {
       toast({
         title: "خطأ في البيانات",
         description: "يرجى ملء جميع الحقول المطلوبة",
@@ -272,14 +294,26 @@ export default function NewReport() {
 
             {/* 5. الرقم التسلسلي */}
             <div className="space-y-2">
-              <Label htmlFor="serialNumber">٥- الرقم التسلسلي (اختياري)</Label>
-              <Input
-                id="serialNumber"
-                value={formData.serialNumber}
-                onChange={(e) => handleInputChange('serialNumber', e.target.value)}
-                placeholder="الرقم التسلسلي للجهاز"
-                className="text-right"
-              />
+              <Label htmlFor="serialNumber">٥- الرقم التسلسلي *</Label>
+              {serialNumbersLoading ? (
+                <div className="flex items-center justify-center p-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="mr-2">جاري تحميل الأرقام التسلسلية...</span>
+                </div>
+              ) : (
+                <Select value={formData.serialNumber} onValueChange={(value) => handleInputChange('serialNumber', value)}>
+                  <SelectTrigger className="text-right">
+                    <SelectValue placeholder="اختر الرقم التسلسلي" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {serialNumbers.map((serialNumber, index) => (
+                      <SelectItem key={index} value={serialNumber}>
+                        {serialNumber}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* 6. وصف مشكلة البلاغ */}
