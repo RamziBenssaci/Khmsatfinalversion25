@@ -36,7 +36,7 @@ const calculateDowntimePeriod = (reportDate, reportTime, resolvedAt) => {
   }
 };
 
-// PDF export with سجل حالات الطلب included
+// PDF export with سجل حالات الطلب removed and notes removed
 const exportToPDF = (data, filename) => {
   const printContent = `
     <!DOCTYPE html>
@@ -86,26 +86,6 @@ const exportToPDF = (data, filename) => {
           font-weight: bold;
           display: inline-block;
         }
-        .log-section {
-          background: #f5f3ff;
-          border: 1px solid #d8b4fe;
-          padding: 15px;
-          border-radius: 8px;
-          margin-top: 20px;
-        }
-        .log-section h3 {
-          color: #7c3aed;
-          font-weight: bold;
-          margin-bottom: 10px;
-        }
-        .log-section ul {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-        .log-section li {
-          margin-bottom: 5px;
-        }
       </style>
     </head>
     <body>
@@ -144,22 +124,6 @@ const exportToPDF = (data, filename) => {
               <td>${report.reportDate}</td>
               <td>${report.downtimeDays}</td>
             </tr>
-            ${(report.creation_date || report.contract_approval_date || report.contract_date || report.contract_delivery_date || report.rejection_date) ? `
-              <tr>
-                <td colspan="8">
-                  <div class="log-section">
-                    <h3>سجل حالات الطلب</h3>
-                    <ul>
-                      ${report.creation_date ? `<li><strong>تاريخ الإنشاء:</strong> ${report.creation_date} ${report.creation_date_note ? `(${report.creation_date_note})` : ''}</li>` : ''}
-                      ${report.contract_approval_date ? `<li><strong>تاريخ الموافقة على العقد:</strong> ${report.contract_approval_date} ${report.contract_approval_date_note ? `(${report.contract_approval_date_note})` : ''}</li>` : ''}
-                      ${report.contract_date ? `<li><strong>تاريخ العقد:</strong> ${report.contract_date} ${report.contract_date_note ? `(${report.contract_date_note})` : ''}</li>` : ''}
-                      ${report.contract_delivery_date ? `<li><strong>تاريخ تسليم العقد:</strong> ${report.contract_delivery_date} ${report.contract_delivery_date_note ? `(${report.contract_delivery_date_note})` : ''}</li>` : ''}
-                      ${report.rejection_date ? `<li><strong>تاريخ الرفض:</strong> ${report.rejection_date} ${report.rejection_date_note ? `(${report.rejection_date_note})` : ''}</li>` : ''}
-                    </ul>
-                  </div>
-                </td>
-              </tr>
-            ` : ''}
           `).join('')}
         </tbody>
       </table>
@@ -175,7 +139,7 @@ const exportToPDF = (data, filename) => {
   }
 };
 
-// Excel export function
+// Excel export function (unchanged)
 const exportToExcel = (data, filename) => {
   const csvContent = [
     ['رقم البلاغ', 'المنشأة', 'التصنيف', 'اسم الجهاز', 'وصف المشكلة', 'الحالة', 'تاريخ البلاغ', 'فترة التوقف (أيام)'],
@@ -486,26 +450,6 @@ export default function ReportsList() {
           .status-open { background: #fff3cd; color: #856404; }
           .status-closed { background: #d1edff; color: #0c5460; }
           .status-paused { background: #f8d7da; color: #721c24; }
-          .log-section {
-            background: #f5f3ff;
-            border: 1px solid #d8b4fe;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-          }
-          .log-section h3 {
-            color: #7c3aed;
-            font-weight: bold;
-            margin-bottom: 10px;
-          }
-          .log-section ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-          }
-          .log-section li {
-            margin-bottom: 5px;
-          }
         </style>
       </head>
       <body>
@@ -531,18 +475,7 @@ export default function ReportsList() {
           <div class="info-item"><div class="info-label">البريد الإلكتروني:</div><div>${report.email || 'غير محدد'}</div></div>
           <div class="info-item"><div class="info-label">اسم المبلغ:</div><div>${report.reporter_name || 'غير محدد'}</div></div>
 
-          ${(report.creation_date || report.contract_approval_date || report.contract_date || report.contract_delivery_date || report.rejection_date) ? `
-            <div class="info-item full-width log-section">
-              <h3>سجل حالات الطلب</h3>
-              <ul>
-                ${report.creation_date ? `<li><strong>تاريخ الإنشاء:</strong> ${report.creation_date} ${report.creation_date_note ? `(${report.creation_date_note})` : ''}</li>` : ''}
-                ${report.contract_approval_date ? `<li><strong>تاريخ الموافقة على العقد:</strong> ${report.contract_approval_date} ${report.contract_approval_date_note ? `(${report.contract_approval_date_note})` : ''}</li>` : ''}
-                ${report.contract_date ? `<li><strong>تاريخ العقد:</strong> ${report.contract_date} ${report.contract_date_note ? `(${report.contract_date_note})` : ''}</li>` : ''}
-                ${report.contract_delivery_date ? `<li><strong>تاريخ تسليم العقد:</strong> ${report.contract_delivery_date} ${report.contract_delivery_date_note ? `(${report.contract_delivery_date_note})` : ''}</li>` : ''}
-                ${report.rejection_date ? `<li><strong>تاريخ الرفض:</strong> ${report.rejection_date} ${report.rejection_date_note ? `(${report.rejection_date_note})` : ''}</li>` : ''}
-              </ul>
-            </div>
-          ` : ''}
+          <!-- Note: سجل حالات الطلب removed as requested -->
 
           ${report.notes ? `<div class="info-item full-width"><div class="info-label">ملاحظات:</div><div>${report.notes}</div></div>` : ''}
           ${report.resolution ? `<div class="info-item full-width"><div class="info-label">الحل:</div><div>${report.resolution}</div></div>` : ''}
@@ -646,18 +579,7 @@ export default function ReportsList() {
                     problem_description: report.problem_description || 'غير محدد',
                     status: report.status,
                     reportDate: `${report.report_date} ${report.report_time}`,
-                    downtimeDays: calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at),
-
-                    creation_date: report.creation_date || '',
-                    creation_date_note: report.creation_date_note || '',
-                    contract_approval_date: report.contract_approval_date || '',
-                    contract_approval_date_note: report.contract_approval_date_note || '',
-                    contract_date: report.contract_date || '',
-                    contract_date_note: report.contract_date_note || '',
-                    contract_delivery_date: report.contract_delivery_date || '',
-                    contract_delivery_date_note: report.contract_delivery_date_note || '',
-                    rejection_date: report.rejection_date || '',
-                    rejection_date_note: report.rejection_date_note || ''
+                    downtimeDays: calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)
                   }));
                   exportToExcel(exportData, 'قائمة_البلاغات');
                   toast({
@@ -689,18 +611,7 @@ export default function ReportsList() {
                     problem_description: report.problem_description || 'غير محدد',
                     status: report.status,
                     reportDate: `${report.report_date} ${report.report_time}`,
-                    downtimeDays: calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at),
-
-                    creation_date: report.creation_date || '',
-                    creation_date_note: report.creation_date_note || '',
-                    contract_approval_date: report.contract_approval_date || '',
-                    contract_approval_date_note: report.contract_approval_date_note || '',
-                    contract_date: report.contract_date || '',
-                    contract_date_note: report.contract_date_note || '',
-                    contract_delivery_date: report.contract_delivery_date || '',
-                    contract_delivery_date_note: report.contract_delivery_date_note || '',
-                    rejection_date: report.rejection_date || '',
-                    rejection_date_note: report.rejection_date_note || ''
+                    downtimeDays: calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)
                   }));
                   exportToPDF(exportData, 'قائمة_البلاغات');
                   toast({
@@ -912,7 +823,7 @@ export default function ReportsList() {
                 </p>
               </div>
 
-              {/* سجل حالات الطلب */}
+              {/* سجل حالات الطلب: Show accurately if exist */}
               {(viewingReport.creation_date || viewingReport.contract_approval_date || viewingReport.contract_date || viewingReport.contract_delivery_date || viewingReport.rejection_date) && (
                 <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 text-right">
                   <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-4 flex items-center gap-2"><Clock size={20} />سجل حالات الطلب</h3>
@@ -986,8 +897,8 @@ export default function ReportsList() {
                 </div>
               )}
 
-              {/* Resolution Details */}
-              {(viewingReport.resolved_at || viewingReport.resolved_by) && (
+              {/* تفاصيل الإغلاق/التكهين: show only if status is NOT "مفتوح" */}
+              {(viewingReport.status !== 'مفتوح' && (viewingReport.resolved_at || viewingReport.resolved_by)) && (
                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-right">
                   <h3 className="font-semibold text-green-900 dark:text-green-100 mb-3">تفاصيل الإغلاق/التكهين</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1343,7 +1254,7 @@ export default function ReportsList() {
                 </>
               )}
 
-              {/* Submit buttons remain the same */}
+              {/* Submit buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button type="button" onClick={() => setFullEditingReport(null)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">
                   إلغاء
