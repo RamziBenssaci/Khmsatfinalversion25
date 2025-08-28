@@ -18,7 +18,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { reportsApi } from '@/lib/api';
 
-// Utility function to calculate downtime period
 const calculateDowntimePeriod = (reportDate, reportTime, resolvedAt) => {
   const startDateTime = new Date(`${reportDate}T${reportTime}`);
   const endDateTime = resolvedAt ? new Date(resolvedAt) : new Date();
@@ -36,7 +35,6 @@ const calculateDowntimePeriod = (reportDate, reportTime, resolvedAt) => {
   }
 };
 
-// PDF export with سجل حالات الطلب removed and notes removed
 const exportToPDF = (data, filename) => {
   const printContent = `
     <!DOCTYPE html>
@@ -139,7 +137,6 @@ const exportToPDF = (data, filename) => {
   }
 };
 
-// Excel export function (unchanged)
 const exportToExcel = (data, filename) => {
   const csvContent = [
     ['رقم البلاغ', 'المنشأة', 'التصنيف', 'اسم الجهاز', 'وصف المشكلة', 'الحالة', 'تاريخ البلاغ', 'فترة التوقف (أيام)'],
@@ -353,7 +350,7 @@ export default function ReportsList() {
       toast({
         title:"خطأ في تحديث البلاغ",
         description: error.message || "فشل في تحديث البلاغ",
-        variant: "destructive"
+        variant:"destructive"
       });
     } finally {
       setUpdateLoading(false);
@@ -402,9 +399,7 @@ export default function ReportsList() {
     setEditFormData(prev => ({...prev, [field]: value}));
   };
 
-  // Function to generate سجل حالات الطلب HTML for show modal and print
   const generateStatusLogHTML = (report) => {
-    // returns JSX for show modal (React) or HTML string for print (string)
     const isPrint = typeof report === 'string' || report instanceof String;
 
     const creationDate = report.creation_date;
@@ -414,33 +409,31 @@ export default function ReportsList() {
     const rejectionDate = report.rejection_date;
     const rejectionNote = report.rejection_date_note;
 
-    // Early return empty if none
     if(!creationDate && !approvalDate && !rejectionDate) {
       return isPrint ? '' : null;
     }
 
     if(isPrint) {
-      // HTML string for print
       let html = `
       <div style="background:#e9d5ff; border:1px solid #c4b5fd; border-radius:8px; padding:16px; margin:12px 0; direction:rtl; font-family:Arial, sans-serif;">
         <h3 style="color:#5b21b6; margin-bottom:16px;"><svg xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c-1.104 0-2 .896-2 2v4h-2v2h6v-2h-2v-4c0-1.104-.896-2-2-2z"></path><circle cx="12" cy="4" r="2"></circle><path d="M4 20h16v2H4z"></path></svg> سجل حالات الطلب</h3>
       `;
 
-      if(report.status === 'مفتوح' && creationDate) {
+      if (creationDate) {
         html += `
           <div style="margin-bottom:8px;">
             <strong>تاريخ الإنشاء:</strong> ${creationDate}
             ${creationNote ? `<em style="font-style: italic; color: #555;">(${creationNote})</em>` : ''}
           </div>`;
       }
-      if(report.status === 'مغلق' && approvalDate) {
+      if (approvalDate) {
         html += `
           <div style="margin-bottom:8px;">
             <strong>تاريخ الموافقة على العقد:</strong> ${approvalDate}
             ${approvalNote ? `<em style="font-style: italic; color: #555;">(${approvalNote})</em>` : ''}
           </div>`;
       }
-      if(report.status === 'مكهن' && rejectionDate) {
+      if (rejectionDate) {
         html += `
           <div style="margin-bottom:8px;">
             <strong>تاريخ الرفض:</strong> ${rejectionDate}
@@ -450,26 +443,25 @@ export default function ReportsList() {
       html += '</div>';
       return html;
     } else {
-      // Return JSX for React show modal
       return (
         <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 text-right">
           <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-4 flex items-center gap-2"><Clock size={20} />سجل حالات الطلب</h3>
           <div className="space-y-3">
-            {report.status === 'مفتوح' && creationDate && (
+            {creationDate && (
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
                 <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الإنشاء:</span>
                 <span className="text-gray-700 dark:text-gray-300">{creationDate}</span>
                 {creationNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({creationNote})</span>}
               </div>
             )}
-            {report.status === 'مغلق' && approvalDate && (
+            {approvalDate && (
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
                 <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الموافقة على العقد:</span>
                 <span className="text-gray-700 dark:text-gray-300">{approvalDate}</span>
                 {approvalNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({approvalNote})</span>}
               </div>
             )}
-            {report.status === 'مكهن' && rejectionDate && (
+            {rejectionDate && (
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
                 <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الرفض:</span>
                 <span className="text-gray-700 dark:text-gray-300">{rejectionDate}</span>
@@ -484,8 +476,6 @@ export default function ReportsList() {
 
   const handlePrintReport = (report) => {
     const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
-
-    // generate سجل حالات الطلب HTML only for print
     const statusLogHTML = generateStatusLogHTML(report);
 
     const printContent = `
@@ -534,6 +524,18 @@ export default function ReportsList() {
           .status-open { background: #fff3cd; color: #856404; }
           .status-closed { background: #d1edff; color: #0c5460; }
           .status-paused { background: #f8d7da; color: #721c24; }
+          .status-log {
+            background:#e9d5ff; border:1px solid #c4b5fd; border-radius:8px; padding:16px; margin:12px 0; font-family:Arial, sans-serif;
+          }
+          .status-log h3 {
+            color:#5b21b6; margin-bottom:16px; font-weight: bold;
+          }
+          .status-log div {
+            margin-bottom:8px;
+          }
+          .status-log em {
+            font-style: italic; color: #555;
+          }
         </style>
       </head>
       <body>
@@ -562,8 +564,7 @@ export default function ReportsList() {
           <div class="info-item"><div class="info-label">اسم المبلغ:</div><div>${report.reporter_name || 'غير محدد'}</div></div>
           <div class="info-item"><div class="info-label">رقم اتصال المبلغ:</div><div>${report.reporter_contact || 'غير محدد'}</div></div>
 
-          <!-- سجل حالات الطلب inserted here -->
-          ${statusLogHTML}
+          ${statusLogHTML.replace(/<div dir="rtl">|<\/div>/g, '')}
 
           ${report.notes ? `<div class="info-item full-width"><div class="info-label">ملاحظات:</div><div>${report.notes}</div></div>` : ''}
           ${report.resolution ? `<div class="info-item full-width"><div class="info-label">الحل:</div><div>${report.resolution}</div></div>` : ''}
@@ -594,13 +595,11 @@ export default function ReportsList() {
   return (
     <div className="space-y-6 p-4 max-w-7xl mx-auto">
 
-      {/* Header */}
       <div className="text-right">
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">قائمة البلاغات</h1>
         <p className="text-muted-foreground mt-2">عرض وإدارة جميع البلاغات المستلمة</p>
       </div>
 
-      {/* Filters */}
       <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
         <div className=" bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -724,7 +723,6 @@ export default function ReportsList() {
         </div>
       </div>
 
-      {/* Mobile cards layout */}
       <div className="md:hidden space-y-4">
         {filteredReports.length === 0 && (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
@@ -762,7 +760,6 @@ export default function ReportsList() {
         })}
       </div>
 
-      {/* Desktop/tablet original table rendering */}
       <div className="hidden md:block bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -843,7 +840,6 @@ export default function ReportsList() {
         )}
       </div>
 
-      {/* View Modal */}
       {viewingReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -857,7 +853,6 @@ export default function ReportsList() {
               </button>
             </div>
             <div className="p-6 space-y-6 text-right">
-              {/* Downtime Counter */}
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-center gap-3">
                 <Clock size={24} className="text-blue-600 dark:text-blue-400" />
                 <div>
@@ -869,7 +864,6 @@ export default function ReportsList() {
                 </div>
               </div>
 
-              {/* Basic Info Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                   { label: 'رقم البلاغ', value: viewingReport.id, mono: true },
@@ -903,7 +897,6 @@ export default function ReportsList() {
                 ))}
               </div>
 
-              {/* Problem Description */}
               <div className="space-y-2 text-right">
                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400">وصف المشكلة</label>
                 <p className="p-4 bg-gray-50 dark:bg-gray-800 rounded-md leading-relaxed min-h-[100px] border-l-4 border-blue-500">
@@ -911,10 +904,8 @@ export default function ReportsList() {
                 </p>
               </div>
 
-              {/* سجل حالات الطلب - show conditionally */}
               {generateStatusLogHTML(viewingReport)}
 
-              {/* Notes */}
               {viewingReport.notes && (
                 <div className="space-y-2 text-right">
                   <label className="text-sm font-medium text-gray-600 dark:text-gray-400">ملاحظات</label>
@@ -924,7 +915,6 @@ export default function ReportsList() {
                 </div>
               )}
 
-              {/* Resolution */}
               {viewingReport.resolution && (
                 <div className="space-y-2 text-right">
                   <label className="text-sm font-medium text-gray-600 dark:text-gray-400">الحل</label>
@@ -934,7 +924,6 @@ export default function ReportsList() {
                 </div>
               )}
 
-              {/* تفاصيل الإغلاق/التكهين: show only if status is NOT "مفتوح" */}
               {(viewingReport.status !== 'مفتوح' && (viewingReport.resolved_at || viewingReport.resolved_by)) && (
                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-right">
                   <h3 className="font-semibold text-green-900 dark:text-green-100 mb-3">تفاصيل الإغلاق/التكهين</h3>
@@ -955,7 +944,6 @@ export default function ReportsList() {
                 </div>
               )}
 
-              {/* Actions */}
               <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <button type="button" onClick={() => setViewingReport(null)} className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                   إغلاق
@@ -966,7 +954,6 @@ export default function ReportsList() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {deleteConfirmReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md shadow-2xl">
@@ -993,7 +980,7 @@ export default function ReportsList() {
                 <p><strong>المنشأة:</strong> {deleteConfirmReport.facility?.name || 'غير محدد'}</p>
               </div>
               <div className="flex justify-center gap-3 pt-4">
-                <button onClick={() => setDeleteConfirmReport(null)} className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">إلغاء</button>
+                <button onClick={() => setDeleteConfirmReport(null)} className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">إلغاء</button>
                 <button onClick={handleDeleteConfirm} disabled={deleteLoading === deleteConfirmReport.id} className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2 transition-colors">
                   {deleteLoading === deleteConfirmReport.id ? (
                     <>
@@ -1013,7 +1000,6 @@ export default function ReportsList() {
         </div>
       )}
 
-      {/* Edit Modal (status modify) */}
       {modifyingReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -1090,7 +1076,6 @@ export default function ReportsList() {
         </div>
       )}
 
-      {/* Full Edit Modal (general modify, Settings icon) */}
       {fullEditingReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -1105,7 +1090,6 @@ export default function ReportsList() {
             </div>
             <form onSubmit={handleFullEditSubmit} className="p-4 md:p-6 space-y-6" dir="rtl">
 
-              {/* 2. تاريخ إنشاء البلاغ + الوقت */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٢- تاريخ إنشاء البلاغ *</label>
@@ -1129,7 +1113,6 @@ export default function ReportsList() {
                 </div>
               </div>
 
-              {/* 3. تصنيف البلاغ */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٣- تصنيف البلاغ *</label>
                 <select
@@ -1143,7 +1126,6 @@ export default function ReportsList() {
                 </select>
               </div>
 
-              {/* 4. اسم الجهاز */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٤- اسم الجهاز أو الصنف *</label>
                 <input
@@ -1156,7 +1138,6 @@ export default function ReportsList() {
                 />
               </div>
 
-              {/* 5. وصف المشكلة */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٥- وصف مشكلة البلاغ *</label>
                 <textarea
@@ -1169,7 +1150,6 @@ export default function ReportsList() {
                 />
               </div>
 
-              {/* 6. هل الجهاز تحت الضمان */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٦- هل الجهاز تحت الضمان؟</label>
                 <select
@@ -1183,7 +1163,6 @@ export default function ReportsList() {
                 </select>
               </div>
 
-              {/* 7. اسم الإدارة/الشركة */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٧- اسم الإدارة / الشركة المختصة بالإصلاح</label>
                 <input
@@ -1195,7 +1174,6 @@ export default function ReportsList() {
                 />
               </div>
 
-              {/* 8. رقم الاتصال + الإيميل */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٨- رقم الاتصال</label>
@@ -1219,7 +1197,6 @@ export default function ReportsList() {
                 </div>
               </div>
 
-              {/* 9. اسم المبلغ + رقم الاتصال */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٩- اسم المبلغ</label>
@@ -1243,7 +1220,6 @@ export default function ReportsList() {
                 </div>
               </div>
 
-              {/* 10. حالة البلاغ */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١٠- حالة البلاغ</label>
                 <select
@@ -1255,7 +1231,6 @@ export default function ReportsList() {
                 </select>
               </div>
 
-              {/* 11. ملاحظات */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١١- ملاحظات</label>
                 <textarea
@@ -1266,7 +1241,6 @@ export default function ReportsList() {
                 />
               </div>
 
-              {/* Conditional resolution fields */}
               {['مغلق', 'مكهن'].includes(editFormData.status) && (
                 <>
                   <div className="space-y-2">
@@ -1291,11 +1265,8 @@ export default function ReportsList() {
                 </>
               )}
 
-              {/* Submit buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button type="button" onClick={() => setFullEditingReport(null)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">
-                  إلغاء
-                </button>
+                <button type="button" onClick={() => setFullEditingReport(null)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">إلغاء</button>
                 <button type="submit" disabled={updateLoading} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
                   {updateLoading ? (
                     <>
