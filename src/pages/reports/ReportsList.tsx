@@ -478,7 +478,7 @@ export default function ReportsList() {
 
   const handlePrintReport = (report) => {
     const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
-    const statusLogHTML = generateStatusLogHTML(report);
+    const statusLogHTML = generateStatusLogHTML(JSON.stringify(report)) || '';
 
     const printContent = `
       <!DOCTYPE html>
