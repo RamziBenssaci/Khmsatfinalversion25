@@ -18,7 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { reportsApi } from '@/lib/api';
 
-// Utility function to calculate downtime period
+// Utility to calculate downtime period between report_time and resolved_at or now
 const calculateDowntimePeriod = (reportDate, reportTime, resolvedAt) => {
   const startDateTime = new Date(`${reportDate}T${reportTime}`);
   const endDateTime = resolvedAt ? new Date(resolvedAt) : new Date();
@@ -26,7 +26,6 @@ const calculateDowntimePeriod = (reportDate, reportTime, resolvedAt) => {
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   const diffHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const diffMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
-
   if (diffDays > 0) {
     return `${diffDays} يوم ${diffHours} ساعة`;
   } else if (diffHours > 0) {
@@ -36,108 +35,299 @@ const calculateDowntimePeriod = (reportDate, reportTime, resolvedAt) => {
   }
 };
 
-// PDF export with سجل حالات الطلب removed and notes removed
+// Export to PDF without سجل حالات الطلب or notes
 const exportToPDF = (data, filename) => {
   const printContent = `
-    <!DOCTYPE html>
-    <html dir="rtl">
-    <head>
-      <meta charset="UTF-8">
-      <title>${filename}</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          direction: rtl;
-          margin: 20px;
-          font-size: 12px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
-        th, td {
-          border: 1px solid #ddd;
-          padding: 8px;
-          text-align: right;
-        }
-        th {
-          background-color: #f2f2f2;
-          font-weight: bold;
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 30px;
-        }
-        .header h1 {
-          color: #333;
-          margin-bottom: 10px;
-        }
-        .header p {
-          color: #666;
-          margin: 0;
-        }
-        .status-open { background: #fff3cd; color: #856404; }
-        .status-closed { background: #d1edff; color: #0c5460; }
-        .status-paused { background: #f8d7da; color: #721c24; }
-        .status {
-          padding: 5px 15px;
-          border-radius: 15px;
-          font-weight: bold;
-          display: inline-block;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>قائمة البلاغات</h1>
-        <p>تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}</p>
-        <p>عدد البلاغات: ${data.length}</p>
-      </div>
-      <table>
-        <thead>
+  <!DOCTYPE html>
+  <html dir="rtl">
+  <head>
+    <meta charset="UTF-8">
+    <title>${filename}</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        direction: rtl;
+        margin: 20px;
+        font-size: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: right;
+      }
+      th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .header h1 {
+        color: #333;
+        margin-bottom: 10px;
+      }
+      .header p {
+        color: #666;
+        margin: 0;
+      }
+      .status-open { background: #fff3cd; color: #856404; }
+      .status-closed { background: #d1edff; color: #0c5460; }
+      .status-paused { background: #f8d7da; color: #721c24; }
+      .status {
+        padding: 5px 15px;
+        border-radius: 15px;
+        font-weight: bold;
+        display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>قائمة البلاغات</h1>
+      <p>تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}</p>
+      <p>عدد البلاغات: ${data.length}</p>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>رقم البلاغ</th>
+          <th>المنشأة</th>
+          <th>التصنيف</th>
+          <th>اسم الجهاز</th>
+          <th>وصف المشكلة</th>
+          <th>الحالة</th>
+          <th>تاريخ البلاغ</th>
+          <th>فترة التوقف (أيام)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(report => `
           <tr>
-            <th>رقم البلاغ</th>
-            <th>المنشأة</th>
-            <th>التصنيف</th>
-            <th>اسم الجهاز</th>
-            <th>وصف المشكلة</th>
-            <th>الحالة</th>
-            <th>تاريخ البلاغ</th>
-            <th>فترة التوقف (أيام)</th>
+          <td>${report.id}</td>
+          <td>${report.facilityName}</td>
+          <td>${report.category}</td>
+          <td>${report.deviceName}</td>
+          <td>${report.problem_description || 'غير محدد'}</td>
+          <td><span class="status ${report.status === 'مفتوح' ? 'status-open' : report.status === 'مغلق' ? 'status-closed' : 'status-paused'}">${report.status}</span></td>
+          <td>${report.reportDate}</td>
+          <td>${report.downtimeDays}</td>
           </tr>
-        </thead>
-        <tbody>
-          ${data.map(report => `
-            <tr>
-              <td>${report.id}</td>
-              <td>${report.facilityName}</td>
-              <td>${report.category}</td>
-              <td>${report.deviceName}</td>
-              <td>${report.problem_description || 'غير محدد'}</td>
-              <td>
-                <span class="status ${
-                  report.status === 'مفتوح' ? 'status-open' :
-                  report.status === 'مغلق' ? 'status-closed' : 'status-paused'
-                }">${report.status}</span>
-              </td>
-              <td>${report.reportDate}</td>
-              <td>${report.downtimeDays}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </body>
-    </html>
-  `;
-
+        `).join('')}
+      </tbody>
+    </table>
+  </body>
+  </html>
+  `
   const printWindow = window.open('', '_blank');
   if(printWindow) {
     printWindow.document.write(printContent);
     printWindow.document.close();
-    setTimeout(() => { printWindow.print(); }, 500);
+    setTimeout(() => printWindow.print(), 500);
   }
-};
+}
+
+// Export Excel unchanged
+const exportToExcel = (data, filename) => {
+  const csvContent = [
+    ['رقم البلاغ', 'المنشأة', 'التصنيف', 'اسم الجهاز', 'وصف المشكلة', 'الحالة', 'تاريخ البلاغ', 'فترة التوقف (أيام)'],
+    ...data.map(report => [
+      report.id,
+      report.facilityName,
+      report.category,
+      report.deviceName,
+      report.problem_description || 'غير محدد',
+      report.status,
+      report.reportDate,
+      report.downtimeDays
+    ])
+  ].map(row => row.join(',')).join('\n');
+
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${filename}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+// Main component
+export default function ReportsList() {
+  const { toast } = useToast();
+
+  const [loading, setLoading] = useState(true);
+  const [reports, setReports] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFacility, setSelectedFacility] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [modifyingReport, setModifyingReport] = useState(null);
+  const [fullEditingReport, setFullEditingReport] = useState(null);
+  const [deleteConfirmReport, setDeleteConfirmReport] = useState(null);
+  const [viewingReport, setViewingReport] = useState(null);
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(null);
+  const [modifyFormData, setModifyFormData] = useState({ status: '', resolution: '', resolved_at: '', resolved_by: '' });
+  const [editFormData, setEditFormData] = useState({
+    report_date: '', report_time: '', category: '', device_name: '',
+    problem_description: '', under_warranty: '', repair_company: '', contact_number: '',
+    email: '', reporter_name: '', reporter_contact: '', status: '', notes: '', resolution: '', resolved_by: ''
+  });
+
+  const predefinedCategories = ['صيانة طبية', 'صيانة عامة', 'تقنية المعلومات', 'أمن وسلامة', 'التموين الطبي', 'أخرى'];
+  const predefinedStatuses = ['مفتوح', 'مغلق', 'مكهن'];
+
+  useEffect(() => {
+    const loadReports = async () => {
+      try {
+        const response = await reportsApi.getReports();
+        if (response.success) {
+          setReports(response.data || []);
+        } else {
+          toast({ title: "خطأ في تحميل البلاغات", description: response.message, variant: "destructive" });
+        }
+      } catch (e) {
+        toast({ title: "خطأ في تحميل البلاغات", description: e.message || "فشل في تحميل قائمة البلاغات", variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadReports();
+  }, [toast]);
+
+  const filteredReports = reports.filter(r => (
+    (searchTerm === '' || (r.facility?.name?.includes(searchTerm) || r.problem_description?.includes(searchTerm) || r.device_name?.includes(searchTerm) || r.id?.toString()?.includes(searchTerm)))
+    && (selectedFacility === '' || r.facility?.name === selectedFacility)
+    && (selectedCategory === '' || r.category === selectedCategory)
+    && (selectedStatus === '' || r.status === selectedStatus)
+  ));
+
+  const facilities = [...new Set(reports.map(r => r.facility?.name).filter(Boolean))];
+  const categories = [...new Set(reports.map(r => r.category).filter(Boolean))];
+
+  // Render سجل حالات الطلب in modal always with all non-null dates
+  const generateStatusLogHTML = (report) => {
+    const { creation_date, creation_date_note, contract_approval_date, contract_approval_date_note, rejection_date, rejection_date_note } = report;
+
+    if (!creation_date && !contract_approval_date && !rejection_date) return null;
+
+    return (
+      <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 text-right">
+        <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-4 flex items-center gap-2"><Clock size={20} />سجل حالات الطلب</h3>
+        <div className="space-y-3">
+          {creation_date && <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+            <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الإنشاء:</span>
+            <span className="text-gray-700 dark:text-gray-300">{creation_date}</span>
+            {creation_date_note && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({creation_date_note})</span>}
+          </div>}
+          {contract_approval_date && <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+            <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الموافقة على العقد:</span>
+            <span className="text-gray-700 dark:text-gray-300">{contract_approval_date}</span>
+            {contract_approval_date_note && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({contract_approval_date_note})</span>}
+          </div>}
+          {rejection_date && <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
+            <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الرفض:</span>
+            <span className="text-gray-700 dark:text-gray-300">{rejection_date}</span>
+            {rejection_date_note && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({rejection_date_note})</span>}
+          </div>}
+        </div>
+      </div>
+    );
+  };
+
+  // generate سجل حالات الطلب HTML string for print modal
+  const generateStatusLogHTMLPrint = (report) => {
+    const { creation_date, creation_date_note, contract_approval_date, contract_approval_date_note, rejection_date, rejection_date_note } = report;
+    if(!creation_date && !contract_approval_date && !rejection_date) return '';
+
+    let html = `
+      <div style="background:#e9d5ff; border:1px solid #c4b5fd; border-radius:8px; padding:16px; margin:12px 0; direction:rtl; font-family:Arial, sans-serif;">
+        <h3 style="color:#5b21b6; margin-bottom:16px;">
+          <svg xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 8c-1.104 0-2 .896-2 2v4h-2v2h6v-2h-2v-4c0-1.104-.896-2-2-2z"></path>
+            <circle cx="12" cy="4" r="2"></circle>
+            <path d="M4 20h16v2H4z"></path>
+          </svg> سجل حالات الطلب
+        </h3>
+    `;
+
+    if(creation_date) html += `<div style="margin-bottom:8px;"><strong>تاريخ الإنشاء:</strong> ${creation_date}${creation_date_note ? ` <em style="font-style: italic; color: #555;">(${creation_date_note})</em>` : ''}</div>`;
+    if(contract_approval_date) html += `<div style="margin-bottom:8px;"><strong>تاريخ الموافقة على العقد:</strong> ${contract_approval_date}${contract_approval_date_note ? ` <em style="font-style: italic; color: #555;">(${contract_approval_date_note})</em>` : ''}</div>`;
+    if(rejection_date) html += `<div style="margin-bottom:8px;"><strong>تاريخ الرفض:</strong> ${rejection_date}${rejection_date_note ? ` <em style="font-style: italic; color: #555;">(${rejection_date_note})</em>` : ''}</div>`;
+
+    html += '</div>';
+    return html;
+  };
+
+  // Print report handler
+  const handlePrintReport = (report) => {
+    const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
+    const statusLogHTML = generateStatusLogHTMLPrint(report);
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl">
+      <head>
+        <meta charset="UTF-8" />
+        <title>تقرير بلاغ - ${report.id}</title>
+        <style>
+          body {font-family: Arial; direction: rtl; padding: 20px; line-height: 1.6;}
+          .header {text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px;}
+          .info-grid {display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;}
+          .info-item {border: 1px solid #ddd; padding: 10px; border-radius: 5px;}
+          .info-label {font-weight: bold; color: #333;}
+          .full-width {grid-column: 1 / -1;}
+          .status {padding: 5px 15px; border-radius: 15px; display: inline-block; font-weight: bold;}
+          .status-open {background: #fff3cd; color: #856404;}
+          .status-closed {background: #d1edff; color: #0c5460;}
+          .status-paused {background: #f8d7da; color: #721c24;}
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>تقرير بلاغ رقم ${report.id}</h1>
+          <p>تاريخ الطباعة: ${new Date().toLocaleDateString('ar-SA')}</p>
+        </div>
+        <div class="info-grid">
+          <div class="info-item"><div class="info-label">رقم البلاغ:</div><div>${report.id}</div></div>
+          <div class="info-item"><div class="info-label">المنشأة:</div><div>${report.facility?.name || 'غير محدد'}</div></div>
+          <div class="info-item"><div class="info-label">تاريخ البلاغ:</div><div>${report.report_date} ${report.report_time}</div></div>
+          <div class="info-item"><div class="info-label">الحالة:</div><div><span class="status ${report.status === 'مفتوح' ? 'status-open' : report.status === 'مغلق' ? 'status-closed' : 'status-paused'}">${report.status}</span></div></div>
+          <div class="info-item"><div class="info-label">التصنيف:</div><div>${report.category}</div></div>
+          <div class="info-item"><div class="info-label">اسم الجهاز:</div><div>${report.device_name}</div></div>
+          <div class="info-item"><div class="info-label">الرقم التسلسلي:</div><div>${report.serial_number || 'غير محدد'}</div></div>
+          <div class="info-item full-width"><div class="info-label">وصف المشكلة:</div><div>${report.problem_description || 'غير محدد'}</div></div>
+          <div class="info-item"><div class="info-label">تحت الضمان:</div><div>${report.under_warranty || 'غير محدد'}</div></div>
+          <div class="info-item"><div class="info-label">شركة الصيانة:</div><div>${report.repair_company || 'غير محدد'}</div></div>
+          <div class="info-item"><div class="info-label">رقم الاتصال:</div><div>${report.contact_number || 'غير محدد'}</div></div>
+          <div class="info-item"><div class="info-label">البريد الإلكتروني:</div><div>${report.email || 'غير محدد'}</div></div>
+          <div class="info-item"><div class="info-label">اسم المبلغ:</div><div>${report.reporter_name || 'غير محدد'}</div></div>
+          <div class="info-item"><div class="info-label">رقم اتصال المبلغ:</div><div>${report.reporter_contact || 'غير محدد'}</div></div>
+
+          ${statusLogHTML}
+
+          ${report.notes ? `<div class="info-item full-width"><div class="info-label">ملاحظات:</div><div>${report.notes}</div></div>` : ''}
+          ${report.resolution ? `<div class="info-item full-width"><div class="info-label">الحل:</div><div>${report.resolution}</div></div>` : ''}
+          ${report.resolved_at ? `<div class="info-item"><div class="info-label">تاريخ الإغلاق/التكهين:</div><div>${new Date(report.resolved_at).toLocaleDateString('ar-SA')}</div></div>` : ''}
+          <div class="info-item"><div class="info-label">فترة التوقف:</div><div>${downtimePeriod}</div></div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if(printWindow){
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      setTimeout(() => printWindow.print(), 500);
+    }
+  };
+
 
 // Excel export function (unchanged)
 const exportToExcel = (data, filename) => {
