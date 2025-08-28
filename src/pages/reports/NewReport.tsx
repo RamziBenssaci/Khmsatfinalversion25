@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FileText, Calendar, User, Building2, CheckCircle, Info, Loader2, Settings, Phone, Mail } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { reportsApi } from '@/lib/api';
-
+import { dentalAssetsApi } from '@/lib/api';
 const reportCategories = [
   { value: 'الصيانة الطبية', label: 'الصيانة الطبية' },
   { value: 'الصيانة العامة', label: 'الصيانة العامة' },
@@ -73,7 +73,7 @@ export default function NewReport() {
         }
 
         // Load assets for serial numbers
-        const assetsResponse = await reportsApi.getAssets();
+        const assetsResponse = await dentalAssetsApi.getAssets();
         if (assetsResponse.success) {
           // Extract unique serial numbers
           const uniqueSerialNumbers = [...new Set(
