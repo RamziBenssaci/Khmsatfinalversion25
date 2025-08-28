@@ -249,32 +249,6 @@ export default function ReportsList() {
   ];
 
   const predefinedStatuses = ['مفتوح', 'مغلق', 'مكهن'];
-useEffect(() => {
-  const loadFacilities = async () => {
-    try {
-      const response = await reportsApi.getFacilities();
-      if (response.success) {
-        setFacilities(response.data || []);
-      } else {
-        toast({
-          title: "خطأ في تحميل المنشآت",
-          description: response.message,
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "خطأ في تحميل المنشآت",
-        description: error.message || "فشل في تحميل قائمة المنشآت",
-        variant: "destructive"
-      });
-    } finally {
-      setFacilitiesLoading(false);
-    }
-  };
-  loadFacilities();
-}, [toast]);
-  
   useEffect(() => {
     const loadReports = async () => {
       try {
@@ -333,7 +307,6 @@ useEffect(() => {
   const handleFullEditClick = (report) => {
     setFullEditingReport(report);
   setEditFormData({
-  facility_id: report.facility_id || '',
   report_date: report.report_date || '',
   report_time: report.report_time || '',
   category: report.category || '',
@@ -1183,31 +1156,6 @@ useEffect(() => {
               </button>
             </div>
         <form onSubmit={handleFullEditSubmit} className="p-4 md:p-6 space-y-6" dir="rtl">
-  {/* 1. اسم المنشأة */}
-  <div className="space-y-2">
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١- اسم المنشأة *</label>
-    {facilitiesLoading ? (
-      <div className="flex items-center justify-center p-4">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="mr-2">جاري تحميل المنشآت...</span>
-      </div>
-    ) : (
-      <select
-        value={editFormData.facility_id}
-        onChange={e => handleEditInputChange('facility_id', e.target.value)}
-        className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        required
-      >
-        <option value="">اختر اسم المنشأة</option>
-        {facilities.map((facility) => (
-          <option key={facility.id} value={facility.id.toString()}>
-            {facility.name}
-          </option>
-        ))}
-      </select>
-    )}
-  </div>
-
   {/* 2. تاريخ إنشاء البلاغ + الوقت */}
   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div className="space-y-2">
