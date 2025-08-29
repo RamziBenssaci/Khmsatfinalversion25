@@ -2323,8 +2323,9 @@ className="text-muted-foreground hover:text-foreground"
     </div>
   </div>
 </div>
+  
+  )}
 
-}
 
 {/* Delete Confirmation Modal */}
 {showDeleteModal && itemToDelete && (
