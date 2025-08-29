@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, FileText, Filter, Printer, TrendingUp, Package, Users, DollarSign } from 'lucide-react';
+import { Calendar, FileText, Filter, Printer, TrendingUp, Package, Users, DollarSign, Download, FileSpreadsheet } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { warehouseApi, reportsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
@@ -74,6 +74,260 @@ export default function DispensingReports() {
 
     fetchData();
   }, [toast]);
+
+  const handleExportToPDF = () => {
+    const currentDate = new Date().toLocaleDateString('ar-SA');
+    const currentTime = new Date().toLocaleTimeString('ar-SA');
+    
+    const tableRows = filteredData.map(item => `
+      <tr>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.id}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.date || new Date(item.created_at).toLocaleDateString('ar-SA')}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.facility}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.itemName || 'غير محدد'}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.itemNumber || 'غير محدد'}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.withdrawQty || 'غير محدد'}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.items || item.items_count}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${(item.totalValue || item.total_value || 0).toLocaleString()} ريال</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.requested_by || item.requestedBy || 'غير محدد'}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.status}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.category}</td>
+      </tr>
+    `).join('');
+
+    const pdfContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <title>تقرير تفاصيل عمليات الصرف</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+            direction: rtl;
+            background: white;
+          }
+          .header {
+            text-align: center;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .header h1 {
+            color: #2563eb;
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .header h2 {
+            color: #64748b;
+            margin: 10px 0;
+            font-size: 16px;
+          }
+          .stats-section {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+          }
+          .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            text-align: center;
+          }
+          .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+          }
+          .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 5px;
+          }
+          .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1e293b;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 10px;
+          }
+          th, td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: center;
+          }
+          th {
+            background-color: #f8fafc;
+            font-weight: bold;
+            color: #1e293b;
+          }
+          .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #64748b;
+            font-size: 12px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 15px;
+          }
+          @media print {
+            body { margin: 0; font-size: 9px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            table { font-size: 8px; }
+            th, td { padding: 4px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>تقرير تفاصيل عمليات الصرف</h1>
+          <h2>المنشأة المختارة: ${selectedFacility}</h2>
+          <h2>تاريخ التقرير: ${currentDate} - ${currentTime}</h2>
+        </div>
+
+        <div class="stats-section">
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-label">إجمالي قيمة الصرف</div>
+              <div class="stat-value">${totalDispensingValue.toLocaleString()} ريال</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">إجمالي الأصناف المصروفة</div>
+              <div class="stat-value">${totalItems}</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">عدد عمليات الصرف</div>
+              <div class="stat-value">${filteredData.length}</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">متوسط قيمة الصرف</div>
+              <div class="stat-value">${avgPerDispensing.toFixed(0)} ريال</div>
+            </div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>رقم أمر الصرف</th>
+              <th>تاريخ الصرف</th>
+              <th>اسم المنشأة</th>
+              <th>اسم الصنف</th>
+              <th>رقم الصنف</th>
+              <th>الكمية</th>
+              <th>عدد الأصناف</th>
+              <th>القيمة الإجمالية</th>
+              <th>اسم المستلم</th>
+              <th>حالة الطلب</th>
+              <th>فئة الصنف</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <p>نظام إدارة المستودعات الطبية</p>
+          <p>عدد السجلات: ${filteredData.length} سجل</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(pdfContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+      
+      toast({
+        title: "تم بنجاح",
+        description: "تم فتح تقرير PDF للطباعة",
+      });
+    }
+  };
+
+  const handleExportToExcel = () => {
+    // Prepare data for Excel export
+    const excelData = filteredData.map(item => ({
+      'رقم أمر الصرف': item.id,
+      'تاريخ الصرف': item.date || new Date(item.created_at).toLocaleDateString('ar-SA'),
+      'اسم المنشأة': item.facility,
+      'اسم الصنف': item.itemName || 'غير محدد',
+      'رقم الصنف': item.itemNumber || 'غير محدد',
+      'الكمية': item.withdrawQty || 'غير محدد',
+      'عدد الأصناف': item.items || item.items_count,
+      'القيمة الإجمالية': (item.totalValue || item.total_value || 0),
+      'اسم المستلم': item.requested_by || item.requestedBy || 'غير محدد',
+      'حالة الطلب': item.status,
+      'فئة الصنف': item.category
+    }));
+
+    // Add summary row
+    const summaryData = {
+      'رقم أمر الصرف': 'الإجمالي',
+      'تاريخ الصرف': '',
+      'اسم المنشأة': selectedFacility,
+      'اسم الصنف': '',
+      'رقم الصنف': '',
+      'الكمية': '',
+      'عدد الأصناف': totalItems,
+      'القيمة الإجمالية': totalDispensingValue,
+      'اسم المستلم': '',
+      'حالة الطلب': '',
+      'فئة الصنف': `${filteredData.length} عملية`
+    };
+
+    const finalData = [...excelData, summaryData];
+
+    // Convert to CSV format
+    const headers = Object.keys(finalData[0]);
+    const csvContent = [
+      headers.join(','),
+      ...finalData.map(row => 
+        headers.map(header => {
+          const value = row[header];
+          // Handle values that might contain commas
+          return typeof value === 'string' && value.includes(',') 
+            ? `"${value}"` 
+            : value;
+        }).join(',')
+      )
+    ].join('\n');
+
+    // Add BOM for proper UTF-8 encoding in Excel
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { 
+      type: 'text/csv;charset=utf-8;' 
+    });
+
+    // Create download link
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `تقرير_عمليات_الصرف_${new Date().toLocaleDateString('ar-SA').replace(/\//g, '-')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "تم بنجاح",
+      description: "تم تصدير البيانات إلى ملف Excel",
+    });
+  };
 
   const handlePrintDetailed = (item) => {
     const currentDate = new Date().toLocaleDateString('ar-SA');
@@ -503,7 +757,27 @@ export default function DispensingReports() {
       {/* Dispensing Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm sm:text-base">تفاصيل عمليات الصرف</CardTitle>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <CardTitle className="text-sm sm:text-base">تفاصيل عمليات الصرف</CardTitle>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button 
+                onClick={handleExportToPDF}
+                className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                size="sm"
+              >
+                <Download className="w-4 h-4 ml-2" />
+                تصدير PDF
+              </Button>
+              <Button 
+                onClick={handleExportToExcel}
+                className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                size="sm"
+              >
+                <FileSpreadsheet className="w-4 h-4 ml-2" />
+                تصدير Excel
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
