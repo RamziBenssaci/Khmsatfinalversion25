@@ -294,7 +294,7 @@ export default function NewReport() {
 
             {/* 5. الرقم التسلسلي */}
             <div className="space-y-2">
-              <Label htmlFor="serialNumber">٥- الرقم التسلسلي *</Label>
+              <Label htmlFor="serialNumber">٥- الرقم التسلسلي </Label>
               {serialNumbersLoading ? (
                 <div className="flex items-center justify-center p-4">
                   <Loader2 className="h-4 w-4 animate-spin" />
