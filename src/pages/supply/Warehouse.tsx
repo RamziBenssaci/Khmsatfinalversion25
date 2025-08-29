@@ -2402,6 +2402,6 @@ aria-label="Close Image Preview"
 </div>
 )}
 
-</div> 
+    </div>
   );
 }
