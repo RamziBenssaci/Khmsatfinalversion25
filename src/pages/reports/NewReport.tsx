@@ -113,7 +113,7 @@ export default function NewReport() {
 
   const handleSubmit = async () => {
     
-    if (!formData.facilityName || !formData.category || !formData.deviceName || !formData.serialNumber || !formData.problemDescription) {
+    if (!formData.facilityName || !formData.category || !formData.deviceName || !formData.problemDescription) {
       toast({
         title: "خطأ في البيانات",
         description: "يرجى ملء جميع الحقول المطلوبة",
