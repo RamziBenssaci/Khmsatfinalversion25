@@ -21,7 +21,9 @@ export default function Warehouse() {
   const [formErrors, setFormErrors] = useState<any>({});
   const [showDispenseDetailsModal, setShowDispenseDetailsModal] = useState(false);
   const [selectedDispenseOrder, setSelectedDispenseOrder] = useState<any>(null);
-  
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [modalImageSrc, setModalImageSrc] = useState<string>('');
+
   // Add Item Form State
   const [addFormData, setAddFormData] = useState({
     itemNumber: '',
@@ -34,7 +36,8 @@ export default function Warehouse() {
     deliveryDate: '',
     supplierName: '',
     beneficiaryFacility: '',
-    notes: ''
+    notes: '',
+    image: '' // image file name or URL for add form
   });
 
   // Edit Item Form State
@@ -49,7 +52,8 @@ export default function Warehouse() {
     deliveryDate: '',
     supplierName: '',
     beneficiaryFacility: '',
-    notes: ''
+    notes: '',
+    image: '' // image file name or URL for edit form
   });
 
   // Withdraw Order Form State
@@ -122,14 +126,26 @@ export default function Warehouse() {
     return Math.max(0, receivedNum - issuedNum);
   };
 
+  // Show image preview modal
+  const openImageModal = (imageName: string) => {
+    if (!imageName) return;
+    const domain = window.location.origin;
+    setModalImageSrc(`${domain}/image/${imageName}`);
+    setShowImageModal(true);
+  };
+
+  const closeImageModal = () => {
+    setShowImageModal(false);
+    setModalImageSrc('');
+  };
+
   // Print withdrawal order function
   const handlePrintWithdrawalOrder = (order: any) => {
     try {
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
         throw new Error('Unable to open print window');
-      }
-
+      } 
       const htmlContent = `
         <!DOCTYPE html>
         <html dir="rtl">
@@ -253,9 +269,16 @@ export default function Warehouse() {
                 <div class="info-label">الكمية المتاحة قبل الصرف:</div>
                 <div class="info-value">${selectedItem?.availableQty || 0}</div>
               </div>
+              <div class="info-item">
+                <div class="info-label">فاتورة الشراء:</div>
+                <div class="info-value">
+                  ${selectedItem?.image ? `<img src="${window.location.origin}/image/${selectedItem.image}" alt="فاتورة الشراء" style="max-width:120px;max-height:80px;cursor:pointer;" onclick="window.open(this.src, '_blank')"/>` : 'لا يوجد'}
+                </div>
+              </div>
             </div>
           </div>
-
+          <!-- Remainder of HTML unchanged -->
+          
           <div class="order-info">
             <h2 style="margin-top: 0; color: #333;">تفاصيل الصرف</h2>
             <div class="info-grid">
@@ -398,6 +421,35 @@ export default function Warehouse() {
     return Object.keys(errors).length === 0;
   };
 
+  // Handle image input change for add form
+  const handleAddImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    // For preview, create local url
+    const imageUrl = URL.createObjectURL(file);
+    setAddFormData(prev => ({ ...prev, image: file.name, imagePreview: imageUrl }));
+
+    // Clear error if any
+    if (formErrors.image) {
+      setFormErrors(prev => ({ ...prev, image: undefined }));
+    }
+  };
+
+  // Handle image input change for edit form
+  const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    const imageUrl = URL.createObjectURL(file);
+    setEditFormData(prev => ({ ...prev, image: file.name, imagePreview: imageUrl }));
+
+    if (formErrors.image) {
+      setFormErrors(prev => ({ ...prev, image: undefined }));
+    }
+  };
+
+  // General input change handlers for add form
   const handleAddInputChange = (field: string, value: string) => {
     setAddFormData(prev => {
       const updated = { ...prev, [field]: value };
@@ -419,15 +471,7 @@ export default function Warehouse() {
     }
   };
 
-  const handleWithdrawInputChange = (field: string, value: string) => {
-    setWithdrawFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear error for this field
-    if (formErrors[field]) {
-      setFormErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-  };
-
+  // General input change handlers for edit form
   const handleEditInputChange = (field: string, value: string) => {
     setEditFormData(prev => {
       const updated = { ...prev, [field]: value };
@@ -443,12 +487,21 @@ export default function Warehouse() {
       return updated;
     });
     
-    // Clear error for this field
     if (formErrors[field]) {
       setFormErrors(prev => ({ ...prev, [field]: undefined }));
     }
   };
 
+  // Withdraw form input handler
+  const handleWithdrawInputChange = (field: string, value: string) => {
+    setWithdrawFormData(prev => ({ ...prev, [field]: value }));
+    
+    if (formErrors[field]) {
+      setFormErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  // Submit add form - image must be attached along with other fields
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -458,8 +511,29 @@ export default function Warehouse() {
     
     try {
       setLoadingAction(true);
-      
-      const response = await warehouseApi.addInventoryItem(addFormData);
+      // Assuming the API allows multipart/form-data for image upload
+      const formData = new FormData();
+      formData.append('itemNumber', addFormData.itemNumber);
+      formData.append('itemName', addFormData.itemName);
+      formData.append('receivedQty', addFormData.receivedQty);
+      formData.append('issuedQty', addFormData.issuedQty || '0');
+      formData.append('availableQty', addFormData.availableQty);
+      formData.append('minQuantity', addFormData.minQuantity);
+      formData.append('purchaseValue', addFormData.purchaseValue);
+      formData.append('deliveryDate', addFormData.deliveryDate);
+      formData.append('supplierName', addFormData.supplierName);
+      formData.append('beneficiaryFacility', addFormData.beneficiaryFacility);
+      formData.append('notes', addFormData.notes || '');
+      // Attach image file if available from the file input
+      const imageFileInput = document.getElementById('add-image-input') as HTMLInputElement;
+      if (imageFileInput?.files && imageFileInput.files.length > 0) {
+        formData.append('image', imageFileInput.files[0]);
+      } else {
+        // attach image field empty or current stored name
+        formData.append('image', addFormData.image || '');
+      }
+
+      const response = await warehouseApi.addInventoryItem(formData);
       
       if (response.success) {
         toast({
@@ -467,15 +541,13 @@ export default function Warehouse() {
           description: "تم إضافة الصنف بنجاح",
         });
         
-        // Force reload inventory data and wait for it
         try {
           const inventoryResponse = await warehouseApi.getInventory();
           if (inventoryResponse.success && inventoryResponse.data) {
             setInventoryItems(inventoryResponse.data);
           } else {
-            // Fallback: optimistically add the new item to current list
             const newItem = {
-              id: Date.now().toString(), // Temporary ID
+              id: Date.now().toString(),
               ...addFormData,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
@@ -484,7 +556,6 @@ export default function Warehouse() {
           }
         } catch (reloadError) {
           console.error('Failed to reload inventory:', reloadError);
-          // Optimistically add the new item
           const newItem = {
             id: Date.now().toString(),
             ...addFormData,
@@ -494,11 +565,10 @@ export default function Warehouse() {
           setInventoryItems(prev => [...prev, newItem]);
         }
         
-        // Reset form and close modal
         setShowAddForm(false);
         setShowEditModal(false);
         setSelectedItem(null);
-        setSearchTerm(''); // Clear search after adding new item
+        setSearchTerm('');
         setFormErrors({});
         setAddFormData({
           itemNumber: '',
@@ -511,7 +581,8 @@ export default function Warehouse() {
           deliveryDate: '',
           supplierName: '',
           beneficiaryFacility: '',
-          notes: ''
+          notes: '',
+          image: ''
         });
       }
     } catch (error: any) {
@@ -525,6 +596,7 @@ export default function Warehouse() {
     }
   };
 
+  // Submit edit form - similar handling for image upload
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItem?.id) return;
@@ -535,21 +607,39 @@ export default function Warehouse() {
 
     try {
       setLoadingAction(true);
-      
-      const response = await warehouseApi.updateInventoryItem(selectedItem.id, editFormData);
-      
+
+      const formData = new FormData();
+      formData.append('itemNumber', editFormData.itemNumber);
+      formData.append('itemName', editFormData.itemName);
+      formData.append('receivedQty', editFormData.receivedQty);
+      formData.append('issuedQty', editFormData.issuedQty || '0');
+      formData.append('availableQty', editFormData.availableQty);
+      formData.append('minQuantity', editFormData.minQuantity);
+      formData.append('purchaseValue', editFormData.purchaseValue);
+      formData.append('deliveryDate', editFormData.deliveryDate);
+      formData.append('supplierName', editFormData.supplierName);
+      formData.append('beneficiaryFacility', editFormData.beneficiaryFacility);
+      formData.append('notes', editFormData.notes || '');
+      const imageFileInput = document.getElementById('edit-image-input') as HTMLInputElement;
+      if (imageFileInput?.files && imageFileInput.files.length > 0) {
+        formData.append('image', imageFileInput.files[0]);
+      } else {
+        formData.append('image', editFormData.image || '');
+      }
+
+      const response = await warehouseApi.updateInventoryItem(selectedItem.id, formData);
+
       if (response.success) {
         toast({
           title: "تم بنجاح",
           description: "تم تحديث الصنف بنجاح",
         });
-        
-        // Reload inventory data
+
         const inventoryResponse = await warehouseApi.getInventory();
         if (inventoryResponse.success) {
           setInventoryItems(inventoryResponse.data || []);
         }
-        
+
         setShowEditModal(false);
         setSelectedItem(null);
         setFormErrors({});
@@ -564,7 +654,8 @@ export default function Warehouse() {
           deliveryDate: '',
           supplierName: '',
           beneficiaryFacility: '',
-          notes: ''
+          notes: '',
+          image: ''
         });
       }
     } catch (error: any) {
@@ -577,6 +668,8 @@ export default function Warehouse() {
       setLoadingAction(false);
     }
   };
+
+  // Delete item, view, withdraw handlers unchanged
 
   const handleWithdrawSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -596,7 +689,6 @@ export default function Warehouse() {
           description: "تم إنشاء أمر الصرف بنجاح",
         });
         
-        // Reload inventory data after successful withdrawal
         const inventoryResponse = await warehouseApi.getInventory();
         if (inventoryResponse.success) {
           setInventoryItems(inventoryResponse.data || []);
@@ -659,7 +751,9 @@ export default function Warehouse() {
       deliveryDate: item.deliveryDate || '',
       supplierName: item.supplierName || '',
       beneficiaryFacility: item.beneficiaryFacility || '',
-      notes: item.notes || ''
+      notes: item.notes || '',
+      image: item.image || '',
+      imagePreview: item.image ? `${window.location.origin}/image/${item.image}` : ''
     });
     setFormErrors({});
     setShowEditModal(true);
@@ -675,12 +769,12 @@ export default function Warehouse() {
 
   const handleExportToPDF = () => {
     try {
-      // Create a new window with printable content
+      // Similar implementation as before, with the image column included
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
         throw new Error('Unable to open print window');
       }
-
+      const domain = window.location.origin;
       const htmlContent = `
         <!DOCTYPE html>
         <html dir="rtl">
@@ -693,8 +787,9 @@ export default function Warehouse() {
             .header h1 { color: #333; margin-bottom: 10px; }
             .header p { color: #666; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: right; vertical-align: middle; }
             th { background-color: #f5f5f5; font-weight: bold; }
+            img { max-width: 60px; max-height: 40px; cursor: pointer; }
             .status-available { background-color: #d4edda; color: #155724; padding: 4px 8px; border-radius: 4px; }
             .status-low { background-color: #f8d7da; color: #721c24; padding: 4px 8px; border-radius: 4px; }
             @media print {
@@ -702,13 +797,19 @@ export default function Warehouse() {
               .no-print { display: none; }
             }
           </style>
+          <script>
+            function openImage(src) {
+              var imgWindow = window.open("", "_blank");
+              imgWindow.document.write('<html dir="rtl"><head><title>فاتورة الشراء</title></head><body style="margin:0;padding:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#fff;"><img src="'+src+'" style="max-width:100%;max-height:100%;"></body></html>');
+              imgWindow.document.close();
+            }
+          </script>
         </head>
         <body>
           <div class="header">
             <h1>قائمة المستودع</h1>
             <p>تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}</p>
           </div>
-          
           <table>
             <thead>
               <tr>
@@ -720,6 +821,7 @@ export default function Warehouse() {
                 <th>الحد الأدنى</th>
                 <th>قيمة الشراء</th>
                 <th>الشركة الموردة</th>
+                <th>فاتورة الشراء</th>
                 <th>الحالة</th>
               </tr>
             </thead>
@@ -735,6 +837,13 @@ export default function Warehouse() {
                   <td>${item.purchaseValue || 0} ريال</td>
                   <td>${item.supplierName || ''}</td>
                   <td>
+                    ${
+                      item.image 
+                        ? `<img src="${domain}/image/${item.image}" alt="فاتورة الشراء" onclick="openImage(this.src)" title="عرض فاتورة الشراء" />`
+                        : 'لا يوجد'
+                    }
+                  </td>
+                  <td>
                     <span class="${item.availableQty <= item.minQuantity ? 'status-low' : 'status-available'}">
                       ${item.availableQty <= item.minQuantity ? 'مخزون منخفض' : 'متوفر'}
                     </span>
@@ -743,7 +852,6 @@ export default function Warehouse() {
               `).join('')}
             </tbody>
           </table>
-          
           <div style="margin-top: 30px; text-align: center; color: #666;">
             <p>إجمالي الأصناف: ${filteredItems.length}</p>
             <p>إجمالي قيمة المخزون: ${calculateTotalInventoryValue().toFixed(2)} ريال</p>
@@ -754,8 +862,7 @@ export default function Warehouse() {
 
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-      
-      // Wait for content to load then print
+
       printWindow.onload = () => {
         setTimeout(() => {
           printWindow.print();
@@ -777,39 +884,39 @@ export default function Warehouse() {
     }
   };
 
+  // Delete item function unchanged
   const handleDeleteItem = async () => {
-  if (!itemToDelete) return;
-  
-  try {
-    setLoadingAction(true);
-    const response = await warehouseApi.deleteInventoryItem(itemToDelete.id);
+    if (!itemToDelete) return;
     
-    if (response.success) {
-      toast({
-        title: "تم الحذف",
-        description: "تم حذف الصنف بنجاح",
-      });
+    try {
+      setLoadingAction(true);
+      const response = await warehouseApi.deleteInventoryItem(itemToDelete.id);
       
-      // Reload inventory data
-      const inventoryResponse = await warehouseApi.getInventory();
-      if (inventoryResponse.success) {
-        setInventoryItems(inventoryResponse.data || []);
+      if (response.success) {
+        toast({
+          title: "تم الحذف",
+          description: "تم حذف الصنف بنجاح",
+        });
+        
+        const inventoryResponse = await warehouseApi.getInventory();
+        if (inventoryResponse.success) {
+          setInventoryItems(inventoryResponse.data || []);
+        }
+        
+        setShowDeleteModal(false);
+        setItemToDelete(null);
       }
-      
-      setShowDeleteModal(false);
-      setItemToDelete(null);
+    } catch (error: any) {
+      toast({
+        title: "خطأ في الحذف",
+        description: error.message || "فشل في حذف الصنف",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingAction(false);
     }
-  } catch (error: any) {
-    toast({
-      title: "خطأ في الحذف",
-      description: error.message || "فشل في حذف الصنف",
-      variant: "destructive",
-    });
-  } finally {
-    setLoadingAction(false);
-  }
-};
-  
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-right">
@@ -832,6 +939,7 @@ export default function Warehouse() {
         <button 
           onClick={() => {
             setFormErrors({});
+            setAddFormData(prev => ({ ...prev, imagePreview: '' }));
             setShowAddForm(true);
           }}
           className="admin-btn-success flex items-center gap-2"
@@ -902,6 +1010,7 @@ export default function Warehouse() {
                   <th className="p-3">الكمية المتاحة</th>
                   <th className="p-3">الحد الأدنى</th>
                   <th className="p-3">الشركة الموردة</th>
+                  <th className="p-3">فاتورة الشراء</th>
                   <th className="p-3">الحالة</th>
                   <th className="p-3">الإجراءات</th>
                 </tr>
@@ -916,6 +1025,19 @@ export default function Warehouse() {
                     <td className="p-3 font-medium">{item.availableQty}</td>
                     <td className="p-3">{item.minQuantity}</td>
                     <td className="p-3">{item.supplierName}</td>
+                    <td className="p-3">
+                      {item.image ? (
+                        <img
+                          src={`${window.location.origin}/image/${item.image}`}
+                          alt="فاتورة الشراء"
+                          className="inline-block max-w-[60px] max-h-[40px] cursor-pointer rounded border"
+                          onClick={() => openImageModal(item.image)}
+                          title="عرض فاتورة الشراء"
+                        />
+                      ) : (
+                        'لا يوجد'
+                      )}
+                    </td>
                     <td className="p-3">
                       <span className={`px-2 py-1 rounded-full text-xs ${
                         item.availableQty <= item.minQuantity 
@@ -1003,9 +1125,24 @@ export default function Warehouse() {
                   <span className="font-medium mr-2">{item.issuedQty}</span>
                 </div>
               </div>
-              
+
               <div className="text-sm text-muted-foreground mb-3 text-right">
                 الشركة الموردة: {item.supplierName}
+              </div>
+
+              <div className="mb-3 text-right">
+                فاتورة الشراء:
+                {item.image ? (
+                  <img
+                    src={`${window.location.origin}/image/${item.image}`}
+                    alt="فاتورة الشراء"
+                    className="inline-block max-w-[100px] max-h-[70px] cursor-pointer rounded border mr-2"
+                    onClick={() => openImageModal(item.image)}
+                    title="عرض فاتورة الشراء"
+                  />
+                ) : (
+                  <span className="text-muted-foreground mr-2">لا يوجد</span>
+                )}
               </div>
               
               <div className="flex gap-2 justify-end">
@@ -1032,9 +1169,9 @@ export default function Warehouse() {
                 </button>
                 <button 
                   onClick={() => {
-  setItemToDelete(item);
-  setShowDeleteModal(true);
-}}
+                    setItemToDelete(item);
+                    setShowDeleteModal(true);
+                  }}
                   className="admin-btn-danger text-xs flex items-center gap-1"
                 >
                   <Trash2 size={12} />
@@ -1045,6 +1182,20 @@ export default function Warehouse() {
           ))}
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      {showImageModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={closeImageModal}>
+          <img src={modalImageSrc} alt="فاتورة الشراء" className="max-w-full max-h-full rounded shadow-lg" />
+          <button 
+            onClick={closeImageModal} 
+            className="absolute top-6 right-6 bg-white rounded-full p-1 hover:bg-gray-200"
+            title="إغلاق"
+          >
+            <X size={24} />
+          </button>
+        </div>
+      )}
 
       {/* Add Item Modal */}
       {showAddForm && (
@@ -1060,7 +1211,7 @@ export default function Warehouse() {
               </button>
             </div>
             
-            <form onSubmit={handleAddSubmit} className="p-6 space-y-6">
+            <form onSubmit={handleAddSubmit} className="p-6 space-y-6" encType="multipart/form-data">
               {/* Item Information */}
               <div className="admin-card">
                 <div className="admin-header">
@@ -1240,6 +1391,29 @@ export default function Warehouse() {
                       </select>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Image Upload */}
+              <div className="admin-card">
+                <div className="admin-header">
+                  <h3>فاتورة الشراء</h3>
+                </div>
+                <div className="p-4 text-right">
+                  <input
+                    type="file"
+                    id="add-image-input"
+                    accept="image/*"
+                    onChange={handleAddImageChange}
+                    className="mb-2"
+                  />
+                  {addFormData.imagePreview && (
+                    <img
+                      src={addFormData.imagePreview}
+                      alt="معاينة فاتورة الشراء"
+                      className="max-w-[200px] max-h-[150px] rounded border"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -1451,7 +1625,6 @@ export default function Warehouse() {
                   </div>
                 </div>
               </div>
-           
 
               {/* Notes */}
               <div className="admin-card">
@@ -1524,6 +1697,20 @@ export default function Warehouse() {
                     <div><span className="font-medium">رقم الصنف:</span> {selectedItem.itemNumber}</div>
                     <div><span className="font-medium">اسم الصنف:</span> {selectedItem.itemName}</div>
                     <div><span className="font-medium">الشركة الموردة:</span> {selectedItem.supplierName}</div>
+                    <div>
+                      <span className="font-medium">فاتورة الشراء:</span>
+                      {selectedItem.image ? (
+                        <img
+                          src={`${window.location.origin}/image/${selectedItem.image}`}
+                          alt="فاتورة الشراء"
+                          className="inline-block max-w-[150px] max-h-[100px] cursor-pointer rounded border ml-2"
+                          onClick={() => openImageModal(selectedItem.image)}
+                          title="عرض فاتورة الشراء"
+                        />
+                      ) : (
+                        <span className="text-muted-foreground ml-2">لا يوجد</span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
@@ -1576,7 +1763,7 @@ export default function Warehouse() {
                                 <th className="p-3">اسم المستلم</th>
                                 <th className="p-3">رقم التواصل</th>
                                 <th className="p-3">الحالة</th>
-                                 <th className="p-3">الإجراءات</th>
+                                <th className="p-3">الإجراءات</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1617,7 +1804,7 @@ export default function Warehouse() {
                                         title="طباعة أمر الصرف"
                                       >
                                         <Printer size={14} />
-                                      </button>
+                                                                            </button>
                                     </div>
                                   </td>
                                 </tr>
@@ -1638,34 +1825,34 @@ export default function Warehouse() {
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className={`px-2 py-1 rounded-full text-xs ${
-                                  order.requestStatus === 'تم الصرف' 
-                                    ? 'bg-success text-success-foreground' 
+                                  order.requestStatus === 'تم الصرف'
+                                    ? 'bg-success text-success-foreground'
                                     : order.requestStatus === 'مرفوض'
                                     ? 'bg-danger text-danger-foreground'
                                     : 'bg-warning text-warning-foreground'
                                 }`}>
                                   {order.requestStatus}
                                 </span>
-                                <button 
+                                <button
                                   onClick={() => {
                                     setSelectedDispenseOrder(order);
                                     setShowDispenseDetailsModal(true);
                                   }}
-                                  className="p-1 text-primary hover:bg-primary/10 rounded" 
+                                  className="p-1 text-primary hover:bg-primary/10 rounded"
                                   title="عرض التفاصيل"
                                 >
                                   <Eye size={12} />
                                 </button>
-                                <button 
+                                <button
                                   onClick={() => handlePrintWithdrawalOrder(order)}
-                                  className="p-1 text-primary hover:bg-primary/10 rounded" 
+                                  className="p-1 text-primary hover:bg-primary/10 rounded"
                                   title="طباعة أمر الصرف"
                                 >
                                   <Printer size={12} />
                                 </button>
                               </div>
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div className="text-right">
                                 <span className="text-muted-foreground">الكمية:</span>
@@ -1684,7 +1871,7 @@ export default function Warehouse() {
                                 <span className="font-medium mr-1">{order.recipientContact}</span>
                               </div>
                             </div>
-                            
+
                             {order.notes && (
                               <div className="mt-2 text-xs text-muted-foreground text-right">
                                 <span className="font-medium">ملاحظات:</span> {order.notes}
@@ -1704,25 +1891,24 @@ export default function Warehouse() {
                   )}
                 </div>
               </div>
-            </div>
-            
-            {/* Close button only */}
-            <div className="p-6 pt-0">
-              <div className="flex justify-center">
-                <button
-                  onClick={() => {
-                    setShowViewModal(false);
-                    setSelectedItem(null);
-                  }}
-                  className="admin-btn-secondary flex items-center gap-2 px-4 py-2"
-                >
-                  <X size={16} />
-                  إغلاق
-                </button>
+
+              {/* Close button only */}
+              <div className="p-6 pt-0">
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => {
+                      setShowViewModal(false);
+                      setSelectedItem(null);
+                    }}
+                    className="admin-btn-secondary flex items-center gap-2 px-4 py-2"
+                  >
+                    <X size={16} />
+                    إغلاق
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
       )}
 
       {/* Edit Item Modal */}
@@ -1731,7 +1917,7 @@ export default function Warehouse() {
           <div className="bg-background rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="admin-header flex justify-between items-center">
               <h2>تعديل الصنف - {selectedItem?.itemName}</h2>
-              <button 
+              <button
                 onClick={() => {
                   setShowEditModal(false);
                   setSelectedItem(null);
@@ -1741,8 +1927,8 @@ export default function Warehouse() {
                 <X size={20} />
               </button>
             </div>
-            
-            <form onSubmit={handleEditSubmit} className="p-6 space-y-6">
+
+            <form onSubmit={handleEditSubmit} className="p-6 space-y-6" encType="multipart/form-data">
               {/* Item Information */}
               <div className="admin-card">
                 <div className="admin-header">
@@ -1924,6 +2110,29 @@ export default function Warehouse() {
                 </div>
               </div>
 
+              {/* Image Upload */}
+              <div className="admin-card">
+                <div className="admin-header">
+                  <h3>فاتورة الشراء</h3>
+                </div>
+                <div className="p-4 text-right">
+                  <input
+                    type="file"
+                    id="edit-image-input"
+                    accept="image/*"
+                    onChange={handleEditImageChange}
+                    className="mb-2"
+                  />
+                  {editFormData.imagePreview && (
+                    <img
+                      src={editFormData.imagePreview}
+                      alt="معاينة فاتورة الشراء"
+                      className="max-w-[200px] max-h-[150px] rounded border"
+                    />
+                  )}
+                </div>
+              </div>
+
               {/* Notes */}
               <div className="admin-card">
                 <div className="admin-header">
@@ -1977,7 +2186,7 @@ export default function Warehouse() {
           <div className="bg-background rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="admin-header flex justify-between items-center">
               <h2>تفاصيل أمر الصرف رقم {selectedDispenseOrder.orderNumber}</h2>
-              <button 
+              <button
                 onClick={() => {
                   setShowDispenseDetailsModal(false);
                   setSelectedDispenseOrder(null);
@@ -1987,7 +2196,7 @@ export default function Warehouse() {
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-6">
               {/* Order Basic Information */}
               <div className="admin-card">
@@ -2005,7 +2214,7 @@ export default function Warehouse() {
                       <p className="font-semibold">{selectedDispenseOrder.beneficiaryFacility || 'غير محدد'}</p>
                     </div>
                     <div className="bg-accent/50 p-3 rounded-md">
-                      <span className="text-sm font-medium text-muted-foreground">الكمية المصروفة:</span>
+                      <span className="text-sm font-medium text-muted-foreground">الكمية المصرفة:</span>
                       <p className="font-semibold">{selectedDispenseOrder.withdrawQty}</p>
                     </div>
                     <div className="bg-accent/50 p-3 rounded-md">
@@ -2046,8 +2255,8 @@ export default function Warehouse() {
                       <span className="text-sm font-medium text-muted-foreground">الحالة:</span>
                       <div className="mt-1">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          selectedDispenseOrder.requestStatus === 'تم الصرف' 
-                            ? 'bg-success text-success-foreground' 
+                          selectedDispenseOrder.requestStatus === 'تم الصرف'
+                            ? 'bg-success text-success-foreground'
                             : selectedDispenseOrder.requestStatus === 'مرفوض'
                             ? 'bg-danger text-danger-foreground'
                             : 'bg-warning text-warning-foreground'
@@ -2126,62 +2335,63 @@ export default function Warehouse() {
         </div>
       )}
 
-         {/* Delete Confirmation Modal */}
-{showDeleteModal && itemToDelete && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-    <div className="bg-background rounded-lg w-full max-w-md">
-      <div className="admin-header flex justify-between items-center">
-        <h2>تأكيد الحذف</h2>
-        <button 
-          onClick={() => {
-            setShowDeleteModal(false);
-            setItemToDelete(null);
-          }}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <X size={20} />
-        </button>
-      </div>
-      
-      <div className="p-6">
-        <div className="text-center mb-6">
-          <div className="mx-auto w-12 h-12 bg-danger/10 rounded-full flex items-center justify-center mb-4">
-            <Trash2 className="w-6 h-6 text-danger" />
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && itemToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-background rounded-lg w-full max-w-md">
+            <div className="admin-header flex justify-between items-center">
+              <h2>تأكيد الحذف</h2>
+              <button 
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setItemToDelete(null);
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <div className="mx-auto w-12 h-12 bg-danger/10 rounded-full flex items-center justify-center mb-4">
+                  <Trash2 className="w-6 h-6 text-danger" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">هل أنت متأكد من الحذف؟</h3>
+                <p className="text-muted-foreground text-sm">
+                  سيتم حذف الصنف "{itemToDelete.itemName}" نهائياً ولن يمكن استرجاعه.
+                </p>
+              </div>
+              
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={handleDeleteItem}
+                  disabled={loadingAction}
+                  className="admin-btn-danger flex items-center gap-2 px-4 py-2"
+                >
+                  {loadingAction ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={16} />
+                  )}
+                  تأكيد الحذف
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setItemToDelete(null);
+                  }}
+                  className="admin-btn-secondary flex items-center gap-2 px-4 py-2"
+                >
+                  <X size={16} />
+                  إلغاء
+                </button>
+              </div>
+            </div>
           </div>
-          <h3 className="text-lg font-medium mb-2">هل أنت متأكد من الحذف؟</h3>
-          <p className="text-muted-foreground text-sm">
-            سيتم حذف الصنف "{itemToDelete.itemName}" نهائياً ولن يمكن استرجاعه.
-          </p>
         </div>
-        
-        <div className="flex gap-3 justify-center">
-          <button
-            onClick={handleDeleteItem}
-            disabled={loadingAction}
-            className="admin-btn-danger flex items-center gap-2 px-4 py-2"
-          >
-            {loadingAction ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Trash2 size={16} />
-            )}
-            تأكيد الحذف
-          </button>
-          <button
-            onClick={() => {
-              setShowDeleteModal(false);
-              setItemToDelete(null);
-            }}
-            className="admin-btn-secondary flex items-center gap-2 px-4 py-2"
-          >
-            <X size={16} />
-            إلغاء
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 }
+
