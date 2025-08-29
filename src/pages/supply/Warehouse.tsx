@@ -1909,6 +1909,7 @@ export default function Warehouse() {
               </div>
             </div>
           </div>
+          </div>
       )}
 
       {/* Edit Item Modal */}
@@ -2392,6 +2393,6 @@ export default function Warehouse() {
         </div>
       )}
     </div>
-  );
+  )};
 }
 
