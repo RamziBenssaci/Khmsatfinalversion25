@@ -381,43 +381,30 @@ export default function Warehouse() {
 
   const validateWithdrawForm = () => {
     const errors: any = {};
-    function previewImage(event) {
-  const input = event.target;
-  const previewImg = document.getElementById('purchaseInvoicePreviewImg');
-  if (input.files && input.files[0]) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      previewImg.src = e.target.result;
-      previewImg.style.display = 'block';
-    };
-    reader.readAsDataURL(input.files[0]);
-  } else {
-    previewImg.src = '';
-    previewImg.style.display = 'none';
+ const [previewSrc, setPreviewSrc] = React.useState('');
+const [modalSrc, setModalSrc] = React.useState('');
+const [modalVisible, setModalVisible] = React.useState(false);
+
+function previewImage(event) {
+  const file = event.target.files[0];
+  if (!file) {
+    setPreviewSrc('');
+    return;
   }
+  const reader = new FileReader();
+  reader.onload = e => setPreviewSrc(e.target.result);
+  reader.readAsDataURL(file);
 }
 
-// Function to open modal with large image
 function openImageModal(src) {
-  let modal = document.getElementById('imageModal');
-  let modalImg = document.getElementById('modalImageContent');
-  modal.style.display = "block";
-  modalImg.src = src;
+  setModalSrc(src);
+  setModalVisible(true);
 }
 
 function closeImageModal() {
-  document.getElementById('imageModal').style.display = 'none';
+  setModalVisible(false);
 }
 
-// Setup modal close on clicking outside or on close button
-document.addEventListener('DOMContentLoaded', () => {
-  const modal = document.getElementById('imageModal');
-  modal.onclick = function(e) {
-    if (e.target === modal || e.target.id === 'closeModalBtn') {
-      closeImageModal();
-    }
-  };
-});
 
     if (!withdrawFormData.beneficiaryFacility) errors.beneficiaryFacility = 'الجهة المستفيدة مطلوبة';
     if (!withdrawFormData.withdrawQty || parseFloat(withdrawFormData.withdrawQty) <= 0) errors.withdrawQty = 'الكمية المصروفة مطلوبة ويجب أن تكون أكبر من صفر';
@@ -772,14 +759,17 @@ document.addEventListener('DOMContentLoaded', () => {
                   <td>${item.minQuantity || 0}</td>
                   <td>${item.purchaseValue || 0} ريال</td>
                   <td>${item.supplierName || ''}</td>
-                  <td>
-
-  <img src="localhost/image/{{item.image}}" 
-       alt="فاتورة الشراء" 
-       style="width:30px; height:30px; cursor:pointer;" 
-       onclick="openImageModal(this.src)" 
-       onerror="this.style.display='none';" />
+      <td>
+  {item.image && (
+    <img
+      src={`${domainName}/image/${item.image}`}
+      alt="فاتورة الشراء"
+      style={{ width: 30, height: 30, cursor: 'pointer' }}
+      onClick={() => openImageModal(`${domainName}/image/${item.image}`)}
+    />
+  )}
 </td>
+
 
                   <td>
                     <span class="${item.availableQty <= item.minQuantity ? 'status-low' : 'status-available'}">
@@ -1216,13 +1206,56 @@ document.addEventListener('DOMContentLoaded', () => {
                   </div>
                 </div>
               </div>
-<div class="form-group">
-  <label for="purchaseInvoice">فاتورة الشراء</label>
-  <input type="file" id="purchaseInvoice" name="image" accept="image/*" onchange="previewImage(event)" />
-  <div id="purchaseInvoicePreview" class="image-preview-container" style="margin-top:10px;">
-    <img id="purchaseInvoicePreviewImg" src="" alt="معاينة الصورة" style="max-width: 100%; max-height: 150px; display:none; border:1px solid #ddd; padding: 5px;"/>
+<div className="form-group">
+  <label htmlFor="purchaseInvoice">فاتورة الشراء</label>
+  <input
+    type="file"
+    id="purchaseInvoice"
+    name="image"
+    accept="image/*"
+    onChange={previewImage} // Your React event handler function
+  />
+  <div className="image-preview-container" style={{ marginTop: 10 }}>
+    <img
+      id="purchaseInvoicePreviewImg"
+      alt="معاينة الصورة"
+      style={{ maxWidth: '100%', maxHeight: 150, display: 'none', border: '1px solid #ddd', padding: 5 }}
+    />
   </div>
 </div>
+{previewSrc && (
+  <img
+    src={previewSrc}
+    alt="معاينة الصورة"
+    style={{ maxWidth: '100%', maxHeight: 150, border: '1px solid #ddd', padding: 5 }}
+  />
+)}
+
+{modalVisible && (
+  <div
+    className="image-modal"
+    onClick={closeImageModal}
+    style={{
+      position: 'fixed',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(0,0,0,0.8)",
+      zIndex: 9999,
+    }}
+  >
+    <img
+      src={modalSrc}
+      alt="فاتورة الشراء"
+      style={{ maxWidth: '90%', maxHeight: '90%' }}
+    />
+  </div>
+)}
+
 
               {/* Financial and Supplier Information */}
               <div className="admin-card">
@@ -1905,13 +1938,56 @@ document.addEventListener('DOMContentLoaded', () => {
                   </div>
                 </div>
               </div>
-<div class="form-group">
-  <label for="purchaseInvoice">فاتورة الشراء</label>
-  <input type="file" id="purchaseInvoice" name="image" accept="image/*" onchange="previewImage(event)" />
-  <div id="purchaseInvoicePreview" class="image-preview-container" style="margin-top:10px;">
-    <img id="purchaseInvoicePreviewImg" src="" alt="معاينة الصورة" style="max-width: 100%; max-height: 150px; display:none; border:1px solid #ddd; padding: 5px;"/>
+<div className="form-group">
+  <label htmlFor="purchaseInvoice">فاتورة الشراء</label>
+  <input
+    type="file"
+    id="purchaseInvoice"
+    name="image"
+    accept="image/*"
+    onChange={previewImage} // Your React event handler function
+  />
+  <div className="image-preview-container" style={{ marginTop: 10 }}>
+    <img
+      id="purchaseInvoicePreviewImg"
+      alt="معاينة الصورة"
+      style={{ maxWidth: '100%', maxHeight: 150, display: 'none', border: '1px solid #ddd', padding: 5 }}
+    />
   </div>
 </div>
+{previewSrc && (
+  <img
+    src={previewSrc}
+    alt="معاينة الصورة"
+    style={{ maxWidth: '100%', maxHeight: 150, border: '1px solid #ddd', padding: 5 }}
+  />
+)}
+
+{modalVisible && (
+  <div
+    className="image-modal"
+    onClick={closeImageModal}
+    style={{
+      position: 'fixed',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(0,0,0,0.8)",
+      zIndex: 9999,
+    }}
+  >
+    <img
+      src={modalSrc}
+      alt="فاتورة الشراء"
+      style={{ maxWidth: '90%', maxHeight: '90%' }}
+    />
+  </div>
+)}
+
 
               {/* Financial and Supplier Information */}
               <div className="admin-card">
@@ -2243,11 +2319,6 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
   </div>
 )}
-<div id="imageModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color: rgba(0,0,0,0.8);">
-  <span id="closeModalBtn" style="position:absolute; top:20px; right:35px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer;">&times;</span>
-  <img id="modalImageContent" style="margin:auto; display:block; max-width:90%; max-height:90%; padding:20px;" />
-</div>
-
     </div>
   );
 }
