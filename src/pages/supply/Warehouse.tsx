@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef} from 'react';
+import { useState, useEffect} from 'react';
 import { Package, Search, Plus, Eye, Edit, Trash2, X, Save, ShoppingCart, FileText, Download, Loader2, Printer } from 'lucide-react';
 import { warehouseApi, reportsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { exportToExcel } from '@/utils/exportUtils';
-const [selectedFile, setSelectedFile] = useState(null);
 export default function Warehouse() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,23 +20,10 @@ export default function Warehouse() {
   const [formErrors, setFormErrors] = useState<any>({});
   const [showDispenseDetailsModal, setShowDispenseDetailsModal] = useState(false);
   const [selectedDispenseOrder, setSelectedDispenseOrder] = useState<any>(null);
-  const [previewSrc, setPreviewSrc] = useState('');
-const [modalSrc, setModalSrc] = useState('');
-const [modalVisible, setModalVisible] = useState(false);
+
 const domainName = "https://your-domain.com"; 
 
-const previewImage = (event) => {
-  const file = event.target.files[0];
-  setSelectedFile(file); // Store the file in state
-  
-  if (!file) {
-    setPreviewSrc('');
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = (e) => setPreviewSrc(e.target.result);
-  reader.readAsDataURL(file);
-};
+
 
 const openImageModal = (src) => {
   setModalSrc(src);
@@ -1221,48 +1207,11 @@ if (selectedFile) {
     id="purchaseInvoice"
     name="image"
     accept="image/*"
-    onChange={previewImage} // Your React event handler function
   />
   <div className="image-preview-container" style={{ marginTop: 10 }}>
-    <img
-      id="purchaseInvoicePreviewImg"
-      alt="معاينة الصورة"
-      style={{ maxWidth: '100%', maxHeight: 150, display: 'none', border: '1px solid #ddd', padding: 5 }}
-    />
+    <p style={{ fontSize: '12px', color: '#666' }}>سيتم رفع الصورة عند حفظ البيانات</p>
   </div>
 </div>
-{previewSrc && (
-  <img
-    src={previewSrc}
-    alt="معاينة الصورة"
-    style={{ maxWidth: '100%', maxHeight: 150, border: '1px solid #ddd', padding: 5 }}
-  />
-)}
-
-{modalVisible && (
-  <div
-    className="image-modal"
-    onClick={closeImageModal}
-    style={{
-      position: 'fixed',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: "rgba(0,0,0,0.8)",
-      zIndex: 9999,
-    }}
-  >
-    <img
-      src={modalSrc}
-      alt="فاتورة الشراء"
-      style={{ maxWidth: '90%', maxHeight: '90%' }}
-    />
-  </div>
-)}
 
 
               {/* Financial and Supplier Information */}
