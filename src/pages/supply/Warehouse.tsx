@@ -762,7 +762,7 @@ function closeImageModal() {
       <td>
   {item.image && (
     <img
-      src={`${domainName}/image/${item.image}`}
+     src={`${domainName}/image/${item.image}`}
       alt="فاتورة الشراء"
       style={{ width: 30, height: 30, cursor: 'pointer' }}
       onClick={() => openImageModal(`${domainName}/image/${item.image}`)}
