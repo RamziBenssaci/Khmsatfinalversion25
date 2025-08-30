@@ -651,10 +651,50 @@ export default function Assets() {
         </div>
         <div className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Device Basic Info */}
+           {/* Device Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2 text-right">اسم الجهاز *</label>
+                <input
+                  type="text"
+                  value={formData.deviceName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, deviceName: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  placeholder="اسم الجهاز"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">الرقم التسلسلي *</label>
+                <input
+                  type="text"
+                  value={formData.serialNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  placeholder="الرقم التسلسلي"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">اسم المنشأة *</label>
+                <select
+                  value={formData.facilityName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, facilityName: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  required
+                >
+                  <option value="">اختر المنشأة</option>
+                  {facilities.map(facility => (
+                    <option key={facility.id} value={facility.name}>{facility.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Supplier Info */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">اسم الشركة الموردة</label>
                 <input
                   type="text"
                   value={formData.supplierName}
