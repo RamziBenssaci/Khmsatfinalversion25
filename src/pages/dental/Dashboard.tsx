@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Clock, CheckCircle, XCircle, AlertTriangle, DollarSign, TrendingUp, Loader2, FileX } from 'lucide-react';
+import { Users, Clock, CheckCircle, XCircle, AlertTriangle, DollarSign, TrendingUp, Loader2, FileX, Download, Printer, FileSpreadsheet, FileText } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { dentalContractsApi } from '@/lib/api';
 
@@ -37,11 +38,22 @@ export default function DentalDashboard() {
   const [loading, setLoading] = useState(true);
   const [suppliersLoading, setSuppliersLoading] = useState(true);
   const [clinicsLoading, setClinicsLoading] = useState(true);
+  const [exportLoading, setExportLoading] = useState(false);
   const [error, setError] = useState('');
   
   // Filter states
   const [selectedClinic, setSelectedClinic] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+
+  // Status options mapping
+  const statusOptions = [
+    { value: 'جديد', label: 'جديد', color: '#3b82f6' },
+    { value: 'موافق عليه', label: 'موافق عليه', color: '#f59e0b' },
+    { value: 'تم التعاقد', label: 'تم التعاقد', color: '#8b5cf6' },
+    { value: 'تم التسليم', label: 'تم التسليم', color: '#10b981' },
+    { value: 'مرفوض', label: 'مرفوض', color: '#ef4444' }
+  ];
 
   // Helper function to format total cost (excluding rejected contracts)
   const formatTotalCost = (data) => {
@@ -183,6 +195,10 @@ export default function DentalDashboard() {
       );
     }
 
+    if (selectedStatus && selectedStatus !== "all") {
+      filtered = filtered.filter(item => item.status === selectedStatus);
+    }
+
     setFilteredData(filtered);
     
     // Update dashboard stats based on filtered data
@@ -199,11 +215,12 @@ export default function DentalDashboard() {
     ];
     setStatusData(newStatusData);
 
-  }, [selectedClinic, selectedSupplier, allData]);
+  }, [selectedClinic, selectedSupplier, selectedStatus, allData]);
 
   const clearFilters = () => {
     setSelectedClinic('');
     setSelectedSupplier('');
+    setSelectedStatus('');
     // Reset to original dashboard data instead of reloading
     setDashboardData(originalDashboardData);
     setFilteredData(allData);
@@ -226,6 +243,118 @@ export default function DentalDashboard() {
       loadTopSuppliers(),
       loadTopClinics()
     ]);
+  };
+
+  // Export functions
+  const exportToPDF = async () => {
+    setExportLoading(true);
+    try {
+      // Create a print-friendly version
+      const printContent = `
+        <html dir="rtl">
+          <head>
+            <title>تقرير عقود الأسنان</title>
+            <style>
+              body { font-family: Arial, sans-serif; direction: rtl; text-align: right; }
+              .header { background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; padding: 20px; margin-bottom: 20px; }
+              .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+              .stat-card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
+              .table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+              .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+              .table th { background: #f5f5f5; }
+              @media print { body { -webkit-print-color-adjust: exact; } }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>تقرير عقود الأسنان</h1>
+              <p>تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}</p>
+            </div>
+            <div class="stats-grid">
+              <div class="stat-card"><h3>إجمالي العقود</h3><p>${dashboardData.total}</p></div>
+              <div class="stat-card"><h3>القيمة الإجمالية</h3><p>${dashboardData.totalValue?.toLocaleString()} ريال</p></div>
+              <div class="stat-card"><h3>جديد</h3><p>${dashboardData.new}</p></div>
+              <div class="stat-card"><h3>موافق عليه</h3><p>${dashboardData.approved}</p></div>
+              <div class="stat-card"><h3>تم التعاقد</h3><p>${dashboardData.contracted}</p></div>
+              <div class="stat-card"><h3>تم التسليم</h3><p>${dashboardData.delivered}</p></div>
+              <div class="stat-card"><h3>مرفوض</h3><p>${dashboardData.rejected}</p></div>
+            </div>
+            <h2>تفاصيل العقود المفلترة</h2>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>رقم العقد</th>
+                  <th>العيادة المستفيدة</th>
+                  <th>الشركة الموردة</th>
+                  <th>الحالة</th>
+                  <th>التكلفة الإجمالية</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredData.map(item => `
+                  <tr>
+                    <td>${item.contractNumber || ''}</td>
+                    <td>${item.beneficiaryFacility || ''}</td>
+                    <td>${item.supplierName || ''}</td>
+                    <td>${item.status || ''}</td>
+                    <td>${parseFloat(item.totalCost || 0).toLocaleString()}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `;
+      
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+    } catch (error) {
+      console.error('PDF export error:', error);
+      alert('حدث خطأ في تصدير PDF');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const exportToExcel = async () => {
+    setExportLoading(true);
+    try {
+      // Create CSV content
+      const headers = ['رقم العقد', 'العيادة المستفيدة', 'الشركة الموردة', 'الحالة', 'التكلفة الإجمالية', 'تاريخ الإنشاء'];
+      const csvContent = [
+        headers.join(','),
+        ...filteredData.map(item => [
+          `"${item.contractNumber || ''}"`,
+          `"${item.beneficiaryFacility || ''}"`,
+          `"${item.supplierName || ''}"`,
+          `"${item.status || ''}"`,
+          `"${item.totalCost || ''}"`,
+          `"${item.createdAt || ''}"`
+        ].join(','))
+      ].join('\n');
+      
+      // Add BOM for Arabic support
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `dental-contracts-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error('Excel export error:', error);
+      alert('حدث خطأ في تصدير Excel');
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   // Get unique values for dropdown options from the actual contracts data
@@ -278,24 +407,48 @@ export default function DentalDashboard() {
             <h1 className="text-2xl md:text-3xl font-bold text-right">لوحة تحكم عقود الأسنان</h1>
             <p className="text-purple-100 mt-1 text-right">إدارة شاملة لعقود معدات طب الأسنان</p>
           </div>
-          <Button 
-            variant="secondary" 
-            onClick={refreshData}
-            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-          >
-            <Loader2 className="h-4 w-4 mr-2" />
-            تحديث البيانات
-          </Button>
+          <div className="flex gap-2">
+            {/* Export buttons */}
+            <Button 
+              variant="secondary" 
+              onClick={exportToPDF}
+              disabled={exportLoading}
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+              title="طباعة / تصدير PDF"
+            >
+              {exportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+            </Button>
+            <Button 
+              variant="secondary" 
+              onClick={exportToExcel}
+              disabled={exportLoading}
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+              title="تصدير Excel"
+            >
+              {exportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+            </Button>
+            <Button 
+              variant="secondary" 
+              onClick={refreshData}
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+            >
+              <Loader2 className="h-4 w-4 mr-2" />
+              تحديث البيانات
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-right">فلاتر البحث</CardTitle>
+          <CardTitle className="text-right flex items-center gap-2">
+            <Download className="h-5 w-5" />
+            فلاتر البحث والتصدير
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Select value={selectedClinic} onValueChange={setSelectedClinic}>
               <SelectTrigger>
                 <SelectValue placeholder="اختر العيادة" />
@@ -320,21 +473,66 @@ export default function DentalDashboard() {
               </SelectContent>
             </Select>
 
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="اختر الحالة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع الحالات</SelectItem>
+                {statusOptions.map((status) => (
+                  <SelectItem key={status.value} value={status.value}>
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: status.color }}
+                      ></div>
+                      {status.label}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <div className="flex gap-2">
-              <Button variant="outline" onClick={clearFilters} className="w-full">
+              <Button variant="outline" onClick={clearFilters} className="flex-1">
                 مسح الفلاتر
               </Button>
             </div>
           </div>
           
           {/* Filter Results Summary */}
-          {(selectedClinic || selectedSupplier) && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800 text-right">
-                عرض {filteredData.length} من أصل {allData.length} عقد
-                {selectedClinic && <span className="block">العيادة: {selectedClinic}</span>}
-                {selectedSupplier && <span className="block">المورد: {selectedSupplier}</span>}
-              </p>
+          {(selectedClinic || selectedSupplier || selectedStatus) && (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-blue-800 text-right">
+                  عرض {filteredData.length} من أصل {allData.length} عقد
+                  {selectedClinic && <span className="block">العيادة: {selectedClinic}</span>}
+                  {selectedSupplier && <span className="block">المورد: {selectedSupplier}</span>}
+                  {selectedStatus && <span className="block">الحالة: {selectedStatus}</span>}
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={exportToPDF}
+                    disabled={exportLoading || filteredData.length === 0}
+                    className="text-xs"
+                  >
+                    <Printer className="h-3 w-3 mr-1" />
+                    طباعة
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={exportToExcel}
+                    disabled={exportLoading || filteredData.length === 0}
+                    className="text-xs"
+                  >
+                    <FileSpreadsheet className="h-3 w-3 mr-1" />
+                    Excel
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
@@ -448,30 +646,6 @@ export default function DentalDashboard() {
                   </Pie>
                   <Tooltip />
                 </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px]">
-                <p className="text-gray-500">لا توجد بيانات لعرضها</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Monthly Trends */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-right">اتجاه العقود الشهرية</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {monthlyData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="contracts" fill="#8b5cf6" name="عدد العقود" />
-                </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-[300px]">
