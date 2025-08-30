@@ -45,6 +45,8 @@ interface Facility {
   description: string;
   number: string;
   clinics: string[];
+  image_url?: string; // existing URL if any
+  imageBase64?: string; // base64 string for new or updated image
 }
 
 const mockFacilities: Facility[] = [
@@ -64,7 +66,8 @@ const mockFacilities: Facility[] = [
     sector: 'الرياض',
     status: 'نشطة',
     number: '001',
-    clinics: ['عيادة الأسنان العامة', 'عيادة طب الأسنان التخصصية']
+    clinics: ['عيادة الأسنان العامة', 'عيادة طب الأسنان التخصصية'],
+    image_url: '',
   },
   {
     id: '2',
@@ -82,7 +85,8 @@ const mockFacilities: Facility[] = [
     sector: 'الرياض',
     status: 'نشطة',
     number: '002',
-    clinics: ['عيادة جراحة الفم والأسنان', 'عيادة تقويم الأسنان']
+    clinics: ['عيادة جراحة الفم والأسنان', 'عيادة تقويم الأسنان'],
+    image_url: '',
   },
   {
     id: '3',
@@ -100,21 +104,22 @@ const mockFacilities: Facility[] = [
     sector: 'الرياض',
     status: 'غير نشطة',
     number: '003',
-    clinics: ['عيادة طب أسنان الأطفال']
-  }
+    clinics: ['عيادة طب أسنان الأطفال'],
+    image_url: '',
+  },
 ];
 
-// Clinic options from dashboard
 const clinicOptions = [
   'عيادة الأسنان العامة',
   'عيادة طب الأسنان التخصصية',
   'عيادة جراحة الفم والأسنان',
   'عيادة تقويم الأسنان',
-  'عيادة طب أسنان الأطفال'
+  'عيادة طب أسنان الأطفال',
 ];
 
-// Sectors from dashboard
 const sectors = ['الرياض', 'الزلفي', 'رماح', 'حوطة سدير', 'تمير', 'الغاط', 'المجمعة', 'الأرطاوية'];
+
+const facilitiesPerPage = 10;
 
 export default function FacilityManagement() {
   const [facilities, setFacilities] = useState<Facility[]>([]);
@@ -126,9 +131,12 @@ export default function FacilityManagement() {
     active: 0,
     inactive: 0,
     total: 0,
-    activationPercentage: 0
+    activationPercentage: 0,
   });
   const { toast } = useToast();
+  const [previewImageSrc, setPreviewImageSrc] = useState<string | null>(null);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [newFacility, setNewFacility] = useState<Omit<Facility, 'id'>>({
     name: '',
@@ -159,45 +167,28 @@ export default function FacilityManagement() {
     address: '',
     description: '',
     number: '',
-    clinics: []
+    clinics: [],
+    imageBase64: '',
   });
 
-  // Calculate statistics from facilities data
   const calculateStats = (facilitiesData: Facility[]) => {
     const active = facilitiesData.filter(f => f.status === 'نشطة').length;
     const total = facilitiesData.length;
     const inactive = total - active;
     const activationPercentage = total > 0 ? Math.round((active / total) * 100) : 0;
-    
-    setStats({
-      active,
-      inactive,
-      total,
-      activationPercentage
-    });
+
+    setStats({ active, inactive, total, activationPercentage });
   };
-
-  // Load facilities data
-  useEffect(() => {
-    loadFacilities();
-  }, []);
-
-  // Update stats whenever facilities change
-  useEffect(() => {
-    calculateStats(facilities);
-  }, [facilities]);
 
   const loadFacilities = async () => {
     try {
       setLoading(true);
       const response = await facilitiesApi.getFacilities();
-      console.log('API Response:', response);
       if (response.success && response.data) {
         setFacilities(response.data);
       }
     } catch (error) {
       console.error('Error loading facilities:', error);
-      // Fallback to mock data
       setFacilities(mockFacilities);
       toast({
         title: "تعذر تحميل بيانات المنشآت",
@@ -209,47 +200,68 @@ export default function FacilityManagement() {
     }
   };
 
-  const filteredFacilities = facilities.filter(facility =>
+  useEffect(() => {
+    loadFacilities();
+  }, []);
+
+  useEffect(() => {
+    calculateStats(facilities);
+    setCurrentPage(1); // Reset page on facilities change
+  }, [facilities]);
+
+  const totalPages = Math.ceil(facilities.length / facilitiesPerPage);
+
+  // Filter on full data before pagination to keep pagination coherent with search
+  const filteredAllFacilities = facilities.filter(facility =>
     facility.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     facility.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Handle clinic selection for new facility
-  const handleNewFacilityClinicChange = (clinicName: string, checked: boolean) => {
-    if (checked) {
-      setNewFacility({
-        ...newFacility,
-        clinics: [...newFacility.clinics, clinicName]
-      });
-    } else {
-      setNewFacility({
-        ...newFacility,
-        clinics: newFacility.clinics.filter(clinic => clinic !== clinicName)
-      });
-    }
+  // Apply pagination after filtering
+  const paginatedFacilities = filteredAllFacilities.slice(
+    (currentPage - 1) * facilitiesPerPage,
+    currentPage * facilitiesPerPage
+  );
+
+  // Add facility image file input change handler (Add Form)
+  const handleNewFacilityImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setNewFacility({ ...newFacility, imageBase64: reader.result as string });
+    };
+    reader.readAsDataURL(file);
   };
 
-  // Handle clinic selection for editing facility
-  const handleEditFacilityClinicChange = (clinicName: string, checked: boolean) => {
+  // Facility image file input change handler (Edit Form)
+  const handleSelectedFacilityImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!selectedFacility) return;
-    
-    if (checked) {
-      setSelectedFacility({
-        ...selectedFacility,
-        clinics: [...selectedFacility.clinics, clinicName]
-      });
-    } else {
-      setSelectedFacility({
-        ...selectedFacility,
-        clinics: selectedFacility.clinics.filter(clinic => clinic !== clinicName)
-      });
-    }
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSelectedFacility({ ...selectedFacility, imageBase64: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Show image preview dialog
+  const showImagePreview = (src: string) => {
+    setPreviewImageSrc(src);
+    setShowPreviewDialog(true);
   };
 
   const handleAddFacility = async () => {
     try {
-      const response = await facilitiesApi.createFacility(newFacility);
-      if (response.success) {
+      const requestData = {...newFacility};
+      if(newFacility.imageBase64){
+        (requestData as any).image = newFacility.imageBase64;
+      }
+      const response = await facilitiesApi.createFacility(requestData);
+      if(response.success){
         toast({
           title: "تم إضافة المنشأة بنجاح",
           description: `تم إضافة ${newFacility.name} إلى النظام`,
@@ -273,17 +285,18 @@ export default function FacilityManagement() {
           medicalDirectorName: '',
           medicalDirectorEmail: '',
           medicalDirectorPhone: '',
-          location: '', 
-          phone: '', 
-          email: '', 
-          manager: '', 
+          location: '',
+          phone: '',
+          email: '',
+          manager: '',
           medical_director: '',
           contact: '',
-          isActive: true, 
-          address: '', 
+          isActive: true,
+          address: '',
           description: '',
           number: '',
-          clinics: []
+          clinics: [],
+          imageBase64: '',
         });
         setShowAddDialog(false);
         loadFacilities();
@@ -299,10 +312,14 @@ export default function FacilityManagement() {
   };
 
   const handleUpdateFacility = async () => {
-    if (!selectedFacility) return;
+    if(!selectedFacility) return;
     try {
-      const response = await facilitiesApi.updateFacility(selectedFacility.id, selectedFacility);
-      if (response.success) {
+      const requestData = {...selectedFacility};
+      if(selectedFacility.imageBase64){
+        (requestData as any).image = selectedFacility.imageBase64;
+      }
+      const response = await facilitiesApi.updateFacility(selectedFacility.id, requestData);
+      if(response.success){
         toast({
           title: "تم تحديث المنشأة بنجاح",
           description: `تم تحديث بيانات ${selectedFacility.name}`,
@@ -323,14 +340,14 @@ export default function FacilityManagement() {
   const toggleFacilityStatus = async (id: string) => {
     try {
       const response = await facilitiesApi.toggleFacilityStatus(id);
-      if (response.success) {
+      if(response.success){
         toast({
           title: "تم تحديث حالة المنشأة",
           description: "تم تغيير حالة المنشأة بنجاح",
         });
         loadFacilities();
       }
-    } catch (error) {
+    } catch(error){
       console.error('Error toggling facility status:', error);
       toast({
         title: "خطأ في تحديث الحالة",
@@ -340,8 +357,14 @@ export default function FacilityManagement() {
     }
   };
 
+  // Pagination button handlers
+  const handlePageChange = (page: number) => {
+    if(page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-screen-lg mx-auto px-4 sm:px-6 lg:px-8">
       {/* Page Header */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background rounded-lg p-6 border border-primary/20">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -360,13 +383,12 @@ export default function FacilityManagement() {
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" dir="rtl">
                 <DialogHeader className="text-right">
                   <DialogTitle>إضافة منشأة جديدة</DialogTitle>
-                  <DialogDescription>
-                    أدخل معلومات المنشأة الطبية الجديدة
-                  </DialogDescription>
+                  <DialogDescription>أدخل معلومات المنشأة الطبية الجديدة</DialogDescription>
                 </DialogHeader>
+
                 <div className="grid gap-4 py-4">
                   {/* Basic Info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">اسم المنشأة *</Label>
                       <Input
@@ -387,9 +409,6 @@ export default function FacilityManagement() {
                         className="text-right"
                       />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="sector">القطاع</Label>
                       <Select value={newFacility.sector} onValueChange={(value) => setNewFacility({...newFacility, sector: value})}>
@@ -397,12 +416,11 @@ export default function FacilityManagement() {
                           <SelectValue placeholder="اختر القطاع" />
                         </SelectTrigger>
                         <SelectContent>
-                          {sectors.map((sector) => (
-                            <SelectItem key={sector} value={sector}>{sector}</SelectItem>
-                          ))}
+                          {sectors.map(sector => <SelectItem key={sector} value={sector}>{sector}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="status">حالة المنشأة</Label>
                       <Select value={newFacility.status} onValueChange={(value) => setNewFacility({...newFacility, status: value})}>
@@ -417,7 +435,6 @@ export default function FacilityManagement() {
                     </div>
                   </div>
 
-                  {/* New Fields */}
                   <div className="space-y-2">
                     <Label htmlFor="category">تصنيف المنشأة</Label>
                     <Select value={newFacility.category} onValueChange={(value) => setNewFacility({...newFacility, category: value})}>
@@ -444,10 +461,10 @@ export default function FacilityManagement() {
                     />
                   </div>
 
-                  {/* Clinic Status Fields */}
+                  {/* Clinic Status Fields with fixed label 'مكهن' and conditional image input */}
                   <div className="space-y-4">
                     <Label className="text-sm font-medium">حالة العيادات</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="workingClinics" className="text-sm">يعمل</Label>
                         <Input
@@ -460,7 +477,7 @@ export default function FacilityManagement() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="outOfOrderClinics" className="text-sm">متهن</Label>
+                        <Label htmlFor="outOfOrderClinics" className="text-sm">مكهن</Label>
                         <Input
                           id="outOfOrderClinics"
                           type="number"
@@ -482,13 +499,29 @@ export default function FacilityManagement() {
                         />
                       </div>
                     </div>
+
+                    {/* Show image input if مكهن > 0 */}
+                    {newFacility.outOfOrderClinics && +newFacility.outOfOrderClinics > 0 && (
+                      <div className="space-y-2">
+                        <Label htmlFor="image">شهادة التكهين</Label>
+                        <Input
+                          id="image"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleNewFacilityImageChange}
+                          className="text-right"
+                        />
+                        {newFacility.imageBase64 && (
+                          <img src={newFacility.imageBase64} alt="شهادة التكهين" className="mt-2 max-h-40 rounded-md border border-gray-300" />
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Contact Information Section */}
                   <div className="space-y-4 border-t pt-4">
                     <Label className="text-lg font-semibold">معلومات التواصل</Label>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="facilityEmail">إيميل المنشأة</Label>
                         <Input
@@ -534,7 +567,7 @@ export default function FacilityManagement() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="managerEmail">إيميل مدير المنشأة</Label>
                         <Input
@@ -569,7 +602,7 @@ export default function FacilityManagement() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="medicalDirectorEmail">إيميل المدير الطبي</Label>
                         <Input
@@ -594,7 +627,6 @@ export default function FacilityManagement() {
                     </div>
                   </div>
 
-
                   <div className="flex items-center space-x-2 space-x-reverse">
                     <Switch
                       id="active"
@@ -604,7 +636,7 @@ export default function FacilityManagement() {
                     <Label htmlFor="active">منشأة نشطة</Label>
                   </div>
                 </div>
-                <div className="flex justify-end gap-3">
+                <div className="flex flex-wrap justify-end gap-3">
                   <Button variant="outline" onClick={() => setShowAddDialog(false)}>
                     إلغاء
                   </Button>
@@ -647,69 +679,98 @@ export default function FacilityManagement() {
           <span className="mr-2 text-muted-foreground">جاري تحميل البيانات...</span>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredFacilities.map((facility) => (
-          <Card key={facility.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-primary/30">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="text-right flex-1">
-                  <CardTitle className="text-lg mb-1">{facility.name}</CardTitle>
-                  <div className="flex items-center gap-2 mb-2">
-                <Badge variant={facility.status === 'نشطة' ? "default" : "secondary"}>
-  {facility.status}
-</Badge>
-                    <span className="text-sm text-muted-foreground">{facility.code}</span>
+        <div className="grid grid-cols-1 gap-6">
+          {paginatedFacilities.map((facility) => (
+            <Card key={facility.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-primary/30">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                  <div className="text-right flex-1">
+                    <CardTitle className="text-lg mb-1">{facility.name}</CardTitle>
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <Badge variant={facility.status === 'نشطة' ? "default" : "secondary"}>
+                        {facility.status}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">{facility.code}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedFacility(facility)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedFacility(facility)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-right flex-wrap">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span>{facility.location}</span>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-right">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{facility.location}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-right">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{facility.phone}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-right">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span>{facility.email}</span>
-              </div>
-              <div className="pt-2 border-t">
-                <p className="text-sm text-muted-foreground text-right">
-                  المدير: {facility.manager}
-                </p>
-                <p className="text-sm text-muted-foreground text-right">
-                  المدير الطبي: {facility.medical_director}
-                </p>
-                <p className="text-sm text-muted-foreground text-right">
-                  القطاع: {facility.sector}
-                </p>
-                {facility.clinics && facility.clinics.length > 0 && (
-                  <div className="text-xs text-muted-foreground text-right mt-1">
-                    العيادات: {facility.clinics.length}
+                <div className="flex items-center gap-2 text-sm text-right flex-wrap">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span>{facility.phone}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-right flex-wrap">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <span>{facility.email}</span>
+                </div>
+                <div className="pt-2 border-t">
+                  <p className="text-sm text-muted-foreground text-right">
+                    المدير: {facility.manager}
+                  </p>
+                  <p className="text-sm text-muted-foreground text-right">
+                    المدير الطبي: {facility.medical_director}
+                  </p>
+                  <p className="text-sm text-muted-foreground text-right">
+                    القطاع: {facility.sector}
+                  </p>
+                  {facility.clinics && facility.clinics.length > 0 && (
+                    <div className="text-xs text-muted-foreground text-right mt-1">
+                      العيادات: {facility.clinics.length}
+                    </div>
+                  )}
+                </div>
+                {/* Image icon and view image button */}
+                {(facility.image_url || facility.imageBase64) && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <button
+                      className="flex items-center gap-1 text-primary underline text-sm"
+                      onClick={() => showImagePreview(facility.imageBase64 || facility.image_url!)}
+                      aria-label="مشاهدة الصورة"
+                    >
+                      <Eye className="h-5 w-5" />
+                      مشاهدة الصورة
+                    </button>
                   </div>
                 )}
-              </div>
-              <div className="flex justify-between items-center pt-2">
-                <Switch
-                  checked={facility.status === 'نشطة'}
-                  onCheckedChange={() => toggleFacilityStatus(facility.id)}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex justify-between items-center pt-2">
+                  <Switch
+                    checked={facility.status === 'نشطة'}
+                    onCheckedChange={() => toggleFacilityStatus(facility.id)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
           ))}
+
+          {/* Pagination Controls */}
+          <nav className="flex justify-center items-center gap-2 flex-wrap" aria-label="Pagination">
+            <Button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="min-w-[40px]">
+              السابق
+            </Button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <Button
+                key={page}
+                variant={page === currentPage ? 'default' : 'outline'}
+                onClick={() => handlePageChange(page)}
+                className="min-w-[40px]"
+              >
+                {page}
+              </Button>
+            ))}
+            <Button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="min-w-[40px]">
+              التالي
+            </Button>
+          </nav>
         </div>
       )}
 
@@ -725,8 +786,7 @@ export default function FacilityManagement() {
             </DialogHeader>
 
             <div className="grid gap-4 py-4">
-              {/* Basic Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-name">اسم المنشأة *</Label>
                   <Input
@@ -747,9 +807,7 @@ export default function FacilityManagement() {
                     className="text-right"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-sector">القطاع</Label>
                   <Select value={selectedFacility.sector} onValueChange={(value) => setSelectedFacility({...selectedFacility, sector: value})}>
@@ -757,12 +815,11 @@ export default function FacilityManagement() {
                       <SelectValue placeholder="اختر القطاع" />
                     </SelectTrigger>
                     <SelectContent>
-                      {sectors.map((sector) => (
-                        <SelectItem key={sector} value={sector}>{sector}</SelectItem>
-                      ))}
+                      {sectors.map(sector => <SelectItem key={sector} value={sector}>{sector}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="edit-status">حالة المنشأة</Label>
                   <Select value={selectedFacility.status} onValueChange={(value) => setSelectedFacility({...selectedFacility, status: value})}>
@@ -777,10 +834,12 @@ export default function FacilityManagement() {
                 </div>
               </div>
 
-              {/* New Fields */}
               <div className="space-y-2">
                 <Label htmlFor="edit-category">تصنيف المنشأة</Label>
-                <Select value={selectedFacility.category || ''} onValueChange={(value) => setSelectedFacility({...selectedFacility, category: value})}>
+                <Select
+                  value={selectedFacility.category || ''}
+                  onValueChange={(value) => setSelectedFacility({...selectedFacility, category: value})}
+                >
                   <SelectTrigger className="text-right">
                     <SelectValue placeholder="اختر تصنيف المنشأة" />
                   </SelectTrigger>
@@ -804,10 +863,9 @@ export default function FacilityManagement() {
                 />
               </div>
 
-              {/* Clinic Status Fields */}
               <div className="space-y-4">
                 <Label className="text-sm font-medium">حالة العيادات</Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-workingClinics" className="text-sm">يعمل</Label>
                     <Input
@@ -820,7 +878,7 @@ export default function FacilityManagement() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-outOfOrderClinics" className="text-sm">متهن</Label>
+                    <Label htmlFor="edit-outOfOrderClinics" className="text-sm">مكهن</Label>
                     <Input
                       id="edit-outOfOrderClinics"
                       type="number"
@@ -842,13 +900,29 @@ export default function FacilityManagement() {
                     />
                   </div>
                 </div>
+
+                {/* Conditionally show image input if مكهن > 0 */}
+                {selectedFacility.outOfOrderClinics && +selectedFacility.outOfOrderClinics > 0 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-image">شهادة التكهين</Label>
+                    <Input
+                      id="edit-image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSelectedFacilityImageChange}
+                      className="text-right"
+                    />
+                    {selectedFacility.imageBase64 && (
+                      <img src={selectedFacility.imageBase64} alt="شهادة التكهين" className="mt-2 max-h-40 rounded-md border border-gray-300" />
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Contact Information Section */}
               <div className="space-y-4 border-t pt-4">
                 <Label className="text-lg font-semibold">معلومات التواصل</Label>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-facilityEmail">إيميل المنشأة</Label>
                     <Input
@@ -894,7 +968,7 @@ export default function FacilityManagement() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-managerEmail">إيميل مدير المنشأة</Label>
                     <Input
@@ -929,7 +1003,7 @@ export default function FacilityManagement() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-medicalDirectorEmail">إيميل المدير الطبي</Label>
                     <Input
@@ -976,6 +1050,20 @@ export default function FacilityManagement() {
         </Dialog>
       )}
 
+      {/* Image preview dialog */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent dir="rtl" className="max-w-md max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>شهادة التكهين</DialogTitle>
+            <DialogDescription>عرض الصورة</DialogDescription>
+          </DialogHeader>
+          {previewImageSrc && <img src={previewImageSrc} alt="شهادة التكهين" className="w-full rounded-md" />}
+          <div className="flex justify-end mt-4">
+            <Button onClick={() => setShowPreviewDialog(false)}>إغلاق</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
@@ -983,9 +1071,7 @@ export default function FacilityManagement() {
             <div className="flex items-center justify-between">
               <div className="text-right">
                 <p className="text-sm text-green-600">المنشآت النشطة</p>
-                <p className="text-2xl font-bold text-green-700">
-                  {stats.active}
-                </p>
+                <p className="text-2xl font-bold text-green-700">{stats.active}</p>
               </div>
               <Building2 className="h-8 w-8 text-green-600" />
             </div>
@@ -996,9 +1082,7 @@ export default function FacilityManagement() {
             <div className="flex items-center justify-between">
               <div className="text-right">
                 <p className="text-sm text-red-600">المنشآت غير النشطة</p>
-                <p className="text-2xl font-bold text-red-700">
-                  {stats.inactive}
-                </p>
+                <p className="text-2xl font-bold text-red-700">{stats.inactive}</p>
               </div>
               <Settings className="h-8 w-8 text-red-600" />
             </div>
@@ -1020,9 +1104,7 @@ export default function FacilityManagement() {
             <div className="flex items-center justify-between">
               <div className="text-right">
                 <p className="text-sm text-purple-600">نسبة التفعيل</p>
-                <p className="text-2xl font-bold text-purple-700">
-                  {stats.activationPercentage}%
-                </p>
+                <p className="text-2xl font-bold text-purple-700">{stats.activationPercentage}%</p>
               </div>
               <TrendingUp className="h-8 w-8 text-purple-600" />
             </div>
