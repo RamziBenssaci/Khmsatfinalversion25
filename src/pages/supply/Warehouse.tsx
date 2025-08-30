@@ -450,7 +450,7 @@ const domainName = "https://your-domain.com";
     }
   };
 
-const handleAddSubmit = async (e: React.FormEvent) => {
+const handleAddSubmit = async (e) => {
   e.preventDefault();
   
   if (!validateAddForm()) {
@@ -475,9 +475,8 @@ const handleAddSubmit = async (e: React.FormEvent) => {
     formData.append('beneficiaryFacility', addFormData.beneficiaryFacility);
     formData.append('notes', addFormData.notes || '');
       
- // In handleAddSubmit function, change:
 const fileInput = document.getElementById('purchaseInvoice');
-if (fileInput && fileInput instanceof HTMLInputElement && fileInput.files && fileInput.files.length > 0) {
+if (fileInput && fileInput.files && fileInput.files.length > 0) {
   formData.append('image', fileInput.files[0]);
 }
     const response = await warehouseApi.addInventoryItem(formData);
