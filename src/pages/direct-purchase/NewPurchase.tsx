@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ShoppingCart, Calendar, DollarSign, Building, Phone, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Calendar, DollarSign, Building, Phone, AlertTriangle, Upload, X, Eye } from 'lucide-react';
 import { facilitiesApi, itemsApi, directPurchaseApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -24,6 +24,9 @@ export default function NewPurchase() {
   const [items, setItems] = useState<Item[]>([]);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authorizationImage, setAuthorizationImage] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
   
   const [formData, setFormData] = useState({
     orderNumber: `ORD-${Date.now()}`,
@@ -45,12 +48,61 @@ export default function NewPurchase() {
     notes: ''
   });
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "حجم الملف كبير جداً",
+          description: "يرجى اختيار ملف أقل من 5 ميجابايت",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "نوع ملف غير صحيح",
+          description: "يرجى اختيار ملف صورة (JPG, PNG, GIF, etc.)",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64String = event.target?.result as string;
+        setAuthorizationImage(base64String);
+        setImagePreview(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setAuthorizationImage(null);
+    setImagePreview(null);
+    // Clear the input
+    const fileInput = document.getElementById('authorizationImage') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setIsSubmitting(true);
     try {
-      const response = await directPurchaseApi.submitPurchaseOrder(formData);
+      // Include the authorization image in the form data
+      const submitData = {
+        ...formData,
+        authorizationImage: authorizationImage
+      };
+
+      const response = await directPurchaseApi.submitPurchaseOrder(submitData);
       if (response.success) {
         toast({
           title: "تم إنشاء الطلب بنجاح",
@@ -77,6 +129,8 @@ export default function NewPurchase() {
           notes: ''
         });
         setSelectedItem(null);
+        setAuthorizationImage(null);
+        setImagePreview(null);
       } else {
         throw new Error(response.message || 'فشل في إنشاء الطلب');
       }
@@ -173,7 +227,7 @@ export default function NewPurchase() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-6">
         {/* Basic Information */}
         <Card>
           <CardHeader>
@@ -290,6 +344,62 @@ export default function NewPurchase() {
                 placeholder="أدخل التكلفة بالريال"
               />
             </div>
+            
+            {/* Authorization Image Upload */}
+            <div className="md:col-span-2">
+              <Label htmlFor="authorizationImage">إضافة التعميد</Label>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="authorizationImage"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="text-right"
+                  />
+                  <Upload className="h-5 w-5 text-gray-500" />
+                </div>
+                
+                {imagePreview && (
+                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-600">معاينة التعميد المرفوع</span>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowImageModal(true)}
+                          className="flex items-center gap-1"
+                        >
+                          <Eye className="h-4 w-4" />
+                          عرض
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={removeImage}
+                          className="flex items-center gap-1"
+                        >
+                          <X className="h-4 w-4" />
+                          حذف
+                        </Button>
+                      </div>
+                    </div>
+                    <img
+                      src={imagePreview}
+                      alt="Authorization Preview"
+                      className="max-w-full h-32 object-contain rounded border"
+                    />
+                  </div>
+                )}
+                
+                <p className="text-xs text-gray-500 text-right">
+                  حجم الملف الأقصى: 5 ميجابايت - الصيغ المدعومة: JPG, PNG, GIF
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -401,11 +511,36 @@ export default function NewPurchase() {
           <Button type="button" variant="outline">
             إلغاء
           </Button>
-          <Button type="submit" className="bg-green-600 hover:bg-green-700" disabled={isSubmitting}>
+          <Button type="submit" className="bg-green-600 hover:bg-green-700" disabled={isSubmitting} onClick={handleSubmit}>
             {isSubmitting ? 'جارٍ الإرسال...' : 'إنشاء طلب الشراء'}
           </Button>
         </div>
-      </form>
+      </div>
+
+      {/* Image Modal */}
+      {showImageModal && imagePreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-right">معاينة التعميد المالي</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowImageModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-4">
+              <img
+                src={imagePreview}
+                alt="Authorization Document"
+                className="max-w-full h-auto rounded"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
