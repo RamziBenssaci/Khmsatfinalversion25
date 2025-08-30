@@ -380,11 +380,10 @@ export default function Warehouse() {
 
   const validateWithdrawForm = () => {
     const errors: any = {};
- const [previewSrc, setPreviewSrc] = React.useState('');
-const [modalSrc, setModalSrc] = React.useState('');
-const [modalVisible, setModalVisible] = React.useState(false);
-const domainName = "https://your-domain.com"; // or however you get it
-
+const [previewSrc, setPreviewSrc] = useState('');
+const [modalSrc, setModalSrc] = useState('');
+const [modalVisible, setModalVisible] = useState(false);
+const domainName = "https://your-domain.com"; 
 
 function previewImage(event) {
   const file = event.target.files[0];
@@ -405,7 +404,6 @@ function openImageModal(src) {
 function closeImageModal() {
   setModalVisible(false);
 }
-
 
     if (!withdrawFormData.beneficiaryFacility) errors.beneficiaryFacility = 'الجهة المستفيدة مطلوبة';
     if (!withdrawFormData.withdrawQty || parseFloat(withdrawFormData.withdrawQty) <= 0) errors.withdrawQty = 'الكمية المصروفة مطلوبة ويجب أن تكون أكبر من صفر';
@@ -760,18 +758,6 @@ function closeImageModal() {
                   <td>${item.minQuantity || 0}</td>
                   <td>${item.purchaseValue || 0} ريال</td>
                   <td>${item.supplierName || ''}</td>
-      <td>
-  {item.image && (
-    <img
-     src={`${domainName}/image/${item.image}`}
-      alt="فاتورة الشراء"
-      style={{ width: 30, height: 30, cursor: 'pointer' }}
-      onClick={() => openImageModal(`${domainName}/image/${item.image}`)}
-    />
-  )}
-</td>
-
-
                   <td>
                     <span class="${item.availableQty <= item.minQuantity ? 'status-low' : 'status-available'}">
                       ${item.availableQty <= item.minQuantity ? 'مخزون منخفض' : 'متوفر'}
