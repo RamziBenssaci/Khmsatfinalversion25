@@ -503,7 +503,7 @@ export default function Warehouse() {
         }
       });
       
-      const response = await warehouseApi.createInventoryItem(formData);
+      const response = await warehouseApi.addInventoryItem(formData);
       
       if (response.success) {
         toast({
