@@ -376,7 +376,7 @@ export const warehouseApi = {
   addInventoryItem: async (itemData: any): Promise<ApiResponse> => {
     return apiCall<ApiResponse>('/warehouse/inventory', {
       method: 'POST',
-      body: formData,
+      body: itemData,
     }, true);
   },
 
