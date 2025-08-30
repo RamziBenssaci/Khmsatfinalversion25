@@ -1,8 +1,10 @@
-import { useState, useEffect} from 'react'; 
-import { Package, Search, Plus, Eye, Edit, Trash2, X, Save, ShoppingCart, FileText, Download, Loader2, Printer } from 'lucide-react';
+warehouse_modified.tsx
+import { useState, useEffect } from 'react';
+import { Package, Search, Plus, Eye, Edit, Trash2, X, Save, ShoppingCart, FileText, Download, Loader2, Printer, Image as ImageIcon } from 'lucide-react';
 import { warehouseApi, reportsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { exportToExcel } from '@/utils/exportUtils';
+
 export default function Warehouse() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,9 +22,9 @@ export default function Warehouse() {
   const [formErrors, setFormErrors] = useState<any>({});
   const [showDispenseDetailsModal, setShowDispenseDetailsModal] = useState(false);
   const [selectedDispenseOrder, setSelectedDispenseOrder] = useState<any>(null);
-
-const domainName = "https://your-domain.com"; 
-
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState('');
+  
   // Add Item Form State
   const [addFormData, setAddFormData] = useState({
     itemNumber: '',
@@ -35,7 +37,8 @@ const domainName = "https://your-domain.com";
     deliveryDate: '',
     supplierName: '',
     beneficiaryFacility: '',
-    notes: ''
+    notes: '',
+    image: null as File | null
   });
 
   // Edit Item Form State
@@ -50,8 +53,13 @@ const domainName = "https://your-domain.com";
     deliveryDate: '',
     supplierName: '',
     beneficiaryFacility: '',
-    notes: ''
+    notes: '',
+    image: null as File | null
   });
+
+  // Image preview states
+  const [addImagePreview, setAddImagePreview] = useState<string>('');
+  const [editImagePreview, setEditImagePreview] = useState<string>('');
 
   // Withdraw Order Form State
   const [withdrawFormData, setWithdrawFormData] = useState({
@@ -121,6 +129,32 @@ const domainName = "https://your-domain.com";
     const receivedNum = parseFloat(received) || 0;
     const issuedNum = parseFloat(issued) || 0;
     return Math.max(0, receivedNum - issuedNum);
+  };
+
+  // Handle image file selection and preview
+  const handleImageChange = (file: File | null, isEdit: boolean = false) => {
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (isEdit) {
+          setEditImagePreview(result);
+          setEditFormData(prev => ({ ...prev, image: file }));
+        } else {
+          setAddImagePreview(result);
+          setAddFormData(prev => ({ ...prev, image: file }));
+        }
+      };
+      reader.readAsDataURL(file);
+    } else {
+      if (isEdit) {
+        setEditImagePreview('');
+        setEditFormData(prev => ({ ...prev, image: null }));
+      } else {
+        setAddImagePreview('');
+        setAddFormData(prev => ({ ...prev, image: null }));
+      }
+    }
   };
 
   // Print withdrawal order function
@@ -367,6 +401,7 @@ const domainName = "https://your-domain.com";
 
   const validateEditForm = () => {
     const errors: any = {};
+    
     if (!editFormData.itemNumber.trim()) errors.itemNumber = 'رقم الصنف مطلوب';
     if (!editFormData.itemName.trim()) errors.itemName = 'اسم الصنف مطلوب';
     if (!editFormData.receivedQty || parseFloat(editFormData.receivedQty) < 0) errors.receivedQty = 'الكمية المستلمة مطلوبة ويجب أن تكون أكبر من أو تساوي صفر';
@@ -381,8 +416,7 @@ const domainName = "https://your-domain.com";
 
   const validateWithdrawForm = () => {
     const errors: any = {};
-
-
+    
     if (!withdrawFormData.beneficiaryFacility) errors.beneficiaryFacility = 'الجهة المستفيدة مطلوبة';
     if (!withdrawFormData.withdrawQty || parseFloat(withdrawFormData.withdrawQty) <= 0) errors.withdrawQty = 'الكمية المصروفة مطلوبة ويجب أن تكون أكبر من صفر';
     if (!withdrawFormData.withdrawDate) errors.withdrawDate = 'تاريخ الصرف مطلوب';
@@ -450,106 +484,69 @@ const domainName = "https://your-domain.com";
     }
   };
 
-const handleAddSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!validateAddForm()) {
-    return;
-  }
-  
-  try {
-    setLoadingAction(true);
+  const handleAddSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    const formData = new FormData();
-  
-    // Add all text fields
-    formData.append('itemNumber', addFormData.itemNumber);
-    formData.append('itemName', addFormData.itemName);
-    formData.append('receivedQty', addFormData.receivedQty);
-    formData.append('issuedQty', addFormData.issuedQty || '0');
-    formData.append('availableQty', addFormData.availableQty);
-    formData.append('minQuantity', addFormData.minQuantity);
-    formData.append('purchaseValue', addFormData.purchaseValue);
-    formData.append('deliveryDate', addFormData.deliveryDate);
-    formData.append('supplierName', addFormData.supplierName);
-    formData.append('beneficiaryFacility', addFormData.beneficiaryFacility);
-    formData.append('notes', addFormData.notes || '');
-      
-const fileInput = document.getElementById('purchaseInvoice');
-if (fileInput && fileInput.files && fileInput.files.length > 0) {
-  formData.append('image', fileInput.files[0]);
-}
-    const response = await warehouseApi.addInventoryItem(formData);
-        
-    if (response.success) {
-      toast({
-        title: "تم بنجاح",
-        description: "تم إضافة الصنف بنجاح",
-      });
-      
-      // Force reload inventory data and wait for it
-      try {
-        const inventoryResponse = await warehouseApi.getInventory();
-        if (inventoryResponse.success && inventoryResponse.data) {
-          setInventoryItems(inventoryResponse.data);
-        } else {
-          // Fallback: optimistically add the new item to current list
-          const newItem = {
-            id: Date.now().toString(), // Temporary ID
-            ...addFormData,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-          setInventoryItems(prev => [...prev, newItem]);
-        }
-      } catch (reloadError) {
-        console.error('Failed to reload inventory:', reloadError);
-        // Optimistically add the new item
-        const newItem = {
-          id: Date.now().toString(),
-          ...addFormData,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        setInventoryItems(prev => [...prev, newItem]);
-      }
-      
-      // Reset form and close modal
-      setShowAddForm(false);
-      setShowEditModal(false);
-      setSelectedItem(null);
-      setSearchTerm(''); // Clear search after adding new item
-      setFormErrors({});
-      
-      // Reset file input
-      if (fileInput) {
-        fileInput.value = '';
-      }
-      
-      setAddFormData({
-        itemNumber: '',
-        itemName: '',
-        receivedQty: '',
-        issuedQty: '',
-        availableQty: '',
-        minQuantity: '',
-        purchaseValue: '',
-        deliveryDate: '',
-        supplierName: '',
-        beneficiaryFacility: '',
-        notes: ''
-      });
+    if (!validateAddForm()) {
+      return;
     }
-  } catch (error: any) {
-    toast({
-      title: "خطأ في الحفظ",
-      description: error.message || "فشل في حفظ البيانات",
-      variant: "destructive",
-    });
-  } finally {
-    setLoadingAction(false);
-  }
-};
+
+    try {
+      setLoadingAction(true);
+      
+      // Create FormData for file upload
+      const formData = new FormData();
+      Object.entries(addFormData).forEach(([key, value]) => {
+        if (key === 'image' && value) {
+          formData.append('image', value);
+        } else if (key !== 'image') {
+          formData.append(key, value as string);
+        }
+      });
+      
+      const response = await warehouseApi.createInventoryItem(formData);
+      
+      if (response.success) {
+        toast({
+          title: "تم بنجاح",
+          description: "تم إضافة الصنف بنجاح",
+        });
+        
+        // Reload inventory data
+        const inventoryResponse = await warehouseApi.getInventory();
+        if (inventoryResponse.success) {
+          setInventoryItems(inventoryResponse.data || []);
+        }
+        
+        setShowAddForm(false);
+        setSearchTerm(''); // Clear search after adding new item
+        setFormErrors({});
+        setAddImagePreview('');
+        setAddFormData({
+          itemNumber: '',
+          itemName: '',
+          receivedQty: '',
+          issuedQty: '',
+          availableQty: '',
+          minQuantity: '',
+          purchaseValue: '',
+          deliveryDate: '',
+          supplierName: '',
+          beneficiaryFacility: '',
+          notes: '',
+          image: null
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "خطأ في الحفظ",
+        description: error.message || "فشل في حفظ البيانات",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingAction(false);
+    }
+  };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -562,7 +559,17 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
     try {
       setLoadingAction(true);
       
-      const response = await warehouseApi.updateInventoryItem(selectedItem.id, editFormData);
+      // Create FormData for file upload
+      const formData = new FormData();
+      Object.entries(editFormData).forEach(([key, value]) => {
+        if (key === 'image' && value) {
+          formData.append('image', value);
+        } else if (key !== 'image') {
+          formData.append(key, value as string);
+        }
+      });
+      
+      const response = await warehouseApi.updateInventoryItem(selectedItem.id, formData);
       
       if (response.success) {
         toast({
@@ -579,6 +586,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
         setShowEditModal(false);
         setSelectedItem(null);
         setFormErrors({});
+        setEditImagePreview('');
         setEditFormData({
           itemNumber: '',
           itemName: '',
@@ -590,7 +598,8 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
           deliveryDate: '',
           supplierName: '',
           beneficiaryFacility: '',
-          notes: ''
+          notes: '',
+          image: null
         });
       }
     } catch (error: any) {
@@ -685,8 +694,17 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
       deliveryDate: item.deliveryDate || '',
       supplierName: item.supplierName || '',
       beneficiaryFacility: item.beneficiaryFacility || '',
-      notes: item.notes || ''
+      notes: item.notes || '',
+      image: null
     });
+    
+    // Set existing image preview if available
+    if (item.imageUrl) {
+      setEditImagePreview(item.imageUrl);
+    } else {
+      setEditImagePreview('');
+    }
+    
     setFormErrors({});
     setShowEditModal(true);
   };
@@ -835,11 +853,16 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
     setLoadingAction(false);
   }
 };
+
+  const handleImageClick = (imageUrl: string) => {
+    setSelectedImageUrl(imageUrl);
+    setShowImageModal(true);
+  };
   
   return (
     <div className="space-y-6">
       <div className="text-right">
-        <h1 className="text-3xl font-bold text-foreground">إدارة المستودع</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">إدارة المستودع</h1>
         <p className="text-muted-foreground mt-2">إدارة المخزون والأصناف</p>
       </div>
 
@@ -858,9 +881,10 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
         <button 
           onClick={() => {
             setFormErrors({});
+            setAddImagePreview('');
             setShowAddForm(true);
           }}
-          className="admin-btn-success flex items-center gap-2"
+          className="admin-btn-success flex items-center gap-2 whitespace-nowrap"
         >
           <Plus size={16} />
           إضافة صنف جديد
@@ -868,7 +892,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
       </div>
 
       {/* Inventory Stats */}
-      <div className="responsive-grid">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
           <div className="stat-number">{inventoryItems.length}</div>
           <div className="stat-label">إجمالي الأصناف</div>
@@ -886,7 +910,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
           <div className="stat-label">إجمالي الكمية المتاحة</div>
         </div>
         <div className="stat-card">
-          <div className="stat-number text-info">
+          <div className="stat-number text-info text-sm">
             {calculateTotalInventoryValue().toFixed(2)} ريال
           </div>
           <div className="stat-label">إجمالي قيمة المخزون</div>
@@ -896,7 +920,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
       {/* Inventory Items - Enhanced Mobile View */}
       <div className="admin-card">
         <div className="admin-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h2>الأصناف المتوفرة ({filteredItems.length})</h2>
+          <h2 className="text-lg">الأصناف المتوفرة ({filteredItems.length})</h2>
           <div className="flex gap-2">
             <button 
               onClick={handleExportToExcel}
@@ -916,20 +940,21 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
         </div>
         
         {/* Desktop Table View */}
-        <div className="hidden lg:block p-4">
-          <div className="responsive-table">
+        <div className="hidden lg:block p-4 overflow-x-auto">
+          <div className="min-w-full">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-right">
-                  <th className="p-3">رقم الصنف</th>
-                  <th className="p-3">اسم الصنف</th>
-                  <th className="p-3">الكمية المستلمة</th>
-                  <th className="p-3">الكمية المصروفة</th>
-                  <th className="p-3">الكمية المتاحة</th>
-                  <th className="p-3">الحد الأدنى</th>
-                  <th className="p-3">الشركة الموردة</th>
-                  <th className="p-3">الحالة</th>
-                  <th className="p-3">الإجراءات</th>
+                  <th className="p-3 whitespace-nowrap">رقم الصنف</th>
+                  <th className="p-3 whitespace-nowrap">اسم الصنف</th>
+                  <th className="p-3 whitespace-nowrap">الكمية المستلمة</th>
+                  <th className="p-3 whitespace-nowrap">الكمية المصروفة</th>
+                  <th className="p-3 whitespace-nowrap">الكمية المتاحة</th>
+                  <th className="p-3 whitespace-nowrap">الحد الأدنى</th>
+                  <th className="p-3 whitespace-nowrap">الشركة الموردة</th>
+                  <th className="p-3 whitespace-nowrap">فاتورة الشراء</th>
+                  <th className="p-3 whitespace-nowrap">الحالة</th>
+                  <th className="p-3 whitespace-nowrap">الإجراءات</th>
                 </tr>
               </thead>
               <tbody>
@@ -943,7 +968,20 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                     <td className="p-3">{item.minQuantity}</td>
                     <td className="p-3">{item.supplierName}</td>
                     <td className="p-3">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
+                      {item.imageUrl ? (
+                        <button
+                          onClick={() => handleImageClick(item.imageUrl)}
+                          className="p-1.5 text-primary hover:bg-primary/10 rounded"
+                          title="عرض فاتورة الشراء"
+                        >
+                          <ImageIcon size={16} />
+                        </button>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">لا توجد</span>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${
                         item.availableQty <= item.minQuantity 
                           ? 'bg-danger text-danger-foreground' 
                           : 'bg-success text-success-foreground'
@@ -952,7 +990,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                       </span>
                     </td>
                     <td className="p-2">
-                      <div className="flex gap-1 justify-center">
+                      <div className="flex gap-1 justify-center flex-wrap">
                         <button 
                           onClick={() => handleViewClick(item)}
                           className="p-1.5 text-info hover:bg-info/10 rounded" 
@@ -1002,7 +1040,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                   <h3 className="font-medium text-base">{item.itemName}</h3>
                   <p className="text-sm text-muted-foreground">رقم الصنف: {item.itemNumber}</p>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs ${
+                <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${
                   item.availableQty <= item.minQuantity 
                     ? 'bg-danger text-danger-foreground' 
                     : 'bg-success text-success-foreground'
@@ -1011,14 +1049,10 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                 </span>
               </div>
               
-              <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+              <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                 <div className="text-right">
-                  <span className="text-muted-foreground">الكمية المتاحة:</span>
+                  <span className="text-muted-foreground">متاح:</span>
                   <span className="font-medium mr-2">{item.availableQty}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-muted-foreground">الحد الأدنى:</span>
-                  <span className="font-medium mr-2">{item.minQuantity}</span>
                 </div>
                 <div className="text-right">
                   <span className="text-muted-foreground">مستلم:</span>
@@ -1028,13 +1062,30 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                   <span className="text-muted-foreground">مصروف:</span>
                   <span className="font-medium mr-2">{item.issuedQty}</span>
                 </div>
+                <div className="text-right">
+                  <span className="text-muted-foreground">الحد الأدنى:</span>
+                  <span className="font-medium mr-2">{item.minQuantity}</span>
+                </div>
               </div>
               
               <div className="text-sm text-muted-foreground mb-3 text-right">
                 الشركة الموردة: {item.supplierName}
               </div>
+
+              {/* Image section for mobile */}
+              {item.imageUrl && (
+                <div className="mb-3 text-right">
+                  <button
+                    onClick={() => handleImageClick(item.imageUrl)}
+                    className="text-primary hover:text-primary/80 text-sm flex items-center gap-1"
+                  >
+                    <ImageIcon size={14} />
+                    عرض فاتورة الشراء
+                  </button>
+                </div>
+              )}
               
-              <div className="flex gap-2 justify-end">
+              <div className="flex gap-2 justify-end flex-wrap">
                 <button 
                   onClick={() => handleViewClick(item)}
                   className="admin-btn-info text-xs flex items-center gap-1"
@@ -1195,32 +1246,6 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                   </div>
                 </div>
               </div>
-{/* Purchase Invoice Upload */}
-              <div className="admin-card">
-                <div className="admin-header">
-                  <h3>فاتورة الشراء</h3>
-                </div>
-                <div className="p-4">
-                  <div>
-                    <label htmlFor="purchaseInvoice" className="block text-sm font-medium mb-2 text-right">
-                      فاتورة الشراء
-                    </label>
-                    <input
-                      type="file"
-                      id="purchaseInvoice"
-                      name="image"
-                      accept="image/*"
-                      className="w-full p-2 border border-input rounded-md text-sm"
-                    />
-                    <div className="mt-2">
-                      <p className="text-xs text-muted-foreground text-right">
-                        سيتم رفع الصورة عند حفظ البيانات
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
 
               {/* Financial and Supplier Information */}
               <div className="admin-card">
@@ -1295,6 +1320,50 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                 </div>
               </div>
 
+              {/* Image Upload Section */}
+              <div className="admin-card">
+                <div className="admin-header">
+                  <h3>فاتورة الشراء</h3>
+                </div>
+                <div className="p-4">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-right">رفع صورة فاتورة الشراء</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageChange(e.target.files?.[0] || null, false)}
+                        className="w-full p-2 border border-input rounded-md text-right text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1 text-right">
+                        يمكنك رفع صورة لفاتورة الشراء (اختياري)
+                      </p>
+                    </div>
+                    
+                    {/* Image Preview */}
+                    {addImagePreview && (
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium mb-2 text-right">معاينة الصورة:</label>
+                        <div className="relative inline-block">
+                          <img
+                            src={addImagePreview}
+                            alt="معاينة فاتورة الشراء"
+                            className="max-w-full max-h-48 object-contain border border-border rounded-md"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleImageChange(null, false)}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Notes */}
               <div className="admin-card">
                 <div className="admin-header">
@@ -1312,7 +1381,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 justify-start">
+              <div className="flex gap-3 justify-start flex-wrap">
                 <button
                   type="submit"
                   disabled={loadingAction}
@@ -1413,19 +1482,6 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2 text-right">حالة الطلب *</label>
-                      <select
-                        value={withdrawFormData.requestStatus}
-                        onChange={(e) => handleWithdrawInputChange('requestStatus', e.target.value)}
-                        className="w-full p-2 border border-input rounded-md text-right text-sm"
-                        required
-                      >
-                        <option value="مفتوح تحت الاجراء">مفتوح تحت الاجراء</option>
-                        <option value="تم الصرف">تم الصرف</option>
-                        <option value="مرفوض">مرفوض</option>
-                      </select>
-                    </div>
-                    <div>
                       <label className="block text-sm font-medium mb-2 text-right">الكمية المصروفة *</label>
                       <input
                         type="number"
@@ -1456,6 +1512,18 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                       {formErrors.withdrawDate && (
                         <p className="text-red-500 text-xs mt-1 text-right">{formErrors.withdrawDate}</p>
                       )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-right">حالة الطلب</label>
+                      <select
+                        value={withdrawFormData.requestStatus}
+                        onChange={(e) => handleWithdrawInputChange('requestStatus', e.target.value)}
+                        className="w-full p-2 border border-input rounded-md text-right text-sm"
+                      >
+                        <option value="مفتوح تحت الاجراء">مفتوح تحت الاجراء</option>
+                        <option value="تم الصرف">تم الصرف</option>
+                        <option value="مرفوض">مرفوض</option>
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -1493,7 +1561,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                         className={`w-full p-2 border rounded-md text-right text-sm ${
                           formErrors.recipientContact ? 'border-red-500' : 'border-input'
                         }`}
-                        placeholder="رقم الهاتف"
+                        placeholder="رقم الهاتف أو البريد الإلكتروني"
                         required
                       />
                       {formErrors.recipientContact && (
@@ -1503,7 +1571,6 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                   </div>
                 </div>
               </div>
-           
 
               {/* Notes */}
               <div className="admin-card">
@@ -1516,13 +1583,13 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                     onChange={(e) => handleWithdrawInputChange('notes', e.target.value)}
                     className="w-full p-2 border border-input rounded-md text-right text-sm"
                     rows={3}
-                    placeholder="ملاحظات إضافية..."
+                    placeholder="ملاحظات إضافية (اختياري)..."
                   />
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 justify-start">
+              <div className="flex gap-3 justify-start flex-wrap">
                 <button
                   type="submit"
                   disabled={loadingAction}
@@ -1533,7 +1600,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                   ) : (
                     <Save size={16} />
                   )}
-                  حفظ أمر الصرف
+                  إنشاء أمر الصرف
                 </button>
                 <button
                   type="button"
@@ -1603,6 +1670,26 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                 </div>
               </div>
 
+              {/* Image Section */}
+              {selectedItem.imageUrl && (
+                <div className="admin-card">
+                  <div className="admin-header">
+                    <h3>فاتورة الشراء</h3>
+                  </div>
+                  <div className="p-4">
+                    <div className="text-center">
+                      <img
+                        src={selectedItem.imageUrl}
+                        alt="فاتورة الشراء"
+                        className="max-w-full max-h-64 object-contain border border-border rounded-md cursor-pointer"
+                        onClick={() => handleImageClick(selectedItem.imageUrl)}
+                      />
+                      <p className="text-sm text-muted-foreground mt-2">انقر على الصورة لعرضها بحجم أكبر</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Withdrawal Orders Section */}
               <div className="admin-card">
                 <div className="admin-header">
@@ -1616,19 +1703,19 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                       </div>
                       
                       {/* Desktop Table View */}
-                      <div className="hidden lg:block">
-                        <div className="responsive-table">
+                      <div className="hidden lg:block overflow-x-auto">
+                        <div className="min-w-full">
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="border-b border-border text-right">
-                                <th className="p-3">رقم الأمر</th>
-                                <th className="p-3">الجهة المستلمة</th>
-                                <th className="p-3">الكمية</th>
-                                <th className="p-3">تاريخ الصرف</th>
-                                <th className="p-3">اسم المستلم</th>
-                                <th className="p-3">رقم التواصل</th>
-                                <th className="p-3">الحالة</th>
-                                 <th className="p-3">الإجراءات</th>
+                                <th className="p-3 whitespace-nowrap">رقم الأمر</th>
+                                <th className="p-3 whitespace-nowrap">الجهة المستلمة</th>
+                                <th className="p-3 whitespace-nowrap">الكمية</th>
+                                <th className="p-3 whitespace-nowrap">تاريخ الصرف</th>
+                                <th className="p-3 whitespace-nowrap">اسم المستلم</th>
+                                <th className="p-3 whitespace-nowrap">رقم التواصل</th>
+                                <th className="p-3 whitespace-nowrap">الحالة</th>
+                                 <th className="p-3 whitespace-nowrap">الإجراءات</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1641,7 +1728,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                                   <td className="p-3">{order.recipientName}</td>
                                   <td className="p-3">{order.recipientContact}</td>
                                   <td className="p-3">
-                                    <span className={`px-2 py-1 rounded-full text-xs ${
+                                    <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${
                                       order.requestStatus === 'تم الصرف' 
                                         ? 'bg-success text-success-foreground' 
                                         : order.requestStatus === 'مرفوض'
@@ -1652,7 +1739,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                                     </span>
                                   </td>
                                   <td className="p-3">
-                                    <div className="flex gap-1">
+                                    <div className="flex gap-1 flex-wrap">
                                       <button 
                                         onClick={() => {
                                           setSelectedDispenseOrder(order);
@@ -1688,8 +1775,8 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                                 <h4 className="font-medium text-sm">{order.orderNumber}</h4>
                                 <p className="text-xs text-muted-foreground">الجهة: {order.beneficiaryFacility || 'غير محدد'}</p>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <span className={`px-2 py-1 rounded-full text-xs ${
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${
                                   order.requestStatus === 'تم الصرف' 
                                     ? 'bg-success text-success-foreground' 
                                     : order.requestStatus === 'مرفوض'
@@ -1903,31 +1990,6 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                   </div>
                 </div>
               </div>
-{/* Purchase Invoice Upload */}
-              <div className="admin-card">
-                <div className="admin-header">
-                  <h3>فاتورة الشراء</h3>
-                </div>
-                <div className="p-4">
-                  <div>
-                    <label htmlFor="purchaseInvoice" className="block text-sm font-medium mb-2 text-right">
-                      فاتورة الشراء
-                    </label>
-                    <input
-                      type="file"
-                      id="purchaseInvoice"
-                      name="image"
-                      accept="image/*"
-                      className="w-full p-2 border border-input rounded-md text-sm"
-                    />
-                    <div className="mt-2">
-                      <p className="text-xs text-muted-foreground text-right">
-                        سيتم رفع الصورة عند حفظ البيانات
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {/* Financial and Supplier Information */}
               <div className="admin-card">
@@ -1949,6 +2011,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                         placeholder="0.00"
                         required
                       />
+                      <p className="text-red-500 text-xs mt-1 text-right">هذا هو المبلغ الإجمالي سيتم تقسيمه على الكمية المستلمة</p>
                       {formErrors.purchaseValue && (
                         <p className="text-red-500 text-xs mt-1 text-right">{formErrors.purchaseValue}</p>
                       )}
@@ -2001,6 +2064,52 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
                 </div>
               </div>
 
+              {/* Image Upload Section */}
+              <div className="admin-card">
+                <div className="admin-header">
+                  <h3>فاتورة الشراء</h3>
+                </div>
+                <div className="p-4">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-right">تحديث صورة فاتورة الشراء</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageChange(e.target.files?.[0] || null, true)}
+                        className="w-full p-2 border border-input rounded-md text-right text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1 text-right">
+                        يمكنك رفع صورة جديدة لفاتورة الشراء (اختياري)
+                      </p>
+                    </div>
+                    
+                    {/* Image Preview */}
+                    {editImagePreview && (
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium mb-2 text-right">
+                          {editFormData.image ? 'معاينة الصورة الجديدة:' : 'الصورة الحالية:'}
+                        </label>
+                        <div className="relative inline-block">
+                          <img
+                            src={editImagePreview}
+                            alt="معاينة فاتورة الشراء"
+                            className="max-w-full max-h-48 object-contain border border-border rounded-md"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleImageChange(null, true)}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Notes */}
               <div className="admin-card">
                 <div className="admin-header">
@@ -2018,7 +2127,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 justify-start">
+              <div className="flex gap-3 justify-start flex-wrap">
                 <button
                   type="submit"
                   disabled={loadingAction}
@@ -2051,9 +2160,9 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
       {/* Dispense Details Modal */}
       {showDispenseDetailsModal && selectedDispenseOrder && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-background rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-background rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="admin-header flex justify-between items-center">
-              <h2>تفاصيل أمر الصرف رقم {selectedDispenseOrder.orderNumber}</h2>
+              <h2>تفاصيل أمر الصرف - {selectedDispenseOrder.orderNumber}</h2>
               <button 
                 onClick={() => {
                   setShowDispenseDetailsModal(false);
@@ -2066,7 +2175,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
             </div>
             
             <div className="p-6 space-y-6">
-              {/* Order Basic Information */}
+              {/* Order Information */}
               <div className="admin-card">
                 <div className="admin-header">
                   <h3>معلومات الأمر</h3>
@@ -2179,7 +2288,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-3 justify-center pt-4">
+              <div className="flex gap-3 justify-center pt-4 flex-wrap">
                 <button
                   onClick={() => handlePrintWithdrawalOrder(selectedDispenseOrder)}
                   className="admin-btn-primary flex items-center gap-2 px-4 py-2"
@@ -2231,7 +2340,7 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
           </p>
         </div>
         
-        <div className="flex gap-3 justify-center">
+        <div className="flex gap-3 justify-center flex-wrap">
           <button
             onClick={handleDeleteItem}
             disabled={loadingAction}
@@ -2259,6 +2368,25 @@ if (fileInput && fileInput.files && fileInput.files.length > 0) {
     </div>
   </div>
 )}
+
+      {/* Image Modal */}
+      {showImageModal && selectedImageUrl && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center">
+            <button 
+              onClick={() => setShowImageModal(false)}
+              className="absolute top-4 right-4 bg-white/20 text-white rounded-full p-2 hover:bg-white/30 z-10"
+            >
+              <X size={20} />
+            </button>
+            <img
+              src={selectedImageUrl}
+              alt="فاتورة الشراء"
+              className="max-w-full max-h-full object-contain"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
