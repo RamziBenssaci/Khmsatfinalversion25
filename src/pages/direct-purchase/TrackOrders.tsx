@@ -32,6 +32,10 @@ export default function TrackOrders() {
     statusDate: '' // Added status date field
   });
 
+  // New states for Image Dialog
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
+  const [imageToShow, setImageToShow] = useState<string | null>(null);
+
   // Available status options for approved orders
   const statusOptions = [
     { value: 'جديد', label: 'جديد' },
@@ -51,7 +55,7 @@ export default function TrackOrders() {
     let filtered = orders;
 
     if (searchTerm) {
-      filtered = filtered.filter(order => 
+      filtered = filtered.filter(order =>
         order.item_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -111,6 +115,20 @@ export default function TrackOrders() {
       statusDate: '' // Reset date when opening dialog
     });
     setIsEditDialogOpen(true);
+  };
+
+  // New handler to show image dialog
+  const handleShowImage = (imageBase64: string | undefined) => {
+    if (!imageBase64) {
+      toast({
+        title: "لا توجد صورة",
+        description: "لا توجد صورة متاحة لهذا الطلب.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setImageToShow(imageBase64);
+    setIsImageDialogOpen(true);
   };
 
   const handlePrintOrder = (order: any) => {
@@ -309,9 +327,7 @@ export default function TrackOrders() {
           <div class="header">
             <h1>طلب الشراء المباشر</h1>
             <p>رقم الطلب: ${order.order_number || order.id}</p>
-          </div>
-
-          <div class="section">
+          </div>... <div class="section">
             <div class="section-header">
               <h2>المعلومات الأساسية</h2>
             </div>
@@ -395,9 +411,7 @@ export default function TrackOrders() {
                   <span class="status-badge ${getStatusClass(order.status)}">${order.status || '-'}</span>
               </div>
             </div>
-          </div>
-
-          ${order.notes ? `
+          </div>... ${order.notes ? `
           <div class="section">
             <div class="section-header">
               <h2>الملاحظات</h2>
@@ -635,7 +649,6 @@ export default function TrackOrders() {
         <h1 className="text-3xl font-bold text-foreground">متابعة طلبات الشراء المباشر</h1>
         <p className="text-muted-foreground mt-2">تتبع ومراقبة حالة جميع طلبات الشراء المباشر</p>
       </div>
-
       <div className="admin-card">
         <div className="admin-header">
           <h2>متابعة مسار الطلبات</h2>
@@ -689,7 +702,7 @@ export default function TrackOrders() {
           </div>
 
           {/* Orders Table */}
-          <div className="responsive-table">
+          <div className="responsive-table" style={{ overflowX: 'auto', width: '100%' }}>
             {isLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
@@ -700,19 +713,20 @@ export default function TrackOrders() {
                 <p className="text-muted-foreground">لا توجد طلبات شراء</p>
               </div>
             ) : (
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-fixed border-collapse">
                 <thead>
                   <tr className="border-b border-border text-right">
-                    <th className="p-3">رقم الطلب</th>
-                    <th className="p-3 mobile-hidden">تاريخ الطلب</th>
-                    <th className="p-3">اسم الصنف</th>
-                    <th className="p-3 mobile-hidden">الجهة المستفيدة</th>
-                    <th className="p-3 mobile-hidden">الكمية</th>
-                    <th className="p-3 mobile-hidden">رقم التعميد المالي</th>
-                    <th className="p-3 mobile-hidden">تاريخ التعميد</th>
-                    <th className="p-3">الحالة</th>
-                    <th className="p-3 mobile-hidden">التكلفة</th>
-                    <th className="p-3">الإجراءات</th>
+                    <th className="p-3 w-24">رقم الطلب</th>
+                    <th className="p-3 mobile-hidden w-28">تاريخ الطلب</th>
+                    <th className="p-3 w-36">اسم الصنف</th>
+                    <th className="p-3 mobile-hidden w-44">الجهة المستفيدة</th>
+                    <th className="p-3 mobile-hidden w-20">الكمية</th>
+                    <th className="p-3 mobile-hidden w-36">رقم التعميد المالي</th>
+                    <th className="p-3 mobile-hidden w-28">تاريخ التعميد</th>
+                    <th className="p-3 w-24">الحالة</th>
+                    <th className="p-3 mobile-hidden w-32">التكلفة</th>
+                    <th className="p-3 mobile-hidden w-36 text-center">صورة التعميد</th>
+                    <th className="p-3 w-52">الإجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -733,23 +747,33 @@ export default function TrackOrders() {
                       <td className="p-3 mobile-hidden">
                         {order.total_cost ? `${Number(order.total_cost).toLocaleString()} ريال` : '-'}
                       </td>
+                      <td className="p-3 mobile-hidden text-center">
+                        <button
+                          onClick={() => handleShowImage(order.image_url)}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors mx-auto"
+                          title="عرض صورة التعميد"
+                        >
+                          <Eye size={14} />
+                          صورة التعميد
+                        </button>
+                      </td>
                       <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <button 
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
                             onClick={() => handleViewOrder(order)}
                             className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
                           >
                             <Eye size={14} />
                             عرض
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleEditOrder(order)}
                             className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
                           >
                             <Edit size={14} />
                             تعديل
                           </button>
-                          <button 
+                          <button
                             onClick={() => handlePrintOrder(order)}
                             className="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
                           >
@@ -877,7 +901,7 @@ export default function TrackOrders() {
               <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 p-6 rounded-lg border">
                 <h3 className="text-xl font-bold mb-6 text-right text-indigo-800 dark:text-indigo-200">سجل حالات الطلب</h3>
                 <div className="space-y-4">
-                  
+
                   {/* Creation Date */}
                   {selectedOrder.creation_date && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border-l-4 border-blue-400">
@@ -893,7 +917,7 @@ export default function TrackOrders() {
                       )}
                     </div>
                   )}
-
+                  {/* Other status dates follow same pattern ... */}
                   {/* Contract Approval Date */}
                   {selectedOrder.contract_approval_date && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-teal-50 dark:bg-teal-900/30 rounded-lg border-l-4 border-teal-400">
@@ -909,7 +933,6 @@ export default function TrackOrders() {
                       )}
                     </div>
                   )}
-
                   {/* Contract Date */}
                   {selectedOrder.contract_date && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg border-l-4 border-yellow-400">
@@ -925,7 +948,6 @@ export default function TrackOrders() {
                       )}
                     </div>
                   )}
-
                   {/* Delivery Date */}
                   {selectedOrder.contract_delivery_date && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border-l-4 border-emerald-400">
@@ -941,7 +963,6 @@ export default function TrackOrders() {
                       )}
                     </div>
                   )}
-
                   {/* Rejection Date */}
                   {selectedOrder.rejection_date && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-red-50 dark:bg-red-900/30 rounded-lg border-l-4 border-red-400">
@@ -983,7 +1004,6 @@ export default function TrackOrders() {
                   {editingOrder.status}
                 </span>
               </div>
-
               <div className="text-right">
                 <label className="block text-sm font-semibold mb-3">الحالة الجديدة *</label>
                 <select
@@ -1038,6 +1058,25 @@ export default function TrackOrders() {
                 </button>
               </div>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Display Dialog */}
+      <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto p-4 flex flex-col items-center justify-center">
+          <DialogHeader>
+            <DialogTitle className="text-right text-lg font-bold">صورة التعميد</DialogTitle>
+            <DialogDescription className="text-right">عرض صورة التعميد الخاصة بالطلب</DialogDescription>
+          </DialogHeader>
+          {imageToShow ? (
+            <img
+              src={imageToShow}
+              alt="صورة التعميد"
+              className="max-w-full max-h-[70vh] rounded-md shadow-md"
+            />
+          ) : (
+            <p className="text-center text-muted-foreground">لا توجد صورة للعرض.</p>
           )}
         </DialogContent>
       </Dialog>
