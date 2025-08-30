@@ -1,64 +1,45 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, Clock, CheckCircle, XCircle, AlertTriangle, DollarSign, TrendingUp, Loader2, FileX, Download, Printer, FileSpreadsheet, FileText, Monitor, Wrench, Shield, ShieldCheck, ShieldX, Building } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { dentalContractsApi } from '@/lib/api';
+import { dentalAssetsApi } from '@/lib/api';
 
 export default function DentalDashboard() {
   // State management
   const [originalDashboardData, setOriginalDashboardData] = useState({
     total: 0,
-    new: 0,
-    approved: 0,
-    contracted: 0,
-    delivered: 0,
-    rejected: 0,
-    totalValue: 0
+    working: 0,
+    notWorking: 0,
+    underWarranty: 0,
+    outOfWarranty: 0,
+    needsMaintenance: 0
   });
   const [dashboardData, setDashboardData] = useState({
     total: 0,
-    new: 0,
-    approved: 0,
-    contracted: 0,
-    delivered: 0,
-    rejected: 0,
-    totalValue: 0
+    working: 0,
+    notWorking: 0,
+    underWarranty: 0,
+    outOfWarranty: 0,
+    needsMaintenance: 0
   });
   const [statusData, setStatusData] = useState([]);
-  const [monthlyData, setMonthlyData] = useState([]);
-  const [topSuppliers, setTopSuppliers] = useState([]);
-  const [topClinics, setTopClinics] = useState([]);
   const [allData, setAllData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [facilitiesDistribution, setFacilitiesDistribution] = useState([]);
   
   // Loading states
   const [loading, setLoading] = useState(true);
-  const [suppliersLoading, setSuppliersLoading] = useState(true);
-  const [clinicsLoading, setClinicsLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
   const [error, setError] = useState('');
   
   // Filter states
   const [selectedClinic, setSelectedClinic] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
-  const [selectedEquipmentType, setSelectedEquipmentType] = useState('');
   const [selectedWorkingStatus, setSelectedWorkingStatus] = useState('');
   const [selectedMaintenanceStatus, setSelectedMaintenanceStatus] = useState('');
   const [selectedWarrantyStatus, setSelectedWarrantyStatus] = useState('');
-
-  // Status options mapping
-  const statusOptions = [
-    { value: 'جديد', label: 'جديد', color: '#3b82f6' },
-    { value: 'موافق عليه', label: 'موافق عليه', color: '#f59e0b' },
-    { value: 'تم التعاقد', label: 'تم التعاقد', color: '#8b5cf6' },
-    { value: 'تم التسليم', label: 'تم التسليم', color: '#10b981' },
-    { value: 'مرفوض', label: 'مرفوض', color: '#ef4444' }
-  ];
 
   // Equipment filter options
   const workingStatusOptions = [
@@ -76,31 +57,15 @@ export default function DentalDashboard() {
     { value: 'out_of_warranty', label: 'الأجهزة خارج الضمان' }
   ];
 
-  // Helper function to format total cost (excluding rejected contracts)
-  const formatTotalCost = (data) => {
-    const total = data
-      .filter(item => item.status !== 'مرفوض') // Exclude rejected contracts
-      .reduce((sum, item) => {
-        const numericCost = parseFloat(item.totalCost) || 0;
-        return sum + numericCost;
-      }, 0);
-    
-    // Remove .00 if it's a whole number
-    return total % 1 === 0 ? total.toString() : total.toFixed(2);
-  };
-
   // Calculate filtered statistics
   const calculateFilteredStats = (data) => {
-    const totalValue = parseFloat(formatTotalCost(data));
-    
     const stats = {
       total: data.length,
-      new: data.filter(item => item.status === 'جديد').length,
-      approved: data.filter(item => item.status === 'موافق عليه').length,
-      contracted: data.filter(item => item.status === 'تم التعاقد').length,
-      delivered: data.filter(item => item.status === 'تم التسليم').length,
-      rejected: data.filter(item => item.status === 'مرفوض').length,
-      totalValue: totalValue
+      working: data.filter(item => item.deviceStatus === 'يعمل').length,
+      notWorking: data.filter(item => item.deviceStatus === 'معطل' || item.deviceStatus === 'لا يعمل').length,
+      underWarranty: data.filter(item => item.warrantyActive === 'yes').length,
+      outOfWarranty: data.filter(item => item.warrantyActive === 'no').length,
+      needsMaintenance: data.filter(item => parseInt(item.malfunctionCount) > 0).length
     };
     return stats;
   };
@@ -109,8 +74,8 @@ export default function DentalDashboard() {
   const calculateFacilitiesDistribution = (data) => {
     const facilityCount = {};
     data.forEach(item => {
-      if (item.beneficiaryFacility) {
-        facilityCount[item.beneficiaryFacility] = (facilityCount[item.beneficiaryFacility] || 0) + 1;
+      if (item.facilityName) {
+        facilityCount[item.facilityName] = (facilityCount[item.facilityName] || 0) + 1;
       }
     });
 
@@ -120,100 +85,45 @@ export default function DentalDashboard() {
       .slice(0, 10); // Top 10 facilities
   };
 
-  // Load dashboard data
-  const loadDashboardData = async () => {
+  // Load assets data
+  const loadAssetsData = async () => {
     try {
       setLoading(true);
       setError('');
       
-      const response = await dentalContractsApi.getDashboardData();
+      const response = await dentalAssetsApi.getAssets();
       
       if (response.success && response.data) {
-        setOriginalDashboardData(response.data);
-        setDashboardData(response.data);
+        setAllData(response.data);
+        setFilteredData(response.data);
+        
+        // Calculate dashboard stats
+        const stats = calculateFilteredStats(response.data);
+        setOriginalDashboardData(stats);
+        setDashboardData(stats);
         
         // Update status data for pie chart
         const newStatusData = [
-          { name: 'جديد', value: response.data.new, color: '#3b82f6' },
-          { name: 'موافق عليه', value: response.data.approved, color: '#f59e0b' },
-          { name: 'تم التعاقد', value: response.data.contracted, color: '#8b5cf6' },
-          { name: 'تم التسليم', value: response.data.delivered, color: '#10b981' },
-          { name: 'مرفوض', value: response.data.rejected, color: '#ef4444' }
+          { name: 'يعمل', value: stats.working, color: '#10b981' },
+          { name: 'لا يعمل', value: stats.notWorking, color: '#ef4444' },
+          { name: 'تحت الضمان', value: stats.underWarranty, color: '#3b82f6' },
+          { name: 'خارج الضمان', value: stats.outOfWarranty, color: '#f59e0b' }
         ];
         setStatusData(newStatusData);
         
-        // If monthly data is included in dashboard response
-        if (response.data.monthlyData) {
-          setMonthlyData(response.data.monthlyData);
-        }
+        setFacilitiesDistribution(calculateFacilitiesDistribution(response.data));
       }
     } catch (err) {
-      setError(err.message || 'فشل في تحميل بيانات لوحة التحكم');
-      console.error('Dashboard data loading error:', err);
+      setError(err.message || 'فشل في تحميل بيانات الأجهزة');
+      console.error('Assets data loading error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Load contracts data for filtering
-  const loadContractsData = async () => {
-    try {
-      const response = await dentalContractsApi.getContracts();
-      
-      if (response.success && response.data) {
-        setAllData(response.data);
-        setFilteredData(response.data);
-        setFacilitiesDistribution(calculateFacilitiesDistribution(response.data));
-      }
-    } catch (err) {
-      console.error('Contracts data loading error:', err);
-    }
-  };
-
-  // Load top suppliers
-  const loadTopSuppliers = async () => {
-    try {
-      setSuppliersLoading(true);
-      const response = await dentalContractsApi.getTopSuppliers();
-      
-      if (response.success && response.data) {
-        setTopSuppliers(response.data);
-      }
-    } catch (err) {
-      console.error('Top suppliers loading error:', err);
-    } finally {
-      setSuppliersLoading(false);
-    }
-  };
-
-  // Load top clinics
-  const loadTopClinics = async () => {
-    try {
-      setClinicsLoading(true);
-      const response = await dentalContractsApi.getTopClinics();
-      
-      if (response.success && response.data) {
-        setTopClinics(response.data);
-      }
-    } catch (err) {
-      console.error('Top clinics loading error:', err);
-    } finally {
-      setClinicsLoading(false);
-    }
-  };
-
   // Initial data loading
   useEffect(() => {
-    const loadAllData = async () => {
-      await Promise.all([
-        loadDashboardData(),
-        loadContractsData(),
-        loadTopSuppliers(),
-        loadTopClinics()
-      ]);
-    };
-    
-    loadAllData();
+    loadAssetsData();
   }, []);
 
   // Real-time filtering with useEffect
@@ -222,7 +132,7 @@ export default function DentalDashboard() {
 
     if (selectedClinic && selectedClinic !== "all") {
       filtered = filtered.filter(item => 
-        item.beneficiaryFacility?.toLowerCase().includes(selectedClinic.toLowerCase())
+        item.facilityName?.toLowerCase().includes(selectedClinic.toLowerCase())
       );
     }
 
@@ -232,23 +142,12 @@ export default function DentalDashboard() {
       );
     }
 
-    if (selectedStatus && selectedStatus !== "all") {
-      filtered = filtered.filter(item => item.status === selectedStatus);
-    }
-
-    if (selectedEquipmentType && selectedEquipmentType !== "all") {
-      filtered = filtered.filter(item => 
-        item.equipmentName?.toLowerCase().includes(selectedEquipmentType.toLowerCase()) ||
-        item.deviceName?.toLowerCase().includes(selectedEquipmentType.toLowerCase())
-      );
-    }
-
     if (selectedWorkingStatus && selectedWorkingStatus !== "all") {
       filtered = filtered.filter(item => {
         if (selectedWorkingStatus === 'working') {
           return item.deviceStatus === 'يعمل';
         } else if (selectedWorkingStatus === 'not_working') {
-          return item.deviceStatus === 'مكهن';
+          return item.deviceStatus === 'معطل' || item.deviceStatus === 'لا يعمل';
         }
         return true;
       });
@@ -257,9 +156,9 @@ export default function DentalDashboard() {
     if (selectedMaintenanceStatus && selectedMaintenanceStatus !== "all") {
       filtered = filtered.filter(item => {
         if (selectedMaintenanceStatus === 'needs_maintenance') {
-          return item.deviceStatus === 'يعمل';
+          return parseInt(item.malfunctionCount) > 0;
         } else if (selectedMaintenanceStatus === 'no_maintenance') {
-          return item.deviceStatus === 'مكهن';
+          return parseInt(item.malfunctionCount) === 0;
         }
         return true;
       });
@@ -271,7 +170,6 @@ export default function DentalDashboard() {
           return item.warrantyActive === 'yes';
         } else if (selectedWarrantyStatus === 'out_of_warranty') {
           return item.warrantyActive === 'no';
-
         }
         return true;
       });
@@ -285,50 +183,41 @@ export default function DentalDashboard() {
 
     // Update status data based on filtered results
     const newStatusData = [
-      { name: 'جديد', value: filteredStats.new, color: '#3b82f6' },
-      { name: 'موافق عليه', value: filteredStats.approved, color: '#f59e0b' },
-      { name: 'تم التعاقد', value: filteredStats.contracted, color: '#8b5cf6' },
-      { name: 'تم التسليم', value: filteredStats.delivered, color: '#10b981' },
-      { name: 'مرفوض', value: filteredStats.rejected, color: '#ef4444' }
+      { name: 'يعمل', value: filteredStats.working, color: '#10b981' },
+      { name: 'لا يعمل', value: filteredStats.notWorking, color: '#ef4444' },
+      { name: 'تحت الضمان', value: filteredStats.underWarranty, color: '#3b82f6' },
+      { name: 'خارج الضمان', value: filteredStats.outOfWarranty, color: '#f59e0b' }
     ];
     setStatusData(newStatusData);
 
     // Update facilities distribution
     setFacilitiesDistribution(calculateFacilitiesDistribution(filtered));
 
-  }, [selectedClinic, selectedSupplier, selectedStatus, selectedEquipmentType, selectedWorkingStatus, selectedMaintenanceStatus, selectedWarrantyStatus, allData]);
+  }, [selectedClinic, selectedSupplier, selectedWorkingStatus, selectedMaintenanceStatus, selectedWarrantyStatus, allData]);
 
   const clearFilters = () => {
     setSelectedClinic('');
     setSelectedSupplier('');
-    setSelectedStatus('');
-    setSelectedEquipmentType('');
     setSelectedWorkingStatus('');
     setSelectedMaintenanceStatus('');
     setSelectedWarrantyStatus('');
-    // Reset to original dashboard data instead of reloading
+    // Reset to original dashboard data
     setDashboardData(originalDashboardData);
     setFilteredData(allData);
     setFacilitiesDistribution(calculateFacilitiesDistribution(allData));
     
     // Reset status data to original
     const originalStatusData = [
-      { name: 'جديد', value: originalDashboardData.new, color: '#3b82f6' },
-      { name: 'موافق عليه', value: originalDashboardData.approved, color: '#f59e0b' },
-      { name: 'تم التعاقد', value: originalDashboardData.contracted, color: '#8b5cf6' },
-      { name: 'تم التسليم', value: originalDashboardData.delivered, color: '#10b981' },
-      { name: 'مرفوض', value: originalDashboardData.rejected, color: '#ef4444' }
+      { name: 'يعمل', value: originalDashboardData.working, color: '#10b981' },
+      { name: 'لا يعمل', value: originalDashboardData.notWorking, color: '#ef4444' },
+      { name: 'تحت الضمان', value: originalDashboardData.underWarranty, color: '#3b82f6' },
+      { name: 'خارج الضمان', value: originalDashboardData.outOfWarranty, color: '#f59e0b' }
     ];
     setStatusData(originalStatusData);
   };
 
   const refreshData = async () => {
-    await Promise.all([
-      loadDashboardData(),
-      loadContractsData(),
-      loadTopSuppliers(),
-      loadTopClinics()
-    ]);
+    await loadAssetsData();
   };
 
   // Export functions
@@ -339,7 +228,7 @@ export default function DentalDashboard() {
       const printContent = `
         <html dir="rtl">
           <head>
-            <title>تقرير عقود الأسنان</title>
+            <title>تقرير أجهزة طب الأسنان</title>
             <style>
               body { font-family: Arial, sans-serif; direction: rtl; text-align: right; }
               .header { background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; padding: 20px; margin-bottom: 20px; }
@@ -353,37 +242,38 @@ export default function DentalDashboard() {
           </head>
           <body>
             <div class="header">
-              <h1>تقرير عقود الأسنان</h1>
+              <h1>تقرير أجهزة طب الأسنان</h1>
               <p>تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}</p>
             </div>
             <div class="stats-grid">
-              <div class="stat-card"><h3>إجمالي العقود</h3><p>${dashboardData.total}</p></div>
-              <div class="stat-card"><h3>القيمة الإجمالية</h3><p>${dashboardData.totalValue?.toLocaleString()} ريال</p></div>
-              <div class="stat-card"><h3>جديد</h3><p>${dashboardData.new}</p></div>
-              <div class="stat-card"><h3>موافق عليه</h3><p>${dashboardData.approved}</p></div>
-              <div class="stat-card"><h3>تم التعاقد</h3><p>${dashboardData.contracted}</p></div>
-              <div class="stat-card"><h3>تم التسليم</h3><p>${dashboardData.delivered}</p></div>
-              <div class="stat-card"><h3>مرفوض</h3><p>${dashboardData.rejected}</p></div>
+              <div class="stat-card"><h3>إجمالي الأجهزة</h3><p>${dashboardData.total}</p></div>
+              <div class="stat-card"><h3>الأجهزة التي تعمل</h3><p>${dashboardData.working}</p></div>
+              <div class="stat-card"><h3>الأجهزة المعطلة</h3><p>${dashboardData.notWorking}</p></div>
+              <div class="stat-card"><h3>تحت الضمان</h3><p>${dashboardData.underWarranty}</p></div>
+              <div class="stat-card"><h3>خارج الضمان</h3><p>${dashboardData.outOfWarranty}</p></div>
+              <div class="stat-card"><h3>تحتاج صيانة</h3><p>${dashboardData.needsMaintenance}</p></div>
             </div>
-            <h2>تفاصيل العقود المفلترة</h2>
+            <h2>تفاصيل الأجهزة المفلترة</h2>
             <table class="table">
               <thead>
                 <tr>
-                  <th>رقم العقد</th>
-                  <th>العيادة المستفيدة</th>
-                  <th>الشركة الموردة</th>
-                  <th>الحالة</th>
-                  <th>التكلفة الإجمالية</th>
+                  <th>كود الجهاز</th>
+                  <th>اسم الجهاز</th>
+                  <th>المنشأة</th>
+                  <th>المورد</th>
+                  <th>حالة الجهاز</th>
+                  <th>حالة الضمان</th>
                 </tr>
               </thead>
               <tbody>
                 ${filteredData.map(item => `
                   <tr>
-                    <td>${item.contractNumber || ''}</td>
-                    <td>${item.beneficiaryFacility || ''}</td>
+                    <td>${item.id || ''}</td>
+                    <td>${item.deviceName || ''}</td>
+                    <td>${item.facilityName || ''}</td>
                     <td>${item.supplierName || ''}</td>
-                    <td>${item.status || ''}</td>
-                    <td>${parseFloat(item.totalCost || 0).toLocaleString()}</td>
+                    <td>${item.deviceStatus || ''}</td>
+                    <td>${item.warrantyStatus || ''}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -408,16 +298,17 @@ export default function DentalDashboard() {
     setExportLoading(true);
     try {
       // Create CSV content
-      const headers = ['رقم العقد', 'العيادة المستفيدة', 'الشركة الموردة', 'الحالة', 'التكلفة الإجمالية', 'تاريخ الإنشاء'];
+      const headers = ['كود الجهاز', 'اسم الجهاز', 'المنشأة', 'المورد', 'حالة الجهاز', 'حالة الضمان', 'تاريخ التسليم'];
       const csvContent = [
         headers.join(','),
         ...filteredData.map(item => [
-          `"${item.contractNumber || ''}"`,
-          `"${item.beneficiaryFacility || ''}"`,
+          `"${item.id || ''}"`,
+          `"${item.deviceName || ''}"`,
+          `"${item.facilityName || ''}"`,
           `"${item.supplierName || ''}"`,
-          `"${item.status || ''}"`,
-          `"${item.totalCost || ''}"`,
-          `"${item.createdAt || ''}"`
+          `"${item.deviceStatus || ''}"`,
+          `"${item.warrantyStatus || ''}"`,
+          `"${item.deliveryDate || ''}"`
         ].join(','))
       ].join('\n');
       
@@ -429,7 +320,7 @@ export default function DentalDashboard() {
       if (link.download !== undefined) {
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
-        link.setAttribute('download', `dental-contracts-${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', `dental-assets-${new Date().toISOString().split('T')[0]}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -443,9 +334,9 @@ export default function DentalDashboard() {
     }
   };
 
-  // Get unique values for dropdown options from the actual contracts data
+  // Get unique values for dropdown options from the actual assets data
   const uniqueClinics = [...new Set(allData
-    .map(item => item.beneficiaryFacility)
+    .map(item => item.facilityName)
     .filter(clinic => clinic && clinic.trim() !== '')
   )].sort();
   
@@ -454,14 +345,8 @@ export default function DentalDashboard() {
     .filter(supplier => supplier && supplier.trim() !== '')
   )].sort();
 
-  const uniqueEquipmentTypes = [...new Set(allData
-    .map(item => item.equipmentName || item.deviceName)
-    .filter(equipment => equipment && equipment.trim() !== '')
-  )].sort();
-
   // Check if any filters are active
-  const hasActiveFilters = selectedClinic || selectedSupplier || selectedStatus || 
-                          selectedEquipmentType || selectedWorkingStatus || 
+  const hasActiveFilters = selectedClinic || selectedSupplier || selectedWorkingStatus || 
                           selectedMaintenanceStatus || selectedWarrantyStatus;
 
   if (loading) {
@@ -469,7 +354,7 @@ export default function DentalDashboard() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-purple-600" />
-          <p className="text-gray-600">جاري تحميل بيانات لوحة التحكم...</p>
+          <p className="text-gray-600">جاري تحميل بيانات أجهزة طب الأسنان...</p>
         </div>
       </div>
     );
@@ -498,10 +383,10 @@ export default function DentalDashboard() {
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg p-6 text-white">
         <div className="flex flex-col lg:flex-row items-start lg:items-center gap-3">
-          <Users className="h-8 w-8" />
+          <Monitor className="h-8 w-8" />
           <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold text-right">لوحة تحكم عقود الأسنان</h1>
-            <p className="text-purple-100 mt-1 text-right">إدارة شاملة لعقود معدات طب الأسنان</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-right">لوحة تحكم أجهزة طب الأسنان</h1>
+            <p className="text-purple-100 mt-1 text-right">إدارة شاملة لأجهزة ومعدات طب الأسنان</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {/* Export buttons */}
@@ -544,14 +429,14 @@ export default function DentalDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* First row - Basic filters */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          {/* Filter rows */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
             <Select value={selectedClinic} onValueChange={setSelectedClinic}>
               <SelectTrigger>
-                <SelectValue placeholder="اختر العيادة" />
+                <SelectValue placeholder="اختر المنشأة" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">جميع العيادات</SelectItem>
+                <SelectItem value="all">جميع المنشآت</SelectItem>
                 {uniqueClinics.map((clinic) => (
                   <SelectItem key={clinic} value={clinic}>{clinic}</SelectItem>
                 ))}
@@ -570,46 +455,6 @@ export default function DentalDashboard() {
               </SelectContent>
             </Select>
 
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="اختر الحالة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الحالات</SelectItem>
-                {statusOptions.map((status) => (
-                  <SelectItem key={status.value} value={status.value}>
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: status.color }}
-                      ></div>
-                      {status.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedEquipmentType} onValueChange={setSelectedEquipmentType}>
-              <SelectTrigger>
-                <SelectValue placeholder="نوع الأجهزة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الأجهزة</SelectItem>
-                {uniqueEquipmentTypes.map((equipment) => (
-                  <SelectItem key={equipment} value={equipment}>
-                    <div className="flex items-center gap-2">
-                      <Monitor className="w-4 h-4" />
-                      {equipment}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Second row - Equipment status filters */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <Select value={selectedWorkingStatus} onValueChange={setSelectedWorkingStatus}>
               <SelectTrigger>
                 <SelectValue placeholder="حالة التشغيل" />
@@ -626,7 +471,9 @@ export default function DentalDashboard() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
             <Select value={selectedMaintenanceStatus} onValueChange={setSelectedMaintenanceStatus}>
               <SelectTrigger>
                 <SelectValue placeholder="حالة الصيانة" />
@@ -677,12 +524,10 @@ export default function DentalDashboard() {
             <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
                 <div className="text-sm text-blue-800 text-right flex-1">
-                  <p className="font-medium mb-2">عرض {filteredData.length} من أصل {allData.length} عقد</p>
+                  <p className="font-medium mb-2">عرض {filteredData.length} من أصل {allData.length} جهاز</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                    {selectedClinic && <span>العيادة: {selectedClinic}</span>}
+                    {selectedClinic && <span>المنشأة: {selectedClinic}</span>}
                     {selectedSupplier && <span>المورد: {selectedSupplier}</span>}
-                    {selectedStatus && <span>الحالة: {selectedStatus}</span>}
-                    {selectedEquipmentType && <span>نوع الجهاز: {selectedEquipmentType}</span>}
                     {selectedWorkingStatus && <span>حالة التشغيل: {workingStatusOptions.find(o => o.value === selectedWorkingStatus)?.label}</span>}
                     {selectedMaintenanceStatus && <span>حالة الصيانة: {maintenanceStatusOptions.find(o => o.value === selectedMaintenanceStatus)?.label}</span>}
                     {selectedWarrantyStatus && <span>حالة الضمان: {warrantyStatusOptions.find(o => o.value === selectedWarrantyStatus)?.label}</span>}
@@ -717,61 +562,13 @@ export default function DentalDashboard() {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-purple-50 border-purple-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="text-right">
-                <p className="text-sm font-medium text-purple-600">إجمالي العقود</p>
-                <p className="text-2xl font-bold text-purple-800">{dashboardData.total}</p>
-              </div>
-              <Users className="h-8 w-8 text-purple-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-indigo-50 border-indigo-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="text-right">
-                <p className="text-sm font-medium text-indigo-600">القيمة الإجمالية</p>
-                <p className="text-xl font-bold text-indigo-800">{dashboardData.totalValue?.toLocaleString()}</p>
-                <p className="text-xs text-indigo-600">ريال سعودي</p>
-              </div>
-              <DollarSign className="h-8 w-8 text-indigo-600" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Detailed Status Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
-            <div className="text-center">
-              <Clock className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-blue-600">جديد</p>
-              <p className="text-xl font-bold text-blue-800">{dashboardData.new}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-yellow-50 border-yellow-200">
-          <CardContent className="p-4">
-            <div className="text-center">
-              <AlertTriangle className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-yellow-600">موافق عليه</p>
-              <p className="text-xl font-bold text-yellow-800">{dashboardData.approved}</p>
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card className="bg-purple-50 border-purple-200">
           <CardContent className="p-4">
             <div className="text-center">
-              <TrendingUp className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-purple-600">تم التعاقد</p>
-              <p className="text-xl font-bold text-purple-800">{dashboardData.contracted}</p>
+              <Monitor className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+              <p className="text-sm font-medium text-purple-600">إجمالي الأجهزة</p>
+              <p className="text-xl font-bold text-purple-800">{dashboardData.total}</p>
             </div>
           </CardContent>
         </Card>
@@ -780,8 +577,8 @@ export default function DentalDashboard() {
           <CardContent className="p-4">
             <div className="text-center">
               <CheckCircle className="h-6 w-6 text-green-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-green-600">تم التسليم</p>
-              <p className="text-xl font-bold text-green-800">{dashboardData.delivered}</p>
+              <p className="text-sm font-medium text-green-600">تعمل</p>
+              <p className="text-xl font-bold text-green-800">{dashboardData.working}</p>
             </div>
           </CardContent>
         </Card>
@@ -790,8 +587,38 @@ export default function DentalDashboard() {
           <CardContent className="p-4">
             <div className="text-center">
               <XCircle className="h-6 w-6 text-red-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-red-600">مرفوض</p>
-              <p className="text-xl font-bold text-red-800">{dashboardData.rejected}</p>
+              <p className="text-sm font-medium text-red-600">معطلة</p>
+              <p className="text-xl font-bold text-red-800">{dashboardData.notWorking}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="p-4">
+            <div className="text-center">
+              <ShieldCheck className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+              <p className="text-sm font-medium text-blue-600">تحت الضمان</p>
+              <p className="text-xl font-bold text-blue-800">{dashboardData.underWarranty}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-orange-50 border-orange-200">
+          <CardContent className="p-4">
+            <div className="text-center">
+              <ShieldX className="h-6 w-6 text-orange-600 mx-auto mb-2" />
+              <p className="text-sm font-medium text-orange-600">خارج الضمان</p>
+              <p className="text-xl font-bold text-orange-800">{dashboardData.outOfWarranty}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-yellow-50 border-yellow-200">
+          <CardContent className="p-4">
+            <div className="text-center">
+              <Wrench className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
+              <p className="text-sm font-medium text-yellow-600">تحتاج صيانة</p>
+              <p className="text-xl font-bold text-yellow-800">{dashboardData.needsMaintenance}</p>
             </div>
           </CardContent>
         </Card>
@@ -802,7 +629,7 @@ export default function DentalDashboard() {
         {/* Status Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-right">توزيع حالة العقود</CardTitle>
+            <CardTitle className="text-right">توزيع حالة الأجهزة</CardTitle>
           </CardHeader>
           <CardContent>
             {statusData.length > 0 ? (
@@ -833,7 +660,7 @@ export default function DentalDashboard() {
           </CardContent>
         </Card>
 
-        {/* Facilities Distribution - Improved Chart */}
+        {/* Facilities Distribution - Mobile Responsive Chart */}
         <Card>
           <CardHeader>
             <CardTitle className="text-right flex items-center gap-2">
@@ -844,52 +671,84 @@ export default function DentalDashboard() {
           <CardContent>
             {facilitiesDistribution.length > 0 ? (
               <div className="space-y-3">
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart
-                    data={facilitiesDistribution}
-                    layout="horizontal"
-                    margin={{ top: 5, right: 5, left: 100, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis 
-                      dataKey="name" 
-                      type="category" 
-                      width={90}
-                      tick={{ fontSize: 10, textAnchor: 'end' }}
-                    />
-                    <Tooltip 
-                      formatter={(value) => [value, 'عدد الأجهزة']}
-                      labelStyle={{ direction: 'rtl', textAlign: 'right' }}
-                    />
-                    <Bar 
-                      dataKey="count" 
-                      fill="#8b5cf6" 
-                      radius={[0, 4, 4, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-                
-                {/* Detailed List */}
-                <div className="mt-4 border-t pt-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3 text-right">تفصيل المنشآت:</h4>
-                  <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
+                {/* Mobile: Show as list, Desktop: Show as chart */}
+                <div className="block md:hidden">
+                  <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
                     {facilitiesDistribution.map((facility, index) => (
                       <div 
                         key={facility.name} 
-                        className="flex justify-between items-center p-2 bg-gray-50 rounded-lg text-sm"
+                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg text-sm border"
                       >
-                        <div className="text-right flex-1">
-                          <span className="font-medium">{facility.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
-                            {facility.count} جهاز
+                        <div className="text-right flex-1 min-w-0">
+                          <span className="font-medium text-sm block truncate" title={facility.name}>
+                            {facility.name}
                           </span>
                           <span className="text-xs text-gray-500">#{index + 1}</span>
                         </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
+                            {facility.count}
+                          </span>
+                          <Monitor className="w-4 h-4 text-purple-600" />
+                        </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* Desktop: Show as horizontal bar chart */}
+                <div className="hidden md:block">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart
+                      data={facilitiesDistribution}
+                      layout="horizontal"
+                      margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={120}
+                        tick={{ fontSize: 11, textAnchor: 'end' }}
+                        interval={0}
+                      />
+                      <Tooltip 
+                        formatter={(value) => [value, 'عدد الأجهزة']}
+                        labelStyle={{ direction: 'rtl', textAlign: 'right' }}
+                        contentStyle={{ direction: 'rtl', textAlign: 'right' }}
+                      />
+                      <Bar 
+                        dataKey="count" 
+                        fill="#8b5cf6" 
+                        radius={[0, 4, 4, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                  
+                  {/* Detailed List for Desktop */}
+                  <div className="mt-4 border-t pt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3 text-right">تفصيل المنشآت:</h4>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                      {facilitiesDistribution.map((facility, index) => (
+                        <div 
+                          key={facility.name} 
+                          className="flex justify-between items-center p-2 bg-gray-50 rounded-lg text-sm"
+                        >
+                          <div className="text-right flex-1 min-w-0">
+                            <span className="font-medium truncate block" title={facility.name}>
+                              {facility.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
+                              {facility.count} جهاز
+                            </span>
+                            <span className="text-xs text-gray-500">#{index + 1}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -905,80 +764,257 @@ export default function DentalDashboard() {
         </Card>
       </div>
 
-      {/* Top Suppliers and Clinics */}
+      {/* Top Suppliers and Facilities Statistics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Suppliers */}
+        {/* Top Suppliers by Device Count */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-right">أفضل الشركات الموردة</CardTitle>
+            <CardTitle className="text-right flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              أكثر الموردين نشاطاً
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {suppliersLoading ? (
-              <div className="flex items-center justify-center h-[200px]">
-                <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
-              </div>
-            ) : topSuppliers.length > 0 ? (
-              <div className="space-y-4">
-                {topSuppliers.map((supplier, index) => (
-                  <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg gap-3">
-                    <div className="text-right flex-1">
-                      <p className="font-medium">{supplier.name}</p>
-                      <div className="text-sm text-gray-600">
-                        <p>{supplier.contracts} عقد</p>
-                        <p>{supplier.value?.toLocaleString()} ريال</p>
+            {(() => {
+              const supplierCounts = {};
+              filteredData.forEach(item => {
+                if (item.supplierName) {
+                  supplierCounts[item.supplierName] = (supplierCounts[item.supplierName] || 0) + 1;
+                }
+              });
+              
+              const topSuppliersList = Object.entries(supplierCounts)
+                .map(([name, count]) => ({ name, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 5);
+
+              return topSuppliersList.length > 0 ? (
+                <div className="space-y-3">
+                  {topSuppliersList.map((supplier, index) => (
+                    <div key={supplier.name} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-gray-50 rounded-lg gap-2">
+                      <div className="text-right flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate" title={supplier.name}>{supplier.name}</p>
+                        <p className="text-xs text-gray-600">{supplier.count} جهاز</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <TrendingUp className="h-4 w-4 text-purple-600" />
+                        <span className="font-bold text-purple-600 text-sm">#{index + 1}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-purple-600" />
-                      <span className="font-bold text-purple-600">#{index + 1}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">لا توجد بيانات موردين</p>
-              </div>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <TrendingUp className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500">لا توجد بيانات موردين</p>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
 
-        {/* Top Clinics */}
+        {/* Top Facilities by Device Count */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-right">أكثر العيادات نشاطاً</CardTitle>
+            <CardTitle className="text-right flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              أكثر المنشآت احتواءً للأجهزة
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {clinicsLoading ? (
-              <div className="flex items-center justify-center h-[200px]">
-                <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
-              </div>
-            ) : topClinics.length > 0 ? (
-              <div className="space-y-4">
-                {topClinics.map((clinic, index) => (
-                  <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg gap-3">
-                    <div className="text-right flex-1">
-                      <p className="font-medium">{clinic.name}</p>
-                      <div className="text-sm text-gray-600">
-                        <p>{clinic.contracts} عقد</p>
-                        <p>{clinic.value?.toLocaleString()} ريال</p>
+            {(() => {
+              const facilityCounts = {};
+              filteredData.forEach(item => {
+                if (item.facilityName) {
+                  facilityCounts[item.facilityName] = (facilityCounts[item.facilityName] || 0) + 1;
+                }
+              });
+              
+              const topFacilitiesList = Object.entries(facilityCounts)
+                .map(([name, count]) => ({ name, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 5);
+
+              return topFacilitiesList.length > 0 ? (
+                <div className="space-y-3">
+                  {topFacilitiesList.map((facility, index) => (
+                    <div key={facility.name} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-gray-50 rounded-lg gap-2">
+                      <div className="text-right flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate" title={facility.name}>{facility.name}</p>
+                        <p className="text-xs text-gray-600">{facility.count} جهاز</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Building className="h-4 w-4 text-purple-600" />
+                        <span className="font-bold text-purple-600 text-sm">#{index + 1}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-5 w-5 text-purple-600" />
-                      <span className="font-bold text-purple-600">#{index + 1}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">لا توجد بيانات عيادات</p>
-              </div>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Building className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500">لا توجد بيانات منشآت</p>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>
+
+      {/* Device Status Summary Table - Mobile Responsive */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-right flex items-center gap-2">
+            <Monitor className="h-5 w-5" />
+            ملخص حالة الأجهزة المفلترة
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredData.length > 0 ? (
+            <div className="space-y-4">
+              {/* Mobile View */}
+              <div className="block md:hidden space-y-3">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-green-800">الأجهزة العاملة</p>
+                      <p className="text-xs text-green-600">حالة جيدة وجاهزة للاستخدام</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-8 w-8 text-green-600" />
+                      <span className="text-2xl font-bold text-green-800">{dashboardData.working}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-red-800">الأجهزة المعطلة</p>
+                      <p className="text-xs text-red-600">تحتاج إلى إصلاح أو صيانة</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-8 w-8 text-red-600" />
+                      <span className="text-2xl font-bold text-red-800">{dashboardData.notWorking}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-yellow-800">تحتاج صيانة</p>
+                      <p className="text-xs text-yellow-600">أجهزة بها أعطال مسجلة</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Wrench className="h-8 w-8 text-yellow-600" />
+                      <span className="text-2xl font-bold text-yellow-800">{dashboardData.needsMaintenance}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop View */}
+              <div className="hidden md:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-right">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="p-3 font-medium text-gray-700">الحالة</th>
+                        <th className="p-3 font-medium text-gray-700">العدد</th>
+                        <th className="p-3 font-medium text-gray-700">النسبة</th>
+                        <th className="p-3 font-medium text-gray-700">الوصف</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-gray-100">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2 justify-end">
+                            <span>الأجهزة العاملة</span>
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          </div>
+                        </td>
+                        <td className="p-3 font-bold text-green-800">{dashboardData.working}</td>
+                        <td className="p-3">
+                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                            {dashboardData.total > 0 ? ((dashboardData.working / dashboardData.total) * 100).toFixed(1) : 0}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-gray-600 text-xs">حالة جيدة وجاهزة للاستخدام</td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2 justify-end">
+                            <span>الأجهزة المعطلة</span>
+                            <XCircle className="h-4 w-4 text-red-600" />
+                          </div>
+                        </td>
+                        <td className="p-3 font-bold text-red-800">{dashboardData.notWorking}</td>
+                        <td className="p-3">
+                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">
+                            {dashboardData.total > 0 ? ((dashboardData.notWorking / dashboardData.total) * 100).toFixed(1) : 0}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-gray-600 text-xs">تحتاج إلى إصلاح أو صيانة</td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2 justify-end">
+                            <span>تحت الضمان</span>
+                            <ShieldCheck className="h-4 w-4 text-blue-600" />
+                          </div>
+                        </td>
+                        <td className="p-3 font-bold text-blue-800">{dashboardData.underWarranty}</td>
+                        <td className="p-3">
+                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                            {dashboardData.total > 0 ? ((dashboardData.underWarranty / dashboardData.total) * 100).toFixed(1) : 0}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-gray-600 text-xs">مغطاة بالضمان من المورد</td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2 justify-end">
+                            <span>خارج الضمان</span>
+                            <ShieldX className="h-4 w-4 text-orange-600" />
+                          </div>
+                        </td>
+                        <td className="p-3 font-bold text-orange-800">{dashboardData.outOfWarranty}</td>
+                        <td className="p-3">
+                          <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">
+                            {dashboardData.total > 0 ? ((dashboardData.outOfWarranty / dashboardData.total) * 100).toFixed(1) : 0}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-gray-600 text-xs">انتهت فترة الضمان</td>
+                      </tr>
+                      <tr>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2 justify-end">
+                            <span>تحتاج صيانة</span>
+                            <Wrench className="h-4 w-4 text-yellow-600" />
+                          </div>
+                        </td>
+                        <td className="p-3 font-bold text-yellow-800">{dashboardData.needsMaintenance}</td>
+                        <td className="p-3">
+                          <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">
+                            {dashboardData.total > 0 ? ((dashboardData.needsMaintenance / dashboardData.total) * 100).toFixed(1) : 0}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-gray-600 text-xs">أجهزة بها أعطال مسجلة</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Monitor className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">لا توجد أجهزة لعرضها</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
