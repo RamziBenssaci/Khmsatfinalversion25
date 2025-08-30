@@ -246,9 +246,9 @@ export default function DentalDashboard() {
     if (selectedWorkingStatus && selectedWorkingStatus !== "all") {
       filtered = filtered.filter(item => {
         if (selectedWorkingStatus === 'working') {
-          return item.isWorking === true || item.workingStatus === 'working' || item.status_working === true;
+          return item.deviceStatus === 'يعمل';
         } else if (selectedWorkingStatus === 'not_working') {
-          return item.isWorking === false || item.workingStatus === 'not_working' || item.status_working === false;
+          return item.deviceStatus === 'مكهن';
         }
         return true;
       });
@@ -257,9 +257,9 @@ export default function DentalDashboard() {
     if (selectedMaintenanceStatus && selectedMaintenanceStatus !== "all") {
       filtered = filtered.filter(item => {
         if (selectedMaintenanceStatus === 'needs_maintenance') {
-          return item.needsMaintenance === true || item.maintenanceStatus === 'needs_maintenance';
+          return item.deviceStatus === 'يعمل';
         } else if (selectedMaintenanceStatus === 'no_maintenance') {
-          return item.needsMaintenance === false || item.maintenanceStatus === 'no_maintenance';
+          return item.deviceStatus === 'مكهن';
         }
         return true;
       });
@@ -268,11 +268,10 @@ export default function DentalDashboard() {
     if (selectedWarrantyStatus && selectedWarrantyStatus !== "all") {
       filtered = filtered.filter(item => {
         if (selectedWarrantyStatus === 'under_warranty') {
-          return item.underWarranty === true || item.warrantyStatus === 'active' || 
-                 (item.warrantyEndDate && new Date(item.warrantyEndDate) > new Date());
+          return item.warrantyActive === 'yes';
         } else if (selectedWarrantyStatus === 'out_of_warranty') {
-          return item.underWarranty === false || item.warrantyStatus === 'expired' || 
-                 (item.warrantyEndDate && new Date(item.warrantyEndDate) <= new Date());
+          =return item.warrantyActive === 'no';
+
         }
         return true;
       });
