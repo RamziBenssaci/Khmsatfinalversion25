@@ -381,7 +381,44 @@ export default function Warehouse() {
 
   const validateWithdrawForm = () => {
     const errors: any = {};
-    
+    function previewImage(event) {
+  const input = event.target;
+  const previewImg = document.getElementById('purchaseInvoicePreviewImg');
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      previewImg.src = e.target.result;
+      previewImg.style.display = 'block';
+    };
+    reader.readAsDataURL(input.files[0]);
+  } else {
+    previewImg.src = '';
+    previewImg.style.display = 'none';
+  }
+}
+
+// Function to open modal with large image
+function openImageModal(src) {
+  let modal = document.getElementById('imageModal');
+  let modalImg = document.getElementById('modalImageContent');
+  modal.style.display = "block";
+  modalImg.src = src;
+}
+
+function closeImageModal() {
+  document.getElementById('imageModal').style.display = 'none';
+}
+
+// Setup modal close on clicking outside or on close button
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('imageModal');
+  modal.onclick = function(e) {
+    if (e.target === modal || e.target.id === 'closeModalBtn') {
+      closeImageModal();
+    }
+  };
+});
+
     if (!withdrawFormData.beneficiaryFacility) errors.beneficiaryFacility = 'الجهة المستفيدة مطلوبة';
     if (!withdrawFormData.withdrawQty || parseFloat(withdrawFormData.withdrawQty) <= 0) errors.withdrawQty = 'الكمية المصروفة مطلوبة ويجب أن تكون أكبر من صفر';
     if (!withdrawFormData.withdrawDate) errors.withdrawDate = 'تاريخ الصرف مطلوب';
@@ -720,6 +757,7 @@ export default function Warehouse() {
                 <th>الحد الأدنى</th>
                 <th>قيمة الشراء</th>
                 <th>الشركة الموردة</th>
+                <th>معاينة فاتورة الشراء</th>
                 <th>الحالة</th>
               </tr>
             </thead>
@@ -734,6 +772,15 @@ export default function Warehouse() {
                   <td>${item.minQuantity || 0}</td>
                   <td>${item.purchaseValue || 0} ريال</td>
                   <td>${item.supplierName || ''}</td>
+                  <td>
+  <!-- Show icon if image exists -->
+  <img src="localhost/image/{{item.image}}" 
+       alt="فاتورة الشراء" 
+       style="width:30px; height:30px; cursor:pointer;" 
+       onclick="openImageModal(this.src)" 
+       onerror="this.style.display='none';" />
+</td>
+
                   <td>
                     <span class="${item.availableQty <= item.minQuantity ? 'status-low' : 'status-available'}">
                       ${item.availableQty <= item.minQuantity ? 'مخزون منخفض' : 'متوفر'}
@@ -1169,6 +1216,13 @@ export default function Warehouse() {
                   </div>
                 </div>
               </div>
+<div class="form-group">
+  <label for="purchaseInvoice">فاتورة الشراء</label>
+  <input type="file" id="purchaseInvoice" name="image" accept="image/*" onchange="previewImage(event)" />
+  <div id="purchaseInvoicePreview" class="image-preview-container" style="margin-top:10px;">
+    <img id="purchaseInvoicePreviewImg" src="" alt="معاينة الصورة" style="max-width: 100%; max-height: 150px; display:none; border:1px solid #ddd; padding: 5px;"/>
+  </div>
+</div>
 
               {/* Financial and Supplier Information */}
               <div className="admin-card">
@@ -1851,6 +1905,13 @@ export default function Warehouse() {
                   </div>
                 </div>
               </div>
+<div class="form-group">
+  <label for="purchaseInvoice">فاتورة الشراء</label>
+  <input type="file" id="purchaseInvoice" name="image" accept="image/*" onchange="previewImage(event)" />
+  <div id="purchaseInvoicePreview" class="image-preview-container" style="margin-top:10px;">
+    <img id="purchaseInvoicePreviewImg" src="" alt="معاينة الصورة" style="max-width: 100%; max-height: 150px; display:none; border:1px solid #ddd; padding: 5px;"/>
+  </div>
+</div>
 
               {/* Financial and Supplier Information */}
               <div className="admin-card">
@@ -2182,6 +2243,12 @@ export default function Warehouse() {
     </div>
   </div>
 )}
+      <!-- Image Modal -->
+<div id="imageModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color: rgba(0,0,0,0.8);">
+  <span id="closeModalBtn" style="position:absolute; top:20px; right:35px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer;">&times;</span>
+  <img id="modalImageContent" style="margin:auto; display:block; max-width:90%; max-height:90%; padding:20px;" />
+</div>
+
     </div>
   );
 }
