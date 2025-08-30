@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { HardDrive, Building, Users, Wrench, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { HardDrive, Building, Users, Wrench, CheckCircle, XCircle, Loader2, Filter } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { dentalAssetsApi, reportsApi } from '@/lib/api';
@@ -35,6 +35,9 @@ const chartConfig = {
 export default function AssetsDashboard() {
   const [facilityFilter, setFacilityFilter] = useState('all');
   const [deviceTypeFilter, setDeviceTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [warrantyFilter, setWarrantyFilter] = useState('all');
+  const [supplierFilter, setSupplierFilter] = useState('all');
   const [assets, setAssets] = useState<Asset[]>([]);
   const [facilities, setFacilitiesData] = useState<Facility[]>([]);
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -111,54 +114,75 @@ export default function AssetsDashboard() {
   const filteredDevices = assets.filter(device => {
     const matchesFacility = !facilityFilter || facilityFilter === 'all' || device.facility === facilityFilter;
     const matchesType = !deviceTypeFilter || deviceTypeFilter === 'all' || device.type === deviceTypeFilter;
-    return matchesFacility && matchesType;
+    const matchesStatus = !statusFilter || statusFilter === 'all' || device.status === statusFilter;
+    const matchesWarranty = !warrantyFilter || warrantyFilter === 'all' || device.warrantyActive === warrantyFilter;
+    const matchesSupplier = !supplierFilter || supplierFilter === 'all' || device.supplier === supplierFilter;
+    
+    return matchesFacility && matchesType && matchesStatus && matchesWarranty && matchesSupplier;
   });
 
-  // Calculate statistics - use API aggregates when available
-  const totalDevices = dashboardData?.aggregates?.total || filteredDevices.length;
-  const workingDevices = dashboardData?.aggregates?.working || filteredDevices.filter(d => d.status === 'يعمل').length;
-  const brokenDevices = dashboardData?.aggregates?.broken || filteredDevices.filter(d => d.status === 'مكهن').length;
-  const underWarrantyDevices = dashboardData?.aggregates?.underWarranty || 0;
-  const outOfWarrantyDevices = dashboardData?.aggregates?.outOfWarranty || 0;
+  // Calculate statistics - use filtered data for accurate counts
+  const totalDevices = filteredDevices.length;
+  const workingDevices = filteredDevices.filter(d => d.status === 'يعمل').length;
+  const brokenDevices = filteredDevices.filter(d => d.status === 'معطل' || d.status === 'مكهن').length;
+  const underWarrantyDevices = filteredDevices.filter(d => d.warrantyActive === 'نعم').length;
+  const outOfWarrantyDevices = filteredDevices.filter(d => d.warrantyActive === 'لا').length;
 
-  const facilitiesInAssets = [...new Set(filteredDevices.map(d => d.facility))];
-  const suppliers = [...new Set(filteredDevices.map(d => d.supplier))];
-  const deviceTypes = [...new Set(filteredDevices.map(d => d.type))];
+  const facilitiesInAssets = [...new Set(filteredDevices.map(d => d.facility))].filter(Boolean);
+  const suppliers = [...new Set(assets.map(d => d.supplier))].filter(Boolean);
+  const deviceTypes = [...new Set(assets.map(d => d.type))].filter(Boolean);
 
-  // Data for device distribution by facility
-  const facilityDistribution = facilitiesInAssets.map(facility => ({
-    name: facility,
-    value: filteredDevices.filter(d => d.facility === facility).length
-  }));
+  // Clear all filters function
+  const clearAllFilters = () => {
+    setFacilityFilter('all');
+    setDeviceTypeFilter('all');
+    setStatusFilter('all');
+    setWarrantyFilter('all');
+    setSupplierFilter('all');
+  };
+
+  // Data for improved facility distribution (sorted and numbered)
+  const facilityDistribution = facilitiesInAssets
+    .map(facility => ({
+      name: facility,
+      shortName: facility.length > 15 ? facility.substring(0, 15) + '...' : facility,
+      value: filteredDevices.filter(d => d.facility === facility).length
+    }))
+    .sort((a, b) => b.value - a.value) // Sort by value descending
+    .map((item, index) => ({
+      ...item,
+      displayName: `${index + 1}. ${item.shortName}`,
+      fullName: item.name
+    }));
 
   // Data for device types distribution
   const deviceTypeDistribution = deviceTypes.map(type => ({
     name: type,
     value: filteredDevices.filter(d => d.type === type).length
-  }));
+  })).filter(item => item.value > 0);
 
   // Data for supplier distribution
   const supplierDistribution = suppliers.map(supplier => ({
     name: supplier,
     value: filteredDevices.filter(d => d.supplier === supplier).length
-  }));
+  })).filter(item => item.value > 0);
 
   // Data for working vs broken devices
   const statusDistribution = [
     { name: 'يعمل', value: workingDevices, fill: chartConfig.working.color },
     { name: 'معطل', value: brokenDevices, fill: chartConfig.broken.color }
-  ];
+  ].filter(item => item.value > 0);
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B6B'];
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-4 p-2 sm:p-4">
       {/* AdminLTE 3 Style Header */}
-      <div className="bg-gradient-to-r from-primary to-primary/80 rounded-lg p-6 text-primary-foreground shadow-lg">
+      <div className="bg-gradient-to-r from-primary to-primary/80 rounded-lg p-4 sm:p-6 text-primary-foreground shadow-lg">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div className="text-right">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">لوحة تحكم الأصول</h1>
-            <p className="text-primary-foreground/90">إدارة ومراقبة جميع الأصول والأجهزة الطبية</p>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">لوحة تحكم الأصول</h1>
+            <p className="text-primary-foreground/90 text-sm sm:text-base">إدارة ومراقبة جميع الأصول والأجهزة الطبية</p>
           </div>
           <div className="mt-4 sm:mt-0">
             <div className="flex items-center gap-2 text-sm">
@@ -168,16 +192,17 @@ export default function AssetsDashboard() {
         </div>
       </div>
 
-      {/* AdminLTE 3 Style Filters */}
+      {/* Enhanced Filters */}
       <div className="bg-white dark:bg-card rounded-lg shadow-sm border border-border">
         <div className="bg-gradient-to-r from-secondary to-secondary/80 text-secondary-foreground px-4 py-3 rounded-t-lg border-b border-border">
           <h3 className="font-semibold text-right flex items-center gap-2">
-            <HardDrive className="h-4 w-4" />
+            <Filter className="h-4 w-4" />
             فلترة البيانات
           </h3>
         </div>
         <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            {/* Facility Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground block text-right">المنشأة</label>
               <Select value={facilityFilter} onValueChange={setFacilityFilter} disabled={facilitiesLoading}>
@@ -195,6 +220,7 @@ export default function AssetsDashboard() {
               </Select>
             </div>
 
+            {/* Device Type Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground block text-right">نوع الجهاز</label>
               <Select value={deviceTypeFilter} onValueChange={setDeviceTypeFilter}>
@@ -212,21 +238,71 @@ export default function AssetsDashboard() {
               </Select>
             </div>
 
+            {/* Status Filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground block text-right">حالة الجهاز</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="bg-background hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                  <SelectValue placeholder="جميع الحالات" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الحالات</SelectItem>
+                  <SelectItem value="يعمل">الأجهزة التي تعمل</SelectItem>
+                  <SelectItem value="معطل">الأجهزة المعطلة</SelectItem>
+                  <SelectItem value="مكهن">الأجهزة المكهنة</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Warranty Filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground block text-right">حالة الضمان</label>
+              <Select value={warrantyFilter} onValueChange={setWarrantyFilter}>
+                <SelectTrigger className="bg-background hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                  <SelectValue placeholder="جميع أنواع الضمان" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع أنواع الضمان</SelectItem>
+                  <SelectItem value="نعم">تحت الضمان</SelectItem>
+                  <SelectItem value="لا">خارج الضمان</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Supplier Filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground block text-right">الشركة الموردة</label>
+              <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+                <SelectTrigger className="bg-background hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                  <SelectValue placeholder="جميع الموردين" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الموردين</SelectItem>
+                  {suppliers.map((supplier) => (
+                    <SelectItem key={supplier} value={supplier}>
+                      {supplier}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Clear Filters Button */}
             <div className="flex items-end">
               <Button 
-                onClick={() => { setFacilityFilter('all'); setDeviceTypeFilter('all'); }}
+                onClick={clearAllFilters}
                 variant="outline"
                 className="w-full hover:bg-primary hover:text-primary-foreground transition-all"
               >
-                مسح الفلاتر
+                مسح جميع الفلاتر
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* AdminLTE 3 Style Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {loading ? (
           <div className="col-span-full">
             <div className="bg-white dark:bg-card rounded-lg shadow-sm border border-border p-6">
@@ -248,56 +324,56 @@ export default function AssetsDashboard() {
         ) : (
           <>
             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg overflow-hidden">
-              <div className="p-6 text-white">
+              <div className="p-4 sm:p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div className="text-right">
-                    <p className="text-blue-100 text-sm font-medium">إجمالي الأجهزة</p>
-                    <p className="text-3xl font-bold">{totalDevices}</p>
+                    <p className="text-blue-100 text-xs sm:text-sm font-medium">إجمالي الأجهزة</p>
+                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{totalDevices}</p>
                   </div>
-                  <div className="bg-white/20 p-3 rounded-full">
-                    <HardDrive className="h-8 w-8 text-white" />
+                  <div className="bg-white/20 p-2 sm:p-3 rounded-full">
+                    <HardDrive className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg overflow-hidden">
-              <div className="p-6 text-white">
+              <div className="p-4 sm:p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div className="text-right">
-                    <p className="text-green-100 text-sm font-medium">الأجهزة العاملة</p>
-                    <p className="text-3xl font-bold">{workingDevices}</p>
+                    <p className="text-green-100 text-xs sm:text-sm font-medium">الأجهزة العاملة</p>
+                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{workingDevices}</p>
                   </div>
-                  <div className="bg-white/20 p-3 rounded-full">
-                    <CheckCircle className="h-8 w-8 text-white" />
+                  <div className="bg-white/20 p-2 sm:p-3 rounded-full">
+                    <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow-lg overflow-hidden">
-              <div className="p-6 text-white">
+              <div className="p-4 sm:p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div className="text-right">
-                    <p className="text-red-100 text-sm font-medium">الأجهزة المعطلة</p>
-                    <p className="text-3xl font-bold">{brokenDevices}</p>
+                    <p className="text-red-100 text-xs sm:text-sm font-medium">الأجهزة المعطلة</p>
+                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{brokenDevices}</p>
                   </div>
-                  <div className="bg-white/20 p-3 rounded-full">
-                    <XCircle className="h-8 w-8 text-white" />
+                  <div className="bg-white/20 p-2 sm:p-3 rounded-full">
+                    <XCircle className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg overflow-hidden">
-              <div className="p-6 text-white">
+              <div className="p-4 sm:p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div className="text-right">
-                    <p className="text-purple-100 text-sm font-medium">إجمالي المنشآت</p>
-                    <p className="text-3xl font-bold">{facilitiesInAssets.length}</p>
+                    <p className="text-purple-100 text-xs sm:text-sm font-medium">إجمالي المنشآت</p>
+                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{facilitiesInAssets.length}</p>
                   </div>
-                  <div className="bg-white/20 p-3 rounded-full">
-                    <Building className="h-8 w-8 text-white" />
+                  <div className="bg-white/20 p-2 sm:p-3 rounded-full">
+                    <Building className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                   </div>
                 </div>
               </div>
@@ -307,7 +383,7 @@ export default function AssetsDashboard() {
       </div>
 
       {/* Warranty Statistics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
         {loading ? (
           <div className="col-span-full">
             <div className="bg-white dark:bg-card rounded-lg shadow-sm border border-border p-6">
@@ -329,28 +405,28 @@ export default function AssetsDashboard() {
         ) : (
           <>
             <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg shadow-lg overflow-hidden">
-              <div className="p-6 text-white">
+              <div className="p-4 sm:p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div className="text-right">
-                    <p className="text-emerald-100 text-sm font-medium">الأجهزة تحت الضمان</p>
-                    <p className="text-3xl font-bold">{underWarrantyDevices}</p>
+                    <p className="text-emerald-100 text-xs sm:text-sm font-medium">الأجهزة تحت الضمان</p>
+                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{underWarrantyDevices}</p>
                   </div>
-                  <div className="bg-white/20 p-3 rounded-full">
-                    <CheckCircle className="h-8 w-8 text-white" />
+                  <div className="bg-white/20 p-2 sm:p-3 rounded-full">
+                    <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-lg overflow-hidden">
-              <div className="p-6 text-white">
+              <div className="p-4 sm:p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div className="text-right">
-                    <p className="text-orange-100 text-sm font-medium">الأجهزة خارج الضمان</p>
-                    <p className="text-3xl font-bold">{outOfWarrantyDevices}</p>
+                    <p className="text-orange-100 text-xs sm:text-sm font-medium">الأجهزة خارج الضمان</p>
+                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{outOfWarrantyDevices}</p>
                   </div>
-                  <div className="bg-white/20 p-3 rounded-full">
-                    <XCircle className="h-8 w-8 text-white" />
+                  <div className="bg-white/20 p-2 sm:p-3 rounded-full">
+                    <XCircle className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                   </div>
                 </div>
               </div>
@@ -359,36 +435,36 @@ export default function AssetsDashboard() {
         )}
       </div>
 
-      {/* AdminLTE 3 Style Charts */}
+      {/* Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {/* Device Status Distribution */}
         <div className="bg-white dark:bg-card rounded-lg shadow-lg border border-border overflow-hidden">
           <div className="bg-gradient-to-r from-success to-success/80 text-success-foreground px-4 py-3 border-b border-border">
-            <h3 className="font-semibold text-right flex items-center gap-2">
+            <h3 className="font-semibold text-right flex items-center gap-2 text-sm sm:text-base">
               <CheckCircle className="h-4 w-4" />
               توزيع حالة الأجهزة
             </h3>
           </div>
-          <div className="p-4">
+          <div className="p-2 sm:p-4">
             {loading ? (
               <div className="text-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                <p className="text-muted-foreground">جاري تحميل بيانات توزيع الحالة...</p>
+                <p className="text-muted-foreground text-sm">جاري تحميل بيانات توزيع الحالة...</p>
               </div>
-            ) : assets.length === 0 ? (
+            ) : statusDistribution.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">لا توجد بيانات أجهزة لعرض التوزيع</p>
+                <p className="text-muted-foreground text-sm">لا توجد بيانات أجهزة لعرض التوزيع</p>
               </div>
             ) : (
-              <ChartContainer config={chartConfig} className="h-[300px] w-full">
+              <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={statusDistribution}
                       cx="50%"
                       cy="50%"
-                      innerRadius={50}
-                      outerRadius={100}
+                      innerRadius={40}
+                      outerRadius={80}
                       paddingAngle={5}
                       dataKey="value"
                     >
@@ -408,30 +484,30 @@ export default function AssetsDashboard() {
         {/* Device Type Distribution */}
         <div className="bg-white dark:bg-card rounded-lg shadow-lg border border-border overflow-hidden">
           <div className="bg-gradient-to-r from-warning to-warning/80 text-warning-foreground px-4 py-3 border-b border-border">
-            <h3 className="font-semibold text-right flex items-center gap-2">
+            <h3 className="font-semibold text-right flex items-center gap-2 text-sm sm:text-base">
               <HardDrive className="h-4 w-4" />
               توزيع أنواع الأجهزة
             </h3>
           </div>
-          <div className="p-4">
+          <div className="p-2 sm:p-4">
             {loading ? (
               <div className="text-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                <p className="text-muted-foreground">جاري تحميل بيانات أنواع الأجهزة...</p>
+                <p className="text-muted-foreground text-sm">جاري تحميل بيانات أنواع الأجهزة...</p>
               </div>
-            ) : assets.length === 0 ? (
+            ) : deviceTypeDistribution.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">لا توجد بيانات أنواع أجهزة لعرض التوزيع</p>
+                <p className="text-muted-foreground text-sm">لا توجد بيانات أنواع أجهزة لعرض التوزيع</p>
               </div>
             ) : (
-              <ChartContainer config={chartConfig} className="h-[300px] w-full">
+              <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={deviceTypeDistribution}
                       cx="50%"
                       cy="50%"
-                      outerRadius={100}
+                      outerRadius={80}
                       dataKey="value"
                       label={({percent}) => `${(percent * 100).toFixed(0)}%`}
                     >
@@ -448,59 +524,92 @@ export default function AssetsDashboard() {
         </div>
       </div>
 
-      {/* Charts Row for Facilities and Suppliers */}
+      {/* Improved Facility Distribution */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* Facility Distribution */}
         <div className="bg-white dark:bg-card rounded-lg shadow-lg border border-border overflow-hidden">
           <div className="bg-gradient-to-r from-info to-info/80 text-info-foreground px-4 py-3 border-b border-border">
-            <h3 className="font-semibold text-right flex items-center gap-2">
+            <h3 className="font-semibold text-right flex items-center gap-2 text-sm sm:text-base">
               <Building className="h-4 w-4" />
               توزيع الأجهزة حسب المنشآت
             </h3>
           </div>
-          <div className="p-4">
+          <div className="p-2 sm:p-4">
             {loading ? (
               <div className="text-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                <p className="text-muted-foreground">جاري تحميل بيانات المنشآت...</p>
+                <p className="text-muted-foreground text-sm">جاري تحميل بيانات المنشآت...</p>
               </div>
-            ) : assets.length === 0 ? (
+            ) : facilityDistribution.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">لا توجد بيانات منشآت لعرض التوزيع</p>
+                <p className="text-muted-foreground text-sm">لا توجد بيانات منشآت لعرض التوزيع</p>
               </div>
             ) : (
-              <div className="h-[350px] w-full">
-                <ChartContainer config={chartConfig} className="h-full w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart 
-                      data={facilityDistribution} 
-                      margin={{ 
-                        top: 20, 
-                        right: 30, 
-                        left: 20, 
-                        bottom: 100 
-                      }}
-                    >
-                      <XAxis 
-                        dataKey="name" 
-                        fontSize={11}
-                        angle={-45}
-                        textAnchor="end"
-                        height={90}
-                        interval={0}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <YAxis fontSize={12} tick={{ fontSize: 12 }} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar 
-                        dataKey="value" 
-                        fill="hsl(var(--info))" 
-                        radius={[6, 6, 0, 0]}
-                        maxBarSize={50}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+              <div className="space-y-4">
+                {/* Mobile-friendly list view */}
+                <div className="block xl:hidden">
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                    {facilityDistribution.map((facility, index) => (
+                      <div key={facility.name} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 flex justify-between items-center">
+                        <div className="text-right flex-1">
+                          <div className="font-medium text-sm" title={facility.fullName}>
+                            {index + 1}. {facility.name}
+                          </div>
+                        </div>
+                        <div className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                          {facility.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Desktop chart view */}
+                <div className="hidden xl:block h-[350px] w-full">
+                  <ChartContainer config={chartConfig} className="h-full w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart 
+                        data={facilityDistribution} 
+                        margin={{ 
+                          top: 20, 
+                          right: 30, 
+                          left: 20, 
+                          bottom: 100 
+                        }}
+                      >
+                        <XAxis 
+                          dataKey="displayName" 
+                          fontSize={10}
+                          angle={-45}
+                          textAnchor="end"
+                          height={90}
+                          interval={0}
+                          tick={{ fontSize: 10 }}
+                        />
+                        <YAxis fontSize={12} tick={{ fontSize: 12 }} />
+                        <ChartTooltip 
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white dark:bg-gray-800 p-3 border rounded-lg shadow-lg">
+                                  <p className="font-medium text-right">{data.fullName}</p>
+                                  <p className="text-blue-600 font-bold">عدد الأجهزة: {data.value}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar 
+                          dataKey="value" 
+                          fill="hsl(var(--info))" 
+                          radius={[6, 6, 0, 0]}
+                          maxBarSize={50}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </div>
               </div>
             )}
           </div>
@@ -509,54 +618,77 @@ export default function AssetsDashboard() {
         {/* Supplier Distribution */}
         <div className="bg-white dark:bg-card rounded-lg shadow-lg border border-border overflow-hidden">
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-3 border-b border-border">
-            <h3 className="font-semibold text-right flex items-center gap-2">
+            <h3 className="font-semibold text-right flex items-center gap-2 text-sm sm:text-base">
               <Users className="h-4 w-4" />
               توزيع الموردين
             </h3>
           </div>
-          <div className="p-4">
+          <div className="p-2 sm:p-4">
             {loading ? (
               <div className="text-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                <p className="text-muted-foreground">جاري تحميل بيانات الموردين...</p>
+                <p className="text-muted-foreground text-sm">جاري تحميل بيانات الموردين...</p>
               </div>
-            ) : assets.length === 0 ? (
+            ) : supplierDistribution.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">لا توجد بيانات موردين لعرض التوزيع</p>
+                <p className="text-muted-foreground text-sm">لا توجد بيانات موردين لعرض التوزيع</p>
               </div>
             ) : (
-              <div className="h-[350px] w-full">
-                <ChartContainer config={chartConfig} className="h-full w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart 
-                      data={supplierDistribution} 
-                      margin={{ 
-                        top: 20, 
-                        right: 30, 
-                        left: 20, 
-                        bottom: 100 
-                      }}
-                    >
-                      <XAxis 
-                        dataKey="name" 
-                        fontSize={11}
-                        angle={-45}
-                        textAnchor="end"
-                        height={90}
-                        interval={0}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <YAxis fontSize={12} tick={{ fontSize: 12 }} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar 
-                        dataKey="value" 
-                        fill="#8b5cf6" 
-                        radius={[6, 6, 0, 0]}
-                        maxBarSize={50}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+              <div className="space-y-4">
+                {/* Mobile-friendly list view */}
+                <div className="block xl:hidden">
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                    {supplierDistribution
+                      .sort((a, b) => b.value - a.value)
+                      .map((supplier, index) => (
+                      <div key={supplier.name} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 flex justify-between items-center">
+                        <div className="text-right flex-1">
+                          <div className="font-medium text-sm">
+                            {index + 1}. {supplier.name}
+                          </div>
+                        </div>
+                        <div className="bg-purple-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                          {supplier.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Desktop chart view */}
+                <div className="hidden xl:block h-[350px] w-full">
+                  <ChartContainer config={chartConfig} className="h-full w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart 
+                        data={supplierDistribution.sort((a, b) => b.value - a.value)} 
+                        margin={{ 
+                          top: 20, 
+                          right: 30, 
+                          left: 20, 
+                          bottom: 100 
+                        }}
+                      >
+                        <XAxis 
+                          dataKey="name" 
+                          fontSize={10}
+                          angle={-45}
+                          textAnchor="end"
+                          height={90}
+                          interval={0}
+                          tick={{ fontSize: 10 }}
+                        />
+                        <YAxis fontSize={12} tick={{ fontSize: 12 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar 
+                          dataKey="value" 
+                          fill="#8b5cf6" 
+                          radius={[6, 6, 0, 0]}
+                          maxBarSize={50}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </div>
               </div>
             )}
           </div>
