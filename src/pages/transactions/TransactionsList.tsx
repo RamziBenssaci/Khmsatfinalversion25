@@ -61,7 +61,9 @@ export default function TransactionsList() {
   const [editFormData, setEditFormData] = useState<Partial<Transaction>>({});
   const [statusFormData, setStatusFormData] = useState({
     newStatus: '',
-    statusNote: ''
+    statusNote: '',
+    statusDate: ''
+
   });
   const [transferFormData, setTransferFormData] = useState({
     transaction_id: '',
@@ -273,7 +275,8 @@ export default function TransactionsList() {
     setSelectedTransaction(transaction);
     setStatusFormData({
       newStatus: transaction.status,
-      statusNote: ''
+      statusNote: '',
+      statusDate: '' // Add this line
     });
     setShowStatusModal(true);
   };
@@ -299,7 +302,7 @@ export default function TransactionsList() {
     setShowTransferModal(false);
     setSelectedTransaction(null);
     setEditFormData({});
-    setStatusFormData({ newStatus: '', statusNote: '' });
+    setStatusFormData({ newStatus: '', statusNote: '' , statusDate: ''});
     setTransferFormData({
       transaction_id: '',
       date: '',
@@ -1715,7 +1718,15 @@ export default function TransactionsList() {
                   ))}
                 </select>
               </div>
-
+<div className="text-right">
+  <label className="block text-sm font-semibold mb-3">إضافة التاريخ (اختياري)</label>
+  <input
+    type="date"
+    value={statusFormData.statusDate}
+    onChange={(e) => setStatusFormData(prev => ({ ...prev, statusDate: e.target.value }))}
+    className="w-full p-3 border-2 border-gray-300 rounded-lg text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+  />
+</div>
               <div className="text-right">
                 <label className="block text-sm font-semibold mb-3">ملاحظة التحديث</label>
                 <textarea
