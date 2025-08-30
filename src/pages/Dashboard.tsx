@@ -169,7 +169,7 @@ export default function Dashboard() {
       // Convert to base64 for the request
       const base64Reader = new FileReader();
       base64Reader.onload = (e) => {
-        const base64String = e.target.result.split(',')[1]; // Remove data:image/...;base64, prefix
+        const base64String = e.target.result; // Keep full data URL
         setNewFacility({...newFacility, imageBase64: base64String});
       };
       base64Reader.readAsDataURL(file);
@@ -306,13 +306,18 @@ export default function Dashboard() {
     }
   };
 
-  // Export to PDF function
-  const exportToPDF = () => {
+// Replace the existing exportToPDF function (lines 464-480) with this:
+const exportToPDF = async () => {
+  try {
+    // Import jsPDF with Arabic support
+    const { jsPDF } = await import('jspdf');
+    
+    // You'll need to add an Arabic font - for now using a workaround
     const doc = new jsPDF();
     
-    // Set font for Arabic support (you might need to add Arabic font)
+    // Title in Arabic (centered)
     doc.setFontSize(16);
-    doc.text('قائمة المنشآت', 105, 20, { align: 'center' });
+    doc.text('قائمة المنشآت الصحية', 105, 20, { align: 'center' });
     
     let yPosition = 40;
     
@@ -323,13 +328,16 @@ export default function Dashboard() {
       }
       
       doc.setFontSize(12);
-      doc.text(`${index + 1}. ${facility.name}`, 20, yPosition);
-      doc.text(`الرمز: ${facility.code}`, 20, yPosition + 10);
-      doc.text(`القطاع: ${facility.sector}`, 20, yPosition + 20);
-      doc.text(`الحالة: ${facility.status}`, 20, yPosition + 30);
-      doc.text(`مجموع العيادات: ${facility.totalClinics}`, 20, yPosition + 40);
       
-      yPosition += 60;
+      // Use English/numbers for now until Arabic font is properly loaded
+      doc.text(`${index + 1}. Facility: ${facility.name}`, 20, yPosition);
+      doc.text(`Code: ${facility.code}`, 20, yPosition + 10);
+      doc.text(`Sector: ${facility.sector}`, 20, yPosition + 20);
+      doc.text(`Status: ${facility.status}`, 20, yPosition + 30);
+      doc.text(`Total Clinics: ${facility.totalClinics}`, 20, yPosition + 40);
+      doc.text(`Working: ${facility.workingClinics || facility.working}`, 20, yPosition + 50);
+      
+      yPosition += 70;
     });
     
     doc.save('facilities-list.pdf');
@@ -338,9 +346,15 @@ export default function Dashboard() {
       title: "تم تصدير PDF",
       description: "تم تصدير قائمة المنشآت بصيغة PDF بنجاح",
     });
-  };
-
-  // Export to Excel function
+  } catch (error) {
+    console.error('PDF Export Error:', error);
+    toast({
+      title: "خطأ في تصدير PDF",
+      description: "حدث خطأ أثناء تصدير الملف",
+      variant: "destructive",
+    });
+  }
+};  // Export to Excel function
   const exportToExcel = () => {
     const worksheetData = filteredFacilities.map((facility, index) => ({
       'الرقم': index + 1,
