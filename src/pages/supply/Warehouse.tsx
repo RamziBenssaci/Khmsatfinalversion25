@@ -1902,48 +1902,9 @@ if (selectedFile) {
     id="purchaseInvoice"
     name="image"
     accept="image/*"
-    onChange={previewImage} // Your React event handler function
   />
-  <div className="image-preview-container" style={{ marginTop: 10 }}>
-    <img
-      id="purchaseInvoicePreviewImg"
-      alt="معاينة الصورة"
-      style={{ maxWidth: '100%', maxHeight: 150, display: 'none', border: '1px solid #ddd', padding: 5 }}
-    />
-  </div>
-</div>
-{previewSrc && (
-  <img
-    src={previewSrc}
-    alt="معاينة الصورة"
-    style={{ maxWidth: '100%', maxHeight: 150, border: '1px solid #ddd', padding: 5 }}
-  />
-)}
-
-{modalVisible && (
-  <div
-    className="image-modal"
-    onClick={closeImageModal}
-    style={{
-      position: 'fixed',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: "rgba(0,0,0,0.8)",
-      zIndex: 9999,
-    }}
-  >
-    <img
-      src={modalSrc}
-      alt="فاتورة الشراء"
-      style={{ maxWidth: '90%', maxHeight: '90%' }}
-    />
-  </div>
-)}
+ </div>
+      
 
 
               {/* Financial and Supplier Information */}
