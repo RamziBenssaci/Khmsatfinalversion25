@@ -37,7 +37,7 @@ export default function Warehouse() {
     supplierName: '',
     beneficiaryFacility: '',
     notes: '',
-    image: null as File | null
+    image: null as string | null // Changed to string for Base64
   });
 
   // Edit Item Form State
@@ -53,7 +53,7 @@ export default function Warehouse() {
     supplierName: '',
     beneficiaryFacility: '',
     notes: '',
-    image: null as File | null
+    image: null as string | null // Changed to string for Base64
   });
 
   // Image preview states
@@ -130,18 +130,18 @@ export default function Warehouse() {
     return Math.max(0, receivedNum - issuedNum);
   };
 
-  // Handle image file selection and preview
+  // Handle image file selection and preview (modified for Base64)
   const handleImageChange = (file: File | null, isEdit: boolean = false) => {
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const result = e.target?.result as string;
+        const base64String = e.target?.result as string;
         if (isEdit) {
-          setEditImagePreview(result);
-          setEditFormData(prev => ({ ...prev, image: file }));
+          setEditImagePreview(base64String);
+          setEditFormData(prev => ({ ...prev, image: base64String }));
         } else {
-          setAddImagePreview(result);
-          setAddFormData(prev => ({ ...prev, image: file }));
+          setAddImagePreview(base64String);
+          setAddFormData(prev => ({ ...prev, image: base64String }));
         }
       };
       reader.readAsDataURL(file);
@@ -493,17 +493,8 @@ export default function Warehouse() {
     try {
       setLoadingAction(true);
       
-      // Create FormData for file upload
-      const formData = new FormData();
-      Object.entries(addFormData).forEach(([key, value]) => {
-        if (key === 'image' && value) {
-          formData.append('image', value);
-        } else if (key !== 'image') {
-          formData.append(key, value as string);
-        }
-      });
-      
-      const response = await warehouseApi.addInventoryItem(formData);
+      // Now send addFormData directly as it contains Base64 string
+      const response = await warehouseApi.addInventoryItem(addFormData);
       
       if (response.success) {
         toast({
@@ -558,17 +549,8 @@ export default function Warehouse() {
     try {
       setLoadingAction(true);
       
-      // Create FormData for file upload
-      const formData = new FormData();
-      Object.entries(editFormData).forEach(([key, value]) => {
-        if (key === 'image' && value) {
-          formData.append('image', value);
-        } else if (key !== 'image') {
-          formData.append(key, value as string);
-        }
-      });
-      
-      const response = await warehouseApi.updateInventoryItem(selectedItem.id, formData);
+      // Send editFormData directly
+      const response = await warehouseApi.updateInventoryItem(selectedItem.id, editFormData);
       
       if (response.success) {
         toast({
@@ -694,7 +676,7 @@ export default function Warehouse() {
       supplierName: item.supplierName || '',
       beneficiaryFacility: item.beneficiaryFacility || '',
       notes: item.notes || '',
-      image: null
+      image: null // Reset image when opening edit form
     });
     
     // Set existing image preview if available
@@ -2303,7 +2285,7 @@ export default function Warehouse() {
                   className="admin-btn-secondary flex items-center gap-2 px-4 py-2"
                 >
                   <X size={16} />
-                  إغلاق
+                  إلغاء
                 </button>
               </div>
             </div>
