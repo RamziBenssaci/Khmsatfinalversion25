@@ -337,7 +337,7 @@ export default function Assets() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.deviceName || !formData.serialNumber || !formData.facilityName) {
+    if (!formData.deviceName || !formData.serialNumber ) {
       toast({
         title: "خطأ",
         description: "يرجى ملء جميع الحقول المطلوبة",
