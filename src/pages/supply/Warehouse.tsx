@@ -486,9 +486,9 @@ const handleAddSubmit = async (e: React.FormEvent) => {
     formData.append('notes', addFormData.notes || '');
       
  // In handleAddSubmit function, change:
-const fileInput = document.getElementById('purchaseInvoice') as HTMLInputElement;
-if (fileInput && fileInput.files && fileInput.files.length > 0) {
-  formData.append('image', fileInput.files[0]); // Keep 'image' as the FormData key if your API expects it
+const fileInput = document.getElementById('purchaseInvoice');
+if (fileInput && fileInput instanceof HTMLInputElement && fileInput.files && fileInput.files.length > 0) {
+  formData.append('image', fileInput.files[0]);
 }
     const response = await warehouseApi.addInventoryItem(formData);
         
