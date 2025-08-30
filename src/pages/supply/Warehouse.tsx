@@ -484,11 +484,13 @@ const closeImageModal = () => {
     formData.append('supplierName', addFormData.supplierName);
     formData.append('beneficiaryFacility', addFormData.beneficiaryFacility);
     formData.append('notes', addFormData.notes || '');
+        
+    const fileInput = document.getElementById('purchaseInvoice');
+
+   if (fileInput && fileInput.files[0]) {
+      formData.append('image', fileInput.files[0]);
+    }
     
-    // Add image file if selected
-if (selectedFile) {
-  formData.append('image', selectedFile);
-}
     
     const response = await warehouseApi.addInventoryItem(formData);
           
