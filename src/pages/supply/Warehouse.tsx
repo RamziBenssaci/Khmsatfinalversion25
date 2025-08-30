@@ -3,8 +3,7 @@ import { Package, Search, Plus, Eye, Edit, Trash2, X, Save, ShoppingCart, FileTe
 import { warehouseApi, reportsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { exportToExcel } from '@/utils/exportUtils';
-const fileInputRef = useRef(null);
-
+const [selectedFile, setSelectedFile] = useState(null);
 export default function Warehouse() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,6 +28,8 @@ const domainName = "https://your-domain.com";
 
 const previewImage = (event) => {
   const file = event.target.files[0];
+  setSelectedFile(file); // Store the file in state
+  
   if (!file) {
     setPreviewSrc('');
     return;
@@ -499,9 +500,9 @@ const closeImageModal = () => {
     formData.append('notes', addFormData.notes || '');
     
     // Add image file if selected
-    if (fileInputRef.current && fileInputRef.current.files[0]) {
-      formData.append('image', fileInputRef.current.files[0]);
-    }
+if (selectedFile) {
+  formData.append('image', selectedFile);
+}
     
     const response = await warehouseApi.addInventoryItem(formData);
           
