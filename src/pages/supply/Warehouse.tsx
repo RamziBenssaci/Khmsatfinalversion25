@@ -1,4 +1,3 @@
-warehouse_modified.tsx
 import { useState, useEffect } from 'react';
 import { Package, Search, Plus, Eye, Edit, Trash2, X, Save, ShoppingCart, FileText, Download, Loader2, Printer, Image as ImageIcon } from 'lucide-react';
 import { warehouseApi, reportsApi } from '@/lib/api';
