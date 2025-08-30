@@ -773,7 +773,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   <td>${item.purchaseValue || 0} ريال</td>
                   <td>${item.supplierName || ''}</td>
                   <td>
-  <!-- Show icon if image exists -->
+
   <img src="localhost/image/{{item.image}}" 
        alt="فاتورة الشراء" 
        style="width:30px; height:30px; cursor:pointer;" 
@@ -2243,7 +2243,6 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
   </div>
 )}
-      <!-- Image Modal -->
 <div id="imageModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color: rgba(0,0,0,0.8);">
   <span id="closeModalBtn" style="position:absolute; top:20px; right:35px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer;">&times;</span>
   <img id="modalImageContent" style="margin:auto; display:block; max-width:90%; max-height:90%; padding:20px;" />
