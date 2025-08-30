@@ -42,6 +42,8 @@ export default function NewTransaction() {
   // Static transferred to options
   const transferredToOptions = [
     'إدارة صحة المجتمع',
+    'ادارة خدمات الاسنان',
+    '⁠ادارة التشغيل بخدمات الاسنان',
     'إدارة مراكز الرعاية الأولية',
     'إدارة الرعاية الاكلينيكية',
     'إدارة التموين وسلاسل الامداد',
