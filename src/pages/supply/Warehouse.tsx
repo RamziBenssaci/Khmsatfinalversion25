@@ -1,7 +1,7 @@
 import { useState, useEffect} from 'react'; 
 import { Package, Search, Plus, Eye, Edit, Trash2, X, Save, ShoppingCart, FileText, Download, Loader2, Printer } from 'lucide-react';
 import { warehouseApi, reportsApi } from '@/lib/api';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';فاتورة الشراء
 import { exportToExcel } from '@/utils/exportUtils';
 export default function Warehouse() {
   const { toast } = useToast();
@@ -485,12 +485,11 @@ const handleAddSubmit = async (e: React.FormEvent) => {
     formData.append('beneficiaryFacility', addFormData.beneficiaryFacility);
     formData.append('notes', addFormData.notes || '');
       
-    // Fix: Properly get the file input and check for files
-    const fileInput = document.getElementById('purchaseInvoice') as HTMLInputElement;
-    if (fileInput && fileInput.files && fileInput.files.length > 0) {
-      formData.append('image', fileInput.files[0]);
-    }
-    
+ // In handleAddSubmit function, change:
+const fileInput = document.getElementById('purchaseInvoice') as HTMLInputElement;
+if (fileInput && fileInput.files && fileInput.files.length > 0) {
+  formData.append('image', fileInput.files[0]); // Keep 'image' as the FormData key if your API expects it
+}
     const response = await warehouseApi.addInventoryItem(formData);
         
     if (response.success) {
