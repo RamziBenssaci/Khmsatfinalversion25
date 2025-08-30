@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef} from 'react';
 import { Package, Search, Plus, Eye, Edit, Trash2, X, Save, ShoppingCart, FileText, Download, Loader2, Printer } from 'lucide-react';
 import { warehouseApi, reportsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { exportToExcel } from '@/utils/exportUtils';
+const fileInputRef = useRef(null);
 
 export default function Warehouse() {
   const { toast } = useToast();
@@ -482,8 +483,28 @@ const closeImageModal = () => {
     try {
       setLoadingAction(true);
       
-      const response = await warehouseApi.addInventoryItem(addFormData);
-      
+  const formData = new FormData();
+    
+    // Add all text fields
+    formData.append('itemNumber', addFormData.itemNumber);
+    formData.append('itemName', addFormData.itemName);
+    formData.append('receivedQty', addFormData.receivedQty);
+    formData.append('issuedQty', addFormData.issuedQty || '0');
+    formData.append('availableQty', addFormData.availableQty);
+    formData.append('minQuantity', addFormData.minQuantity);
+    formData.append('purchaseValue', addFormData.purchaseValue);
+    formData.append('deliveryDate', addFormData.deliveryDate);
+    formData.append('supplierName', addFormData.supplierName);
+    formData.append('beneficiaryFacility', addFormData.beneficiaryFacility);
+    formData.append('notes', addFormData.notes || '');
+    
+    // Add image file if selected
+    if (fileInputRef.current && fileInputRef.current.files[0]) {
+      formData.append('image', fileInputRef.current.files[0]);
+    }
+    
+    const response = await warehouseApi.addInventoryItem(formData);
+          
       if (response.success) {
         toast({
           title: "تم بنجاح",
