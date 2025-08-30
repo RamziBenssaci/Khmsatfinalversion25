@@ -270,7 +270,7 @@ export default function DentalDashboard() {
         if (selectedWarrantyStatus === 'under_warranty') {
           return item.warrantyActive === 'yes';
         } else if (selectedWarrantyStatus === 'out_of_warranty') {
-          =return item.warrantyActive === 'no';
+          return item.warrantyActive === 'no';
 
         }
         return true;
