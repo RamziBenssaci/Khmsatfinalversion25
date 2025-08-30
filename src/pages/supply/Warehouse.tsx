@@ -21,7 +21,30 @@ export default function Warehouse() {
   const [formErrors, setFormErrors] = useState<any>({});
   const [showDispenseDetailsModal, setShowDispenseDetailsModal] = useState(false);
   const [selectedDispenseOrder, setSelectedDispenseOrder] = useState<any>(null);
-  
+  const [previewSrc, setPreviewSrc] = useState('');
+const [modalSrc, setModalSrc] = useState('');
+const [modalVisible, setModalVisible] = useState(false);
+const domainName = "https://your-domain.com"; 
+
+const previewImage = (event) => {
+  const file = event.target.files[0];
+  if (!file) {
+    setPreviewSrc('');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => setPreviewSrc(e.target.result);
+  reader.readAsDataURL(file);
+};
+
+const openImageModal = (src) => {
+  setModalSrc(src);
+  setModalVisible(true);
+};
+
+const closeImageModal = () => {
+  setModalVisible(false);
+};
   // Add Item Form State
   const [addFormData, setAddFormData] = useState({
     itemNumber: '',
@@ -380,30 +403,7 @@ export default function Warehouse() {
 
   const validateWithdrawForm = () => {
     const errors: any = {};
-const [previewSrc, setPreviewSrc] = useState('');
-const [modalSrc, setModalSrc] = useState('');
-const [modalVisible, setModalVisible] = useState(false);
-const domainName = "https://your-domain.com"; 
 
-function previewImage(event) {
-  const file = event.target.files[0];
-  if (!file) {
-    setPreviewSrc('');
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = e => setPreviewSrc(e.target.result);
-  reader.readAsDataURL(file);
-}
-
-function openImageModal(src) {
-  setModalSrc(src);
-  setModalVisible(true);
-}
-
-function closeImageModal() {
-  setModalVisible(false);
-}
 
     if (!withdrawFormData.beneficiaryFacility) errors.beneficiaryFacility = 'الجهة المستفيدة مطلوبة';
     if (!withdrawFormData.withdrawQty || parseFloat(withdrawFormData.withdrawQty) <= 0) errors.withdrawQty = 'الكمية المصروفة مطلوبة ويجب أن تكون أكبر من صفر';
