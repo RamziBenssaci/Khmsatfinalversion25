@@ -1206,18 +1206,31 @@ if (fileInput && fileInput instanceof HTMLInputElement && fileInput.files && fil
                   </div>
                 </div>
               </div>
-<div className="form-group">
-  <label htmlFor="purchaseInvoice">فاتورة الشراء</label>
-  <input
-    type="file"
-    id="purchaseInvoice"
-    name="image"
-    accept="image/*"
-  />
-  <div className="image-preview-container" style={{ marginTop: 10 }}>
-    <p style={{ fontSize: '12px', color: '#666' }}>سيتم رفع الصورة عند حفظ البيانات</p>
-  </div>
-</div>
+{/* Purchase Invoice Upload */}
+              <div className="admin-card">
+                <div className="admin-header">
+                  <h3>فاتورة الشراء</h3>
+                </div>
+                <div className="p-4">
+                  <div>
+                    <label htmlFor="purchaseInvoice" className="block text-sm font-medium mb-2 text-right">
+                      فاتورة الشراء
+                    </label>
+                    <input
+                      type="file"
+                      id="purchaseInvoice"
+                      name="image"
+                      accept="image/*"
+                      className="w-full p-2 border border-input rounded-md text-sm"
+                    />
+                    <div className="mt-2">
+                      <p className="text-xs text-muted-foreground text-right">
+                        سيتم رفع الصورة عند حفظ البيانات
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
 
               {/* Financial and Supplier Information */}
@@ -1901,17 +1914,31 @@ if (fileInput && fileInput instanceof HTMLInputElement && fileInput.files && fil
                   </div>
                 </div>
               </div>
-<div className="form-group">
-  <label htmlFor="purchaseInvoice">فاتورة الشراء</label>
-  <input
-    type="file"
-    id="purchaseInvoice"
-    name="image"
-    accept="image/*"
-  />
- </div>
-      
-
+{/* Purchase Invoice Upload */}
+              <div className="admin-card">
+                <div className="admin-header">
+                  <h3>فاتورة الشراء</h3>
+                </div>
+                <div className="p-4">
+                  <div>
+                    <label htmlFor="purchaseInvoice" className="block text-sm font-medium mb-2 text-right">
+                      فاتورة الشراء
+                    </label>
+                    <input
+                      type="file"
+                      id="purchaseInvoice"
+                      name="image"
+                      accept="image/*"
+                      className="w-full p-2 border border-input rounded-md text-sm"
+                    />
+                    <div className="mt-2">
+                      <p className="text-xs text-muted-foreground text-right">
+                        سيتم رفع الصورة عند حفظ البيانات
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Financial and Supplier Information */}
               <div className="admin-card">
