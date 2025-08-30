@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { Save, Eye, Edit, Trash2, Download, Printer, AlertCircle } from 'lucide-react';
+import { Save, Eye, Edit, Trash2, Download, Printer, AlertCircle, Image as ImageIcon, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { dentalAssetsApi, reportsApi } from '@/lib/api';
@@ -44,12 +45,140 @@ function DeleteConfirmDialog({ isOpen, onClose, onConfirm, deviceName }: DeleteC
   );
 }
 
+// Image Preview Modal
+interface ImagePreviewModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  imageUrl: string;
+  title: string;
+}
+
+function ImagePreviewModal({ isOpen, onClose, imageUrl, title }: ImagePreviewModalProps) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div className="bg-background rounded-lg max-w-4xl max-h-[90vh] overflow-auto">
+        <div className="p-4 border-b border-border flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-right">{title}</h3>
+          <button 
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground text-xl"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="p-4">
+          <img 
+            src={imageUrl} 
+            alt={title}
+            className="max-w-full max-h-[70vh] object-contain mx-auto"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Pagination Component
+interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}
+
+function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+  const getVisiblePages = () => {
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+    let l;
+
+    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+      range.push(i);
+    }
+
+    if (currentPage - delta > 2) {
+      rangeWithDots.push(1, '...');
+    } else {
+      rangeWithDots.push(1);
+    }
+
+    rangeWithDots.push(...range);
+
+    if (currentPage + delta < totalPages - 1) {
+      rangeWithDots.push('...', totalPages);
+    } else {
+      rangeWithDots.push(totalPages);
+    }
+
+    return rangeWithDots;
+  };
+
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-2 mt-6 flex-wrap">
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage <= 1}
+        className="flex items-center gap-1 px-3 py-2 text-sm bg-background border border-input rounded-md hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        <ChevronRight size={16} />
+        السابق
+      </button>
+
+      <div className="flex gap-1">
+        {getVisiblePages().map((page, index) => (
+          <button
+            key={index}
+            onClick={() => typeof page === 'number' ? onPageChange(page) : null}
+            disabled={page === '...'}
+            className={`px-3 py-2 text-sm rounded-md transition-colors ${
+              page === currentPage
+                ? 'bg-primary text-primary-foreground'
+                : page === '...'
+                ? 'cursor-default text-muted-foreground'
+                : 'bg-background border border-input hover:bg-accent'
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage >= totalPages}
+        className="flex items-center gap-1 px-3 py-2 text-sm bg-background border border-input rounded-md hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        التالي
+        <ChevronLeft size={16} />
+      </button>
+    </div>
+  );
+}
+
 export default function Assets() {
   const [assets, setAssets] = useState<any[]>([]);
+  const [filteredAssets, setFilteredAssets] = useState<any[]>([]);
   const [facilities, setFacilities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    facility: '',
+    status: '',
+    warranty: '',
+    supplier: ''
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Modal states
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; asset: any | null }>({
     isOpen: false,
     asset: null
@@ -58,6 +187,12 @@ export default function Assets() {
     isOpen: false,
     asset: null
   });
+  const [imagePreview, setImagePreview] = useState<{ isOpen: boolean; url: string; title: string }>({
+    isOpen: false,
+    url: '',
+    title: ''
+  });
+  
   const { toast } = useToast();
   
   const [formData, setFormData] = useState({
@@ -73,13 +208,27 @@ export default function Assets() {
     installationDate: '',
     warrantyPeriod: 1,
     deviceStatus: 'يعمل',
-    notes: ''
+    notes: '',
+    image: ''
   });
+
+  // Image handling
+  const [previewImage, setPreviewImage] = useState<string>('');
 
   // Load data on component mount
   useEffect(() => {
     loadData();
   }, []);
+
+  // Filter assets when assets or filters change
+  useEffect(() => {
+    applyFilters();
+  }, [assets, filters]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredAssets]);
 
   const loadData = async () => {
     try {
@@ -94,7 +243,6 @@ export default function Assets() {
 
       if (assetsResponse.success) {
         setAssets(assetsResponse.data || []);
-        
       }
       
       if (facilitiesResponse.success) {
@@ -111,6 +259,78 @@ export default function Assets() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...assets];
+
+    // Filter by facility
+    if (filters.facility) {
+      filtered = filtered.filter(asset => asset.facilityName === filters.facility);
+    }
+
+    // Filter by device status
+    if (filters.status) {
+      if (filters.status === 'working') {
+        filtered = filtered.filter(asset => asset.deviceStatus === 'يعمل');
+      } else if (filters.status === 'broken') {
+        filtered = filtered.filter(asset => asset.deviceStatus === 'مكهن');
+      }
+    }
+
+    // Filter by warranty status
+    if (filters.warranty) {
+      if (filters.warranty === 'under_warranty') {
+        filtered = filtered.filter(asset => 
+          asset.warrantyStatus === 'تحت الضمان' && asset.warrantyActive !== 'no'
+        );
+      } else if (filters.warranty === 'out_of_warranty') {
+        filtered = filtered.filter(asset => 
+          asset.warrantyActive === 'no' || asset.warrantyStatus !== 'تحت الضمان'
+        );
+      }
+    }
+
+    // Filter by supplier
+    if (filters.supplier) {
+      filtered = filtered.filter(asset => asset.supplierName === filters.supplier);
+    }
+
+    setFilteredAssets(filtered);
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      facility: '',
+      status: '',
+      warranty: '',
+      supplier: ''
+    });
+  };
+
+  // Get unique suppliers from assets
+  const getUniqueSuppliers = () => {
+    const suppliers = assets.map(asset => asset.supplierName).filter(Boolean);
+    return [...new Set(suppliers)];
+  };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredAssets.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentAssets = filteredAssets.slice(startIndex, endIndex);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        setFormData(prev => ({ ...prev, image: base64 }));
+        setPreviewImage(base64);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -150,8 +370,10 @@ export default function Assets() {
           installationDate: '',
           warrantyPeriod: 1,
           deviceStatus: 'يعمل',
-          notes: ''
+          notes: '',
+          image: ''
         });
+        setPreviewImage('');
         
         // Reload assets list
         loadData();
@@ -257,7 +479,7 @@ export default function Assets() {
     printWindow?.print();
   };
 
-  // Export to Excel function
+  // Export to Excel function - improved formatting
   const exportToExcel = () => {
     const headers = [
       'اسم الجهاز',
@@ -270,7 +492,7 @@ export default function Assets() {
       'إيميل المسؤول',
       'تاريخ التوريد',
       'تاريخ التركيب',
-      'مدة الضمان',
+      'مدة الضمان (سنوات)',
       'حالة الجهاز',
       'حالة الضمان',
       'عداد عمر الجهاز',
@@ -278,28 +500,36 @@ export default function Assets() {
       'الملاحظات'
     ];
 
-    const csvContent = [
-      headers.join(','),
-      ...assets.map(asset => [
-        `"${asset.deviceName || ''}"`,
-        `"${asset.serialNumber || ''}"`,
-        `"${asset.facilityName || ''}"`,
-        `"${asset.manufacturer || ''}"`,
-        `"${asset.deviceModel || ''}"`,
-        `"${asset.supplierName || ''}"`,
-        `"${asset.supplierContact || ''}"`,
-        `"${asset.supplierEmail || ''}"`,
-        `"${asset.deliveryDate || ''}"`,
-        `"${asset.installationDate || ''}"`,
-        `"${asset.warrantyPeriod || ''}"`,
-        `"${asset.deviceStatus || ''}"`,
-        `"${asset.warrantyActive === 'no' ? 'غير مشمول بالضمان' : asset.warrantyStatus || ''}"`,
-        `"${asset.deviceAge || ''}"`,
-        `"${asset.malfunctionCount || 0}"`,
-        `"${asset.notes || ''}"`
-      ].join(','))
-    ].join('\n');
+    // Create organized CSV data row by row like PDF export
+    const csvRows = [
+      headers.join(',')
+    ];
 
+    filteredAssets.forEach(asset => {
+      const row = [
+        asset.deviceName || '',
+        asset.serialNumber || '',
+        asset.facilityName || '',
+        asset.manufacturer || '',
+        asset.deviceModel || '',
+        asset.supplierName || '',
+        asset.supplierContact || '',
+        asset.supplierEmail || '',
+        asset.deliveryDate || '',
+        asset.installationDate || '',
+        asset.warrantyPeriod || '',
+        asset.deviceStatus || '',
+        asset.warrantyActive === 'no' ? 'غير مشمول بالضمان' : (asset.warrantyStatus || ''),
+        asset.deviceAge || '',
+        asset.malfunctionCount || 0,
+        asset.notes || ''
+      ].map(field => `"${field}"`); // Wrap each field in quotes
+
+      csvRows.push(row.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+    
     // Add BOM for UTF-8 support
     const BOM = '\uFEFF';
     const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -310,6 +540,11 @@ export default function Assets() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    toast({
+      title: "نجح",
+      description: "تم تصدير البيانات إلى Excel بنجاح",
+    });
   };
 
   // Export to PDF function
@@ -322,8 +557,8 @@ export default function Assets() {
         <title>تقرير الأصول</title>
         <style>
           body { font-family: Arial, sans-serif; direction: rtl; text-align: right; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+          th, td { border: 1px solid #ddd; padding: 6px; text-align: right; }
           th { background-color: #f5f5f5; font-weight: bold; }
           .header { text-align: center; margin-bottom: 30px; }
           .status-active { background-color: #d4edda; color: #155724; padding: 2px 8px; border-radius: 4px; }
@@ -336,6 +571,7 @@ export default function Assets() {
         <div class="header">
           <h1>تقرير الأصول</h1>
           <p>تاريخ التقرير: ${new Date().toLocaleDateString('ar-EG')}</p>
+          <p>إجمالي الأجهزة: ${filteredAssets.length}</p>
         </div>
         <table>
           <thead>
@@ -359,7 +595,7 @@ export default function Assets() {
             </tr>
           </thead>
           <tbody>
-            ${assets.map(asset => `
+            ${filteredAssets.map(asset => `
               <tr>
                 <td>${asset.deviceName || '-'}</td>
                 <td>${asset.serialNumber || '-'}</td>
@@ -379,7 +615,7 @@ export default function Assets() {
                 </td>
                 <td>
                   <span class="${asset.warrantyActive === 'no' ? 'warranty-inactive' : 'warranty-active'}">
-                    ${asset.warrantyActive === 'no' ? '⚠️ غير مشمول بالضمان' : asset.warrantyStatus}
+                    ${asset.warrantyActive === 'no' ? 'غير مشمول بالضمان' : asset.warrantyStatus}
                   </span>
                 </td>
                 <td>${asset.deviceAge || '-'}</td>
@@ -419,46 +655,6 @@ export default function Assets() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2 text-right">اسم الجهاز *</label>
-                <input
-                  type="text"
-                  value={formData.deviceName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, deviceName: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="اسم الجهاز"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2 text-right">الرقم التسلسلي *</label>
-                <input
-                  type="text"
-                  value={formData.serialNumber}
-                  onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="الرقم التسلسلي"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2 text-right">اسم المنشأة *</label>
-                <select
-                  value={formData.facilityName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, facilityName: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
-                  required
-                >
-                  <option value="">اختر المنشأة</option>
-                  {facilities.map(facility => (
-                    <option key={facility.id} value={facility.name}>{facility.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Supplier Info */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2 text-right">اسم الشركة الموردة</label>
                 <input
                   type="text"
                   value={formData.supplierName}
@@ -529,6 +725,9 @@ export default function Assets() {
                   className="w-full p-3 border border-input rounded-md text-right"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2 text-right">مدة الضمان (سنوات)</label>
                 <select
@@ -549,10 +748,6 @@ export default function Assets() {
                   <option value="10">10 سنوات</option>
                 </select>
               </div>
-            </div>
-
-            {/* Status and Notes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2 text-right">حالة الجهاز</label>
                 <select
@@ -563,6 +758,29 @@ export default function Assets() {
                   <option value="يعمل">يعمل</option>
                   <option value="مكهن">مكهن (خارج الخدمة)</option>
                 </select>
+              </div>
+            </div>
+
+            {/* Image Upload and Notes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">شهادة التكهين (اختياري)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                />
+                {previewImage && (
+                  <div className="mt-2">
+                    <img 
+                      src={previewImage} 
+                      alt="معاينة الشهادة" 
+                      className="w-32 h-32 object-cover rounded-md border border-input cursor-pointer"
+                      onClick={() => setImagePreview({ isOpen: true, url: previewImage, title: 'معاينة شهادة التكهين' })}
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2 text-right">ملاحظات الجهاز</label>
@@ -594,14 +812,14 @@ export default function Assets() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="admin-card">
           <div className="p-4 text-center">
-            <div className="text-2xl md:text-3xl font-bold text-primary">{assets.length}</div>
+            <div className="text-2xl md:text-3xl font-bold text-primary">{filteredAssets.length}</div>
             <div className="text-sm text-muted-foreground">إجمالي الأجهزة</div>
           </div>
         </div>
         <div className="admin-card">
           <div className="p-4 text-center">
             <div className="text-2xl md:text-3xl font-bold text-success">
-              {assets.filter(asset => asset.deviceStatus === 'يعمل').length}
+              {filteredAssets.filter(asset => asset.deviceStatus === 'يعمل').length}
             </div>
             <div className="text-sm text-muted-foreground">أجهزة تعمل</div>
           </div>
@@ -609,7 +827,7 @@ export default function Assets() {
         <div className="admin-card">
           <div className="p-4 text-center">
             <div className="text-2xl md:text-3xl font-bold text-danger">
-              {assets.filter(asset => asset.deviceStatus === 'مكهن').length}
+              {filteredAssets.filter(asset => asset.deviceStatus === 'مكهن').length}
             </div>
             <div className="text-sm text-muted-foreground">أجهزة مكهنة</div>
           </div>
@@ -617,19 +835,26 @@ export default function Assets() {
         <div className="admin-card">
           <div className="p-4 text-center">
             <div className="text-2xl md:text-3xl font-bold text-warning">
-              {assets.filter(asset => asset.warrantyStatus === 'تحت الضمان' && asset.warrantyActive !== 'no').length}
+              {filteredAssets.filter(asset => asset.warrantyStatus === 'تحت الضمان' && asset.warrantyActive !== 'no').length}
             </div>
             <div className="text-sm text-muted-foreground">تحت الضمان</div>
           </div>
         </div>
       </div>
 
-      {/* Assets Table */}
+      {/* Filters Section */}
       <div className="admin-card">
         <div className="admin-header">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
             <h2>قائمة الأصول</h2>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <button 
+                onClick={() => setShowFilters(!showFilters)}
+                className="admin-btn-info text-xs md:text-sm px-3 py-2 flex items-center gap-1"
+              >
+                <Filter size={14} />
+                فلترة البيانات
+              </button>
               <button 
                 onClick={exportToExcel}
                 className="admin-btn-success text-xs md:text-sm px-3 py-2"
@@ -639,7 +864,7 @@ export default function Assets() {
               </button>
               <button 
                 onClick={exportToPDF}
-                className="admin-btn-info text-xs md:text-sm px-3 py-2"
+                className="admin-btn-primary text-xs md:text-sm px-3 py-2"
               >
                 <Download size={14} className="ml-1" />
                 تصدير PDF
@@ -647,6 +872,76 @@ export default function Assets() {
             </div>
           </div>
         </div>
+
+        {showFilters && (
+          <div className="p-4 bg-accent/50">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">اختيار المنشأة</label>
+                <select
+                  value={filters.facility}
+                  onChange={(e) => setFilters(prev => ({ ...prev, facility: e.target.value }))}
+                  className="w-full p-2 border border-input rounded-md text-right text-sm"
+                >
+                  <option value="">جميع المنشآت</option>
+                  {facilities.map(facility => (
+                    <option key={facility.id} value={facility.name}>{facility.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">حالة الجهاز</label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                  className="w-full p-2 border border-input rounded-md text-right text-sm"
+                >
+                  <option value="">جميع الأجهزة</option>
+                  <option value="working">الأجهزة التي تعمل</option>
+                  <option value="broken">الأجهزة المكهنة</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">حالة الضمان</label>
+                <select
+                  value={filters.warranty}
+                  onChange={(e) => setFilters(prev => ({ ...prev, warranty: e.target.value }))}
+                  className="w-full p-2 border border-input rounded-md text-right text-sm"
+                >
+                  <option value="">جميع الأجهزة</option>
+                  <option value="under_warranty">الأجهزة تحت الضمان</option>
+                  <option value="out_of_warranty">الأجهزة خارج الضمان</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">الشركات الموردة</label>
+                <select
+                  value={filters.supplier}
+                  onChange={(e) => setFilters(prev => ({ ...prev, supplier: e.target.value }))}
+                  className="w-full p-2 border border-input rounded-md text-right text-sm"
+                >
+                  <option value="">جميع الشركات</option>
+                  {getUniqueSuppliers().map(supplier => (
+                    <option key={supplier} value={supplier}>{supplier}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex gap-2 mt-4 justify-start">
+              <button 
+                onClick={clearFilters}
+                className="admin-btn-secondary text-sm px-4 py-2"
+              >
+                إزالة جميع الفلاتر
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="p-2 md:p-4">
           {loading ? (
             <div className="flex items-center justify-center py-8">
@@ -662,29 +957,45 @@ export default function Assets() {
                 إعادة المحاولة
               </Button>
             </div>
-          ) : assets.length === 0 ? (
+          ) : filteredAssets.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <div className="bg-muted rounded-full p-3 mb-4">
                 <Save className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-medium mb-2">لا توجد أصول</h3>
-              <p className="text-muted-foreground">لم يتم العثور على أي أجهزة في النظام. ابدأ بإضافة جهاز جديد.</p>
+              <h3 className="text-lg font-medium mb-2">
+                {assets.length === 0 ? 'لا توجد أصول' : 'لا توجد نتائج'}
+              </h3>
+              <p className="text-muted-foreground">
+                {assets.length === 0 
+                  ? 'لم يتم العثور على أي أجهزة في النظام. ابدأ بإضافة جهاز جديد.'
+                  : 'لم يتم العثور على أجهزة تطابق معايير البحث المحددة.'
+                }
+              </p>
             </div>
           ) : (
             <>
+              {/* Results Summary */}
+              <div className="mb-4 text-right">
+                <p className="text-sm text-muted-foreground">
+                  عرض {startIndex + 1} - {Math.min(endIndex, filteredAssets.length)} من أصل {filteredAssets.length} جهاز
+                  {assets.length !== filteredAssets.length && ` (مفلتر من ${assets.length})`}
+                </p>
+              </div>
+
               {/* Mobile Card View */}
               <div className="block md:hidden space-y-3">
-                {assets.map((asset) => (
+                {currentAssets.map((asset) => (
                   <div key={asset.id} className="bg-accent rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-medium text-right">{asset.deviceName}</h3>
                         <p className="text-sm text-muted-foreground text-right">{asset.facilityName}</p>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 flex-wrap">
                         <button 
                           onClick={() => setViewDialog({ isOpen: true, asset })}
                           className="p-2 text-info hover:bg-info/10 rounded transition-colors"
+                          title="عرض التفاصيل"
                         >
                           <Eye size={16} />
                         </button>
@@ -693,22 +1004,37 @@ export default function Assets() {
                           onSave={handleAssetUpdate}
                           facilities={facilities}
                         />
+                        {asset.image && (
+                          <button 
+                            onClick={() => setImagePreview({ 
+                              isOpen: true, 
+                              url: asset.image, 
+                              title: `شهادة التكهين - ${asset.deviceName}` 
+                            })}
+                            className="p-2 text-purple-600 hover:bg-purple-100 rounded transition-colors flex items-center gap-1"
+                            title="عرض شهادة التكهين"
+                          >
+                            <ImageIcon size={16} />
+                          </button>
+                        )}
                         <button 
                           onClick={() => handlePrintAsset(asset)}
                           className="p-2 text-primary hover:bg-primary/10 rounded transition-colors"
+                          title="طباعة"
                         >
                           <Printer size={16} />
                         </button>
                         <button 
                           onClick={() => openDeleteDialog(asset)}
                           className="p-2 text-danger hover:bg-danger/10 rounded transition-colors"
+                          title="حذف"
                         >
                           <Trash2 size={16} />
                         </button>
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-center flex-wrap gap-2">
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           asset.deviceStatus === 'يعمل' 
                             ? 'bg-success text-success-foreground' 
@@ -725,12 +1051,14 @@ export default function Assets() {
                           {asset.warrantyActive === 'no' ? 'غير مشمول بالضمان' : asset.warrantyStatus}
                         </span>
                       </div>
-                      <div className="text-xs text-muted-foreground text-right">
+                      <div className="text-xs text-muted-foreground text-right space-y-1">
                         <div>الشركة: {asset.manufacturer || '-'}</div>
                         <div>الموديل: {asset.deviceModel || '-'}</div>
+                        <div>الشركة الموردة: {asset.supplierName || '-'}</div>
                         <div>التوريد: {asset.deliveryDate || '-'}</div>
                         <div>التركيب: {asset.installationDate || '-'}</div>
                         <div>عمر الجهاز: {asset.deviceAge || '-'}</div>
+                        <div>عدد الأعطال: {asset.malfunctionCount || 0}</div>
                       </div>
                     </div>
                   </div>
@@ -747,6 +1075,7 @@ export default function Assets() {
                       <th className="p-3 text-right">المنشأة</th>
                       <th className="p-3 text-right">الشركة الصانعة</th>
                       <th className="p-3 text-right">موديل الجهاز</th>
+                      <th className="p-3 text-right">الشركة الموردة</th>
                       <th className="p-3 text-right">تاريخ التوريد</th>
                       <th className="p-3 text-right">تاريخ التركيب</th>
                       <th className="p-3 text-right">الحالة</th>
@@ -757,13 +1086,14 @@ export default function Assets() {
                     </tr>
                   </thead>
                   <tbody>
-                    {assets.map((asset) => (
+                    {currentAssets.map((asset) => (
                       <tr key={asset.id} className="border-b border-border text-right hover:bg-accent/50 transition-colors">
                         <td className="p-3 font-medium">{asset.deviceName}</td>
                         <td className="p-3">{asset.serialNumber}</td>
                         <td className="p-3">{asset.facilityName}</td>
                         <td className="p-3">{asset.manufacturer || '-'}</td>
                         <td className="p-3">{asset.deviceModel || '-'}</td>
+                        <td className="p-3">{asset.supplierName || '-'}</td>
                         <td className="p-3">{asset.deliveryDate || '-'}</td>
                         <td className="p-3">{asset.installationDate || '-'}</td>
                         <td className="p-3">
@@ -786,12 +1116,13 @@ export default function Assets() {
                           </span>
                         </td>
                         <td className="p-3">{asset.deviceAge || '-'}</td>
-                        <td className="p-3">{asset.malfunctionCount}</td>
+                        <td className="p-3">{asset.malfunctionCount || 0}</td>
                         <td className="p-3">
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 flex-wrap">
                             <button 
                               onClick={() => setViewDialog({ isOpen: true, asset })}
                               className="p-2 text-info hover:bg-info/10 rounded transition-colors"
+                              title="عرض التفاصيل"
                             >
                               <Eye size={16} />
                             </button>
@@ -800,15 +1131,31 @@ export default function Assets() {
                               onSave={handleAssetUpdate}
                               facilities={facilities}
                             />
+                            {asset.image && (
+                              <button 
+                                onClick={() => setImagePreview({ 
+                                  isOpen: true, 
+                                  url: asset.image, 
+                                  title: `شهادة التكهين - ${asset.deviceName}` 
+                                })}
+                                className="p-2 text-purple-600 hover:bg-purple-100 rounded transition-colors flex items-center gap-1 text-xs"
+                                title="عرض شهادة التكهين"
+                              >
+                                <ImageIcon size={16} />
+                                <span className="hidden lg:inline">عرض الشهادة</span>
+                              </button>
+                            )}
                             <button 
                               onClick={() => handlePrintAsset(asset)}
                               className="p-2 text-primary hover:bg-primary/10 rounded transition-colors"
+                              title="طباعة"
                             >
                               <Printer size={16} />
                             </button>
                             <button 
                               onClick={() => openDeleteDialog(asset)}
                               className="p-2 text-danger hover:bg-danger/10 rounded transition-colors"
+                              title="حذف"
                             >
                               <Trash2 size={16} />
                             </button>
@@ -819,6 +1166,13 @@ export default function Assets() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination */}
+              <Pagination 
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             </>
           )}
         </div>
@@ -830,6 +1184,14 @@ export default function Assets() {
         onClose={closeDeleteDialog}
         onConfirm={handleAssetDelete}
         deviceName={deleteDialog.asset?.deviceName || ''}
+      />
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={imagePreview.isOpen}
+        onClose={() => setImagePreview({ isOpen: false, url: '', title: '' })}
+        imageUrl={imagePreview.url}
+        title={imagePreview.title}
       />
 
       {/* View Asset Dialog */}
@@ -873,12 +1235,24 @@ export default function Assets() {
                   <p className="mt-1">{viewDialog.asset.supplierName || '-'}</p>
                 </div>
                 <div>
+                  <label className="font-medium text-muted-foreground">رقم المسؤول:</label>
+                  <p className="mt-1">{viewDialog.asset.supplierContact || '-'}</p>
+                </div>
+                <div>
+                  <label className="font-medium text-muted-foreground">إيميل المسؤول:</label>
+                  <p className="mt-1">{viewDialog.asset.supplierEmail || '-'}</p>
+                </div>
+                <div>
                   <label className="font-medium text-muted-foreground">تاريخ التوريد:</label>
                   <p className="mt-1">{viewDialog.asset.deliveryDate || '-'}</p>
                 </div>
                 <div>
                   <label className="font-medium text-muted-foreground">تاريخ التركيب:</label>
                   <p className="mt-1">{viewDialog.asset.installationDate || '-'}</p>
+                </div>
+                <div>
+                  <label className="font-medium text-muted-foreground">مدة الضمان:</label>
+                  <p className="mt-1">{viewDialog.asset.warrantyPeriod ? `${viewDialog.asset.warrantyPeriod} سنة` : '-'}</p>
                 </div>
                 <div>
                   <label className="font-medium text-muted-foreground">حالة الجهاز:</label>
@@ -907,9 +1281,28 @@ export default function Assets() {
                 </div>
                 <div>
                   <label className="font-medium text-muted-foreground">عدد الأعطال:</label>
-                  <p className="mt-1">{viewDialog.asset.malfunctionCount}</p>
+                  <p className="mt-1">{viewDialog.asset.malfunctionCount || 0}</p>
                 </div>
               </div>
+
+              {/* Image Section */}
+              {viewDialog.asset.image && (
+                <div>
+                  <label className="font-medium text-muted-foreground">شهادة التكهين:</label>
+                  <div className="mt-2">
+                    <img 
+                      src={viewDialog.asset.image} 
+                      alt="شهادة التكهين"
+                      className="w-32 h-32 object-cover rounded-md border border-input cursor-pointer"
+                      onClick={() => setImagePreview({ 
+                        isOpen: true, 
+                        url: viewDialog.asset.image, 
+                        title: `شهادة التكهين - ${viewDialog.asset.deviceName}` 
+                      })}
+                    />
+                  </div>
+                </div>
+              )}
               
               {viewDialog.asset.notes && (
                 <div>
@@ -920,6 +1313,19 @@ export default function Assets() {
             </div>
             
             <div className="flex justify-start gap-3 mt-6">
+              {viewDialog.asset.image && (
+                <button 
+                  onClick={() => setImagePreview({ 
+                    isOpen: true, 
+                    url: viewDialog.asset.image, 
+                    title: `شهادة التكهين - ${viewDialog.asset.deviceName}` 
+                  })}
+                  className="admin-btn-info flex items-center gap-2 px-4 py-2"
+                >
+                  <ImageIcon size={16} />
+                  عرض الشهادة
+                </button>
+              )}
               <button 
                 onClick={() => handlePrintAsset(viewDialog.asset)}
                 className="admin-btn-primary flex items-center gap-2 px-4 py-2"
