@@ -23,16 +23,6 @@ export default function Warehouse() {
 
 const domainName = "https://your-domain.com"; 
 
-
-
-const openImageModal = (src) => {
-  setModalSrc(src);
-  setModalVisible(true);
-};
-
-const closeImageModal = () => {
-  setModalVisible(false);
-};
   // Add Item Form State
   const [addFormData, setAddFormData] = useState({
     itemNumber: '',
