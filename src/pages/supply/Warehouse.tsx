@@ -366,7 +366,6 @@ export default function Warehouse() {
 
   const validateEditForm = () => {
     const errors: any = {};
-    
     if (!editFormData.itemNumber.trim()) errors.itemNumber = 'رقم الصنف مطلوب';
     if (!editFormData.itemName.trim()) errors.itemName = 'اسم الصنف مطلوب';
     if (!editFormData.receivedQty || parseFloat(editFormData.receivedQty) < 0) errors.receivedQty = 'الكمية المستلمة مطلوبة ويجب أن تكون أكبر من أو تساوي صفر';
@@ -384,6 +383,8 @@ export default function Warehouse() {
  const [previewSrc, setPreviewSrc] = React.useState('');
 const [modalSrc, setModalSrc] = React.useState('');
 const [modalVisible, setModalVisible] = React.useState(false);
+const domainName = "https://your-domain.com"; // or however you get it
+
 
 function previewImage(event) {
   const file = event.target.files[0];
