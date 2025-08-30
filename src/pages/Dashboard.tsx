@@ -12,7 +12,11 @@ import {
   Stethoscope,
   Activity,
   Filter,
-  BarChart3
+  BarChart3,
+  Upload,
+  X,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { dashboardApi } from '@/lib/api';
@@ -28,6 +32,9 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { mockReports, mockInventoryItems, mockTransactions, dentalClinicsData } from '@/data/mockData';
 import { logout } from '@/lib/api';
+import jsPDF from 'jspdf';
+import * as XLSX from 'xlsx';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts';
 
 // Mock facilities data
 const mockFacilities = [
@@ -50,14 +57,13 @@ const hardcodedSectors = ['الرياض', 'الزلفي', 'رماح', 'حوطة 
 
 export default function Dashboard() {
   const [selectedSector, setSelectedSector] = useState('');
-  // Remove selectedFacilityType state
-  // const [selectedFacilityType, setSelectedFacilityType] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [facilities, setFacilities] = useState([]);
   const [recentReports, setRecentReports] = useState([]);
   const [dashboardStats, setDashboardStats] = useState(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState('all'); // New state for filtering
   const { toast } = useToast();
   const [newFacility, setNewFacility] = useState({
     name: '',
@@ -83,8 +89,13 @@ export default function Dashboard() {
     medical_director: '',
     location: '',
     clinics: [],
-    number: ''
+    number: '',
+    imageBase64: '' // New field for image
   });
+
+  // New state for image upload
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
 
   // Load dashboard data on component mount
   useEffect(() => {
@@ -142,6 +153,36 @@ export default function Dashboard() {
     loadDashboardData();
   }, [toast]);
 
+  // Image upload handler
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setSelectedImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+      
+      // Convert to base64 for the request
+      const base64Reader = new FileReader();
+      base64Reader.onload = (e) => {
+        const base64String = e.target.result.split(',')[1]; // Remove data:image/...;base64, prefix
+        setNewFacility({...newFacility, imageBase64: base64String});
+      };
+      base64Reader.readAsDataURL(file);
+    }
+  };
+
+  // Remove image handler
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview('');
+    setNewFacility({...newFacility, imageBase64: ''});
+  };
+
   // Calculate dynamic statistics based on real API data
   const calculateStatsFromAPI = (facilities) => {
     if (!facilities || facilities.length === 0) {
@@ -192,7 +233,7 @@ export default function Dashboard() {
   const totalOutOfOrder = dashboardStats?.out_of_order_clinics || 5;
   const totalFacilities = dashboardStats?.total_facilities || facilities.length;
 
-  // Get unique categories from API data (remove facility type logic)
+  // Get unique categories from API data
   const uniqueCategories = [
   ...new Set(
     facilities
@@ -200,12 +241,34 @@ export default function Dashboard() {
   )
   ].filter(Boolean);
 
-  // Updated filter facilities with only sector and category
+  // Updated filter facilities with sector, category, and new filters
   const filteredFacilities = facilities.filter((f: any) => {
     const sectorMatch = (!selectedSector || selectedSector === 'all-sectors' || f.sector === selectedSector);
     const categoryMatch = (!selectedCategory || selectedCategory === 'all-categories' || f.category === selectedCategory);
     
-    return sectorMatch && categoryMatch;
+    // New filtering logic
+    let filterMatch = true;
+    switch (activeFilter) {
+      case 'working':
+        filterMatch = (parseInt(f.workingClinics || f.working) || 0) > 0;
+        break;
+      case 'not-working':
+        filterMatch = (parseInt(f.notWorkingClinics || f.notWorking) || 0) > 0;
+        break;
+      case 'out-of-order':
+        filterMatch = (parseInt(f.outOfOrderClinics || f.outOfOrder) || 0) > 0;
+        break;
+      case 'active-facilities':
+        filterMatch = f.status === 'نشطة';
+        break;
+      case 'inactive-facilities':
+        filterMatch = f.status === 'غير نشطة';
+        break;
+      default:
+        filterMatch = true;
+    }
+    
+    return sectorMatch && categoryMatch && filterMatch;
   });
 
   // Calculate filtered statistics
@@ -214,7 +277,8 @@ export default function Dashboard() {
   // Calculate facility status counts for filtered or all facilities
   const facilityStatusCounts = calculateFacilityStatusCounts(
     (selectedSector && selectedSector !== 'all-sectors') || 
-    (selectedCategory && selectedCategory !== 'all-categories') 
+    (selectedCategory && selectedCategory !== 'all-categories') || 
+    activeFilter !== 'all'
     ? filteredFacilities : facilities
   );
 
@@ -241,6 +305,77 @@ export default function Dashboard() {
       });
     }
   };
+
+  // Export to PDF function
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    
+    // Set font for Arabic support (you might need to add Arabic font)
+    doc.setFontSize(16);
+    doc.text('قائمة المنشآت', 105, 20, { align: 'center' });
+    
+    let yPosition = 40;
+    
+    filteredFacilities.forEach((facility, index) => {
+      if (yPosition > 250) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      
+      doc.setFontSize(12);
+      doc.text(`${index + 1}. ${facility.name}`, 20, yPosition);
+      doc.text(`الرمز: ${facility.code}`, 20, yPosition + 10);
+      doc.text(`القطاع: ${facility.sector}`, 20, yPosition + 20);
+      doc.text(`الحالة: ${facility.status}`, 20, yPosition + 30);
+      doc.text(`مجموع العيادات: ${facility.totalClinics}`, 20, yPosition + 40);
+      
+      yPosition += 60;
+    });
+    
+    doc.save('facilities-list.pdf');
+    
+    toast({
+      title: "تم تصدير PDF",
+      description: "تم تصدير قائمة المنشآت بصيغة PDF بنجاح",
+    });
+  };
+
+  // Export to Excel function
+  const exportToExcel = () => {
+    const worksheetData = filteredFacilities.map((facility, index) => ({
+      'الرقم': index + 1,
+      'اسم المنشأة': facility.name,
+      'رمز المنشأة': facility.code,
+      'القطاع': facility.sector,
+      'التصنيف': facility.category,
+      'الحالة': facility.status,
+      'مجموع العيادات': facility.totalClinics,
+      'العيادات العاملة': facility.workingClinics || facility.working,
+      'العيادات المكهنة': facility.outOfOrderClinics || facility.outOfOrder,
+      'العيادات غير المفعلة': facility.notWorkingClinics || facility.notWorking,
+      'الموقع': facility.location || facility.facilityLocation,
+      'رقم الاتصال': facility.facilityPhone,
+      'البريد الإلكتروني': facility.facilityEmail
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'المنشآت');
+    
+    XLSX.writeFile(workbook, 'facilities-list.xlsx');
+    
+    toast({
+      title: "تم تصدير Excel",
+      description: "تم تصدير قائمة المنشآت بصيغة Excel بنجاح",
+    });
+  };
+
+  // Gauge chart data
+  const gaugeData = [
+    { name: 'العيادات العاملة', value: totalWorking, color: '#22c55e' },
+    { name: 'العيادات المكهنة', value: totalOutOfOrder, color: '#f59e0b' },
+    { name: 'العيادات غير المفعلة', value: totalNotWorking, color: '#ef4444' }
+  ];
 
   const handleAddFacility = async () => {
     if (newFacility.name && newFacility.code) {
@@ -279,8 +414,13 @@ export default function Dashboard() {
           medical_director: '',
           location: '',
           clinics: [],
-          number: ''
+          number: '',
+          imageBase64: ''
         });
+        
+        // Reset image states
+        setSelectedImage(null);
+        setImagePreview('');
         setIsAddDialogOpen(false);
         
         toast({
@@ -319,8 +459,13 @@ export default function Dashboard() {
           medical_director: '',
           location: '',
           clinics: [],
-          number: ''
+          number: '',
+          imageBase64: ''
         });
+        
+        // Reset image states
+        setSelectedImage(null);
+        setImagePreview('');
         setIsAddDialogOpen(false);
         
         toast({
@@ -433,6 +578,65 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Gauge Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-right flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            مؤشر حالة العيادات
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col lg:flex-row items-center gap-8">
+            <div className="w-full lg:w-1/2 h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={gaugeData}
+                    cx="50%"
+                    cy="50%"
+                    startAngle={180}
+                    endAngle={0}
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {gaugeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="w-full lg:w-1/2 space-y-4">
+              <div className="text-center lg:text-right">
+                <h3 className="text-2xl font-bold">{totalClinics}</h3>
+                <p className="text-muted-foreground">مجموع العيادات الكلي</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <div className="text-lg font-bold text-green-600">{totalWorking}</div>
+                  <div className="text-sm text-green-600">العيادات العاملة</div>
+                  <div className="text-xs text-muted-foreground">{((totalWorking / totalClinics) * 100).toFixed(1)}%</div>
+                </div>
+                <div className="text-center p-4 bg-amber-50 rounded-lg">
+                  <div className="text-lg font-bold text-amber-600">{totalOutOfOrder}</div>
+                  <div className="text-sm text-amber-600">العيادات المكهنة</div>
+                  <div className="text-xs text-muted-foreground">{((totalOutOfOrder / totalClinics) * 100).toFixed(1)}%</div>
+                </div>
+                <div className="text-center p-4 bg-red-50 rounded-lg">
+                  <div className="text-lg font-bold text-red-600">{totalNotWorking}</div>
+                  <div className="text-sm text-red-600">العيادات غير المفعلة</div>
+                  <div className="text-xs text-muted-foreground">{((totalNotWorking / totalClinics) * 100).toFixed(1)}%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Updated Statistics - Now 7 cards including facility status */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 sm:gap-4">
         <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
@@ -442,7 +646,8 @@ export default function Dashboard() {
                 <p className="text-xs sm:text-sm font-medium opacity-90">مجموع العيادات الكلي</p>
                 <p className="text-xl sm:text-2xl font-bold">
                   {(selectedSector && selectedSector !== 'all-sectors') || 
-                   (selectedCategory && selectedCategory !== 'all-categories') 
+                   (selectedCategory && selectedCategory !== 'all-categories') || 
+                   activeFilter !== 'all'
                    ? filteredStats.total_clinics : totalClinics}
                 </p>
               </div>
@@ -458,7 +663,8 @@ export default function Dashboard() {
                 <p className="text-xs sm:text-sm font-medium opacity-90">العيادات التي تعمل</p>
                 <p className="text-xl sm:text-2xl font-bold">
                   {(selectedSector && selectedSector !== 'all-sectors') || 
-                   (selectedCategory && selectedCategory !== 'all-categories') 
+                   (selectedCategory && selectedCategory !== 'all-categories') || 
+                   activeFilter !== 'all'
                    ? filteredStats.working_clinics : totalWorking}
                 </p>
               </div>
@@ -474,7 +680,8 @@ export default function Dashboard() {
                 <p className="text-xs sm:text-sm font-medium opacity-90">العيادات التي لا تعمل</p>
                 <p className="text-xl sm:text-2xl font-bold">
                   {(selectedSector && selectedSector !== 'all-sectors') || 
-                   (selectedCategory && selectedCategory !== 'all-categories') 
+                   (selectedCategory && selectedCategory !== 'all-categories') || 
+                   activeFilter !== 'all'
                    ? filteredStats.not_working_clinics : totalNotWorking}
                 </p>
               </div>
@@ -490,7 +697,8 @@ export default function Dashboard() {
                 <p className="text-xs sm:text-sm font-medium opacity-90">العيادات المكهنة</p>
                 <p className="text-xl sm:text-2xl font-bold">
                   {(selectedSector && selectedSector !== 'all-sectors') || 
-                   (selectedCategory && selectedCategory !== 'all-categories') 
+                   (selectedCategory && selectedCategory !== 'all-categories') || 
+                   activeFilter !== 'all'
                    ? filteredStats.out_of_order_clinics : totalOutOfOrder}
                 </p>
               </div>
@@ -506,7 +714,8 @@ export default function Dashboard() {
                 <p className="text-xs sm:text-sm font-medium opacity-90">جميع المنشآت</p>
                 <p className="text-xl sm:text-2xl font-bold">
                   {(selectedSector && selectedSector !== 'all-sectors') || 
-                   (selectedCategory && selectedCategory !== 'all-categories') 
+                   (selectedCategory && selectedCategory !== 'all-categories') || 
+                   activeFilter !== 'all'
                    ? filteredFacilities.length : totalFacilities}
                 </p>
               </div>
@@ -542,7 +751,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Updated Filters and Add Facility - Removed facility type filter */}
+      {/* Updated Filters and Add Facility */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -682,6 +891,60 @@ export default function Dashboard() {
                     </div>
                   </div>
 
+                  {/* Conditional Image Upload for شهادة التكهين */}
+                  {parseInt(newFacility.outOfOrderClinics) > 0 && (
+                    <div className="space-y-4 border-t pt-4">
+                      <Label className="text-sm font-medium text-right">شهادة التكهين</Label>
+                      <div className="space-y-4">
+                        {!imagePreview ? (
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                            <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                            <div className="text-sm text-gray-600 mb-4">
+                              <p>اختر صورة شهادة التكهين</p>
+                              <p className="text-xs text-gray-500">PNG, JPG, GIF حتى 10MB</p>
+                            </div>
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                              id="image-upload"
+                            />
+                            <Label
+                              htmlFor="image-upload"
+                              className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90"
+                            >
+                              اختيار الصورة
+                            </Label>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="relative border rounded-lg p-4">
+                              <img
+                                src={imagePreview}
+                                alt="معاينة شهادة التكهين"
+                                className="max-w-full h-48 object-contain mx-auto rounded"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-2 right-2"
+                                onClick={handleRemoveImage}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm text-green-600">تم رفع الصورة بنجاح</p>
+                              <p className="text-xs text-gray-500">{selectedImage?.name}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Contact Information Section */}
                   <div className="space-y-4 border-t pt-4">
                     <Label className="text-lg font-semibold text-right">معلومات التواصل</Label>
@@ -804,200 +1067,202 @@ export default function Dashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Updated filters - Only 2 filters now */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="space-y-2 text-right">
-              <Label className="text-sm">القطاع</Label>
-              <Select value={selectedSector} onValueChange={setSelectedSector}>
-                <SelectTrigger className="text-right">
-                  <SelectValue placeholder="اختر القطاع" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all-sectors">جميع القطاعات</SelectItem>
-                  {hardcodedSectors.map((sector) => (
-                    <SelectItem key={sector} value={sector}>{sector}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* Fixed Category Filter */}
-            <div className="space-y-2 text-right">
-              <Label className="text-sm">تصنيف المنشآت بالقطاع</Label>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="text-right">
-                  <SelectValue placeholder="اختر تصنيف المنشأة" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all-categories">جميع التصنيفات</SelectItem>
-                  <SelectItem value="مركز صحي">مركز صحي</SelectItem>
-                  <SelectItem value="مركز تخصصي">مركز تخصصي</SelectItem>
-                  <SelectItem value="مستشفى">مستشفى</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Updated Filter Summary */}
-          {(selectedSector || selectedCategory) && (
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg border-r-4 border-blue-500">
-              <p className="text-sm text-blue-800 text-right">
-                <strong>التصفية النشطة:</strong>
-                {selectedSector && selectedSector !== 'all-sectors' && (
-                  <span className="mr-2">القطاع: {selectedSector}</span>
-                )}
-                {selectedCategory && selectedCategory !== 'all-categories' && (
-                  <span className="mr-2">التصنيف: {selectedCategory}</span>
-                )}
-                - عدد المنشآت المعروضة: {filteredFacilities.length}
-              </p>
-            </div>
-          )}
-
-          {/* Sector Statistics */}
-          {selectedSector && selectedSector !== 'all-sectors' && (
-            <div className="mb-6">
-              <h3 className="text-base sm:text-lg font-semibold mb-4 text-right">إحصائيات قطاع {selectedSector}</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                {Object.entries(groupedBySector[selectedSector] || {}).map(([type, data]) => (
-                  <Card key={type}>
-                    <CardContent className="p-3 sm:p-4 text-right">
-                      <div className="text-xs sm:text-sm text-muted-foreground">{type}</div>
-                      <div className="text-lg sm:text-2xl font-bold">{(data as any).count}</div>
-                      <div className="text-xs text-muted-foreground">{(data as any).clinics} عيادة</div>
-                    </CardContent>
-                  </Card>
-                ))}
+          {/* Updated filters - 2 existing filters + 5 new filter buttons */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2 text-right">
+                <Label className="text-sm">القطاع</Label>
+                <Select value={selectedSector} onValueChange={setSelectedSector}>
+                  <SelectTrigger className="text-right">
+                    <SelectValue placeholder="اختر القطاع" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all-sectors">جميع القطاعات</SelectItem>
+                    {hardcodedSectors.map((sector) => (
+                      <SelectItem key={sector} value={sector}>{sector}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 text-right">
+                <Label className="text-sm">التصنيف</Label>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="text-right">
+                    <SelectValue placeholder="اختر التصنيف" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all-categories">جميع التصنيفات</SelectItem>
+                    <SelectItem value="مركز صحي">مركز صحي</SelectItem>
+                    <SelectItem value="مركز تخصصي">مركز تخصصي</SelectItem>
+                    <SelectItem value="مستشفى">مستشفى</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Facilities Table - Updated to show filtered facilities */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-right text-sm sm:text-base flex items-center justify-between">
-            <span>قائمة المنشآت</span>
-            <Badge variant="secondary" className="text-xs">
-              {filteredFacilities.length} من {facilities.length}
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs sm:text-sm">
-              <thead>
-                <tr className="border-b border-border text-right bg-muted/50">
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">اسم المنشأة</th>
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">الرمز</th>
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">القطاع</th>
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">التصنيف</th>
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">المجموع</th>
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">يعمل</th>
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">مكهن</th>
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">لا يعمل</th>
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">الحالة</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredFacilities.map((facility: any) => (
-                  <tr key={facility.id} className="border-b border-border text-right hover:bg-muted/30">
-                    <td className="p-2 sm:p-3 font-medium">{facility.name}</td>
-                    <td className="p-2 sm:p-3">{facility.code}</td>
-                    <td className="p-2 sm:p-3">{facility.sector}</td>
-                    <td className="p-2 sm:p-3">{facility.category || facility.type}</td>
-                    <td className="p-2 sm:p-3">{facility.totalClinics}</td>
-                    <td className="p-2 sm:p-3 text-green-600">{facility.workingClinics || facility.working}</td>
-                    <td className="p-2 sm:p-3 text-orange-600">{facility.outOfOrderClinics || facility.outOfOrder}</td>
-                    <td className="p-2 sm:p-3 text-red-600">{facility.notWorkingClinics || facility.notWorking}</td>
-                    <td className="p-2 sm:p-3">
-                      <Badge variant={facility.status === 'نشطة' ? 'default' : 'secondary'} className="text-xs whitespace-nowrap">
-                        {facility.status}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* New Filter Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={activeFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveFilter('all')}
+                className="text-sm"
+              >
+                جميع المنشآت
+              </Button>
+              <Button
+                variant={activeFilter === 'working' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveFilter('working')}
+                className="text-sm"
+              >
+                العيادات التي تعمل
+              </Button>
+              <Button
+                variant={activeFilter === 'not-working' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveFilter('not-working')}
+                className="text-sm"
+              >
+                العيادات التي لا تعمل
+              </Button>
+              <Button
+                variant={activeFilter === 'out-of-order' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveFilter('out-of-order')}
+                className="text-sm"
+              >
+                العيادات المكهنة
+              </Button>
+              <Button
+                variant={activeFilter === 'active-facilities' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveFilter('active-facilities')}
+                className="text-sm"
+              >
+                العيادات النشطة
+              </Button>
+              <Button
+                variant={activeFilter === 'inactive-facilities' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveFilter('inactive-facilities')}
+                className="text-sm"
+              >
+                العيادات الغير نشطة
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Recent Reports - UNCHANGED as requested */}
+      {/* Export Buttons and Facilities List */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-right text-sm sm:text-base">البلاغات الحديثة</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs sm:text-sm">
-              <thead>
-                <tr className="border-b border-border text-right bg-muted/50">
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">رقم البلاغ</th>
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">المنشأة</th>
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">الفئة</th>
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">التاريخ</th>
-                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">الحالة</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentReports.slice(0, 5).map((report: any) => (
-                  <tr key={report.id} className="border-b border-border text-right hover:bg-muted/30">
-                    <td className="p-2 sm:p-3 font-medium">{report.id}</td>
-                    <td className="p-2 sm:p-3">{report.facilityName}</td>
-                    <td className="p-2 sm:p-3">{report.category}</td>
-                    <td className="p-2 sm:p-3 whitespace-nowrap">{report.reportDate}</td>
-                    <td className="p-2 sm:p-3">
-                      <Badge variant={
-                        report.status === 'مفتوح' ? 'secondary' :
-                        report.status === 'مغلق' ? 'default' : 'destructive'
-                      } className="text-xs whitespace-nowrap">
-                        {report.status}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <CardTitle className="text-right">قائمة المنشآت</CardTitle>
+            <div className="flex gap-2">
+              <Button
+                onClick={exportToPDF}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                تصدير PDF
+              </Button>
+              <Button
+                onClick={exportToExcel}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                تصدير Excel
+              </Button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions - UNCHANGED */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-right flex items-center gap-2 text-sm sm:text-base">
-            <TrendingUp className="h-4 w-4" />
-            الإجراءات السريعة
-          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <button 
-              onClick={() => window.location.href = '/reports/new'}
-              className="group bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white p-4 sm:p-6 rounded-lg text-center transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-            >
-              <div className="flex flex-col items-center gap-2 sm:gap-3">
-                <div className="bg-white/20 p-2 sm:p-3 rounded-full group-hover:bg-white/30 transition-all">
-                  <AlertCircle className="h-4 w-4 sm:h-6 sm:w-6" />
-                </div>
-                <span className="text-xs sm:text-sm font-medium">بلاغ جديد</span>
+          {/* Facilities Display */}
+          <div className="space-y-6">
+            {Object.entries(groupedBySector).map(([sector, types]) => (
+              <div key={sector} className="space-y-4">
+                <h3 className="text-lg font-semibold text-right border-b pb-2">{sector}</h3>
+                {Object.entries(types).map(([type, data]) => (
+                  <div key={type} className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="text-right">
+                        <h4 className="font-medium">{type}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {data.count} منشأة • {data.clinics} عيادة
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid gap-3">
+                      {filteredFacilities
+                        .filter(f => f.sector === sector && (f.category || f.type) === type)
+                        .map((facility: any) => (
+                          <div key={facility.id} className="bg-white p-4 rounded-lg border">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                              <div className="text-right space-y-1">
+                                <h5 className="font-medium">{facility.name}</h5>
+                                <p className="text-sm text-muted-foreground">
+                                  {facility.code} • {facility.location || facility.facilityLocation}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <Badge variant={facility.status === 'نشطة' ? 'default' : 'secondary'}>
+                                  {facility.status}
+                                </Badge>
+                                <Badge variant="outline">
+                                  {facility.totalClinics} عيادة
+                                </Badge>
+                                <Badge variant="outline" className="text-green-600">
+                                  {facility.workingClinics || facility.working} تعمل
+                                </Badge>
+                                {(parseInt(facility.outOfOrderClinics || facility.outOfOrder) || 0) > 0 && (
+                                  <Badge variant="outline" className="text-orange-600">
+                                    {facility.outOfOrderClinics || facility.outOfOrder} مكهن
+                                  </Badge>
+                                )}
+                                {(parseInt(facility.notWorkingClinics || facility.notWorking) || 0) > 0 && (
+                                  <Badge variant="outline" className="text-red-600">
+                                    {facility.notWorkingClinics || facility.notWorking} لا تعمل
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-right">الإجراءات السريعة</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
             <button 
-              onClick={() => window.location.href = '/dental/assets'}
-              className="group bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white p-4 sm:p-6 rounded-lg text-center transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+              onClick={() => window.location.href = '/inventory'}
+              className="group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white p-4 sm:p-6 rounded-lg text-center transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
             >
               <div className="flex flex-col items-center gap-2 sm:gap-3">
                 <div className="bg-white/20 p-2 sm:p-3 rounded-full group-hover:bg-white/30 transition-all">
                   <Package className="h-4 w-4 sm:h-6 sm:w-6" />
                 </div>
-                <span className="text-xs sm:text-sm font-medium">إضافة أصل</span>
+                <span className="text-xs sm:text-sm font-medium">المخزون</span>
               </div>
             </button>
             <button 
-              onClick={() => window.location.href = '/transactions/new'}
+              onClick={() => window.location.href = '/transactions'}
               className="group bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-4 sm:p-6 rounded-lg text-center transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
             >
               <div className="flex flex-col items-center gap-2 sm:gap-3">
