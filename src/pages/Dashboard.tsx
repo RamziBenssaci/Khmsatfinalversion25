@@ -306,51 +306,266 @@ export default function Dashboard() {
     }
   };
 
-// Replace the existing exportToPDF function (lines 464-480) with this:
-const exportToPDF = async () => {
-  try {
-    // Import jsPDF with Arabic support
-    const { jsPDF } = await import('jspdf');
+const exportToPDF = () => {
+  const currentDate = new Date().toLocaleDateString('ar-SA');
+  const currentTime = new Date().toLocaleTimeString('ar-SA');
+  
+  // Calculate statistics for the filtered data
+  const totalFacilities = filteredFacilities.length;
+  const totalClinicsInFilter = filteredFacilities.reduce((sum, f) => sum + (parseInt(f.totalClinics) || 0), 0);
+  const totalWorkingInFilter = filteredFacilities.reduce((sum, f) => sum + (parseInt(f.workingClinics || f.working) || 0), 0);
+  const totalOutOfOrderInFilter = filteredFacilities.reduce((sum, f) => sum + (parseInt(f.outOfOrderClinics || f.outOfOrder) || 0), 0);
+  
+  const tableRows = filteredFacilities.map((facility, index) => `
+    <tr>
+      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px;">${index + 1}</td>
+      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px;">${facility.name}</td>
+      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px;">${facility.code}</td>
+      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px;">${facility.sector}</td>
+      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px;">${facility.category}</td>
+      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px;">${facility.status}</td>
+      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px;">${facility.totalClinics}</td>
+      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px; color: #22c55e; font-weight: bold;">${facility.workingClinics || facility.working}</td>
+      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px; color: #f59e0b; font-weight: bold;">${facility.outOfOrderClinics || facility.outOfOrder}</td>
+      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px; color: #ef4444; font-weight: bold;">${facility.notWorkingClinics || facility.notWorking}</td>
+      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px;">${facility.location || facility.facilityLocation || 'غير محدد'}</td>
+    </tr>
+  `).join('');
+
+  const pdfContent = `
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+      <meta charset="UTF-8">
+      <title>تقرير قائمة المنشآت الصحية</title>
+      <style>
+        body {
+          font-family: 'Arial', sans-serif;
+          margin: 15px;
+          direction: rtl;
+          background: white;
+          font-size: 12px;
+        }
+        .header {
+          text-align: center;
+          border-bottom: 3px solid #2563eb;
+          padding-bottom: 15px;
+          margin-bottom: 20px;
+        }
+        .header h1 {
+          color: #2563eb;
+          margin: 0;
+          font-size: 24px;
+          font-weight: bold;
+        }
+        .header h2 {
+          color: #64748b;
+          margin: 8px 0;
+          font-size: 14px;
+          font-weight: normal;
+        }
+        .stats-section {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 15px;
+          margin-bottom: 20px;
+        }
+        .stats-title {
+          color: #1e293b;
+          font-size: 16px;
+          font-weight: bold;
+          margin-bottom: 10px;
+          text-align: center;
+        }
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 10px;
+          text-align: center;
+        }
+        .stat-item {
+          background: white;
+          padding: 10px;
+          border-radius: 6px;
+          border: 1px solid #e2e8f0;
+        }
+        .stat-label {
+          font-size: 10px;
+          color: #64748b;
+          margin-bottom: 4px;
+        }
+        .stat-value {
+          font-size: 16px;
+          font-weight: bold;
+          color: #1e293b;
+        }
+        .filter-info {
+          background: #eff6ff;
+          border: 1px solid #dbeafe;
+          border-radius: 6px;
+          padding: 10px;
+          margin-bottom: 15px;
+          text-align: center;
+          font-size: 12px;
+          color: #1e40af;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 15px;
+          font-size: 9px;
+          page-break-inside: auto;
+        }
+        th {
+          background-color: #f1f5f9;
+          font-weight: bold;
+          color: #1e293b;
+          padding: 6px;
+          border: 1px solid #cbd5e1;
+          text-align: center;
+          font-size: 9px;
+          white-space: nowrap;
+        }
+        td {
+          padding: 4px;
+          border: 1px solid #e2e8f0;
+          text-align: center;
+          font-size: 9px;
+        }
+        tr:nth-child(even) {
+          background-color: #fafafa;
+        }
+        tr:hover {
+          background-color: #f0f9ff;
+        }
+        .footer {
+          margin-top: 20px;
+          text-align: center;
+          color: #64748b;
+          font-size: 10px;
+          border-top: 1px solid #e2e8f0;
+          padding-top: 10px;
+        }
+        @media print {
+          body { 
+            margin: 0; 
+            font-size: 8px; 
+          }
+          .stats-grid { 
+            grid-template-columns: repeat(2, 1fr); 
+          }
+          table { 
+            font-size: 7px; 
+          }
+          th, td { 
+            padding: 3px; 
+            font-size: 7px;
+          }
+          .header h1 {
+            font-size: 18px;
+          }
+          .stats-title {
+            font-size: 12px;
+          }
+        }
+        /* Status badges */
+        .status-active {
+          color: #22c55e;
+          font-weight: bold;
+        }
+        .status-inactive {
+          color: #ef4444;
+          font-weight: bold;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>تقرير قائمة المنشآت الصحية</h1>
+        <h2>نظام إدارة عيادات الأسنان - تجمع الرياض الصحي الثاني</h2>
+        <h2>تاريخ التقرير: ${currentDate} - الساعة: ${currentTime}</h2>
+      </div>
+
+      <div class="filter-info">
+        <strong>الفلاتر المطبقة:</strong>
+        القطاع: ${selectedSector || 'جميع القطاعات'} | 
+        التصنيف: ${selectedCategory || 'جميع التصنيفات'} | 
+        الفلتر النشط: ${activeFilter === 'all' ? 'جميع المنشآت' : activeFilter}
+      </div>
+
+      <div class="stats-section">
+        <div class="stats-title">ملخص الإحصائيات</div>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-label">عدد المنشآت</div>
+            <div class="stat-value">${totalFacilities}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">مجموع العيادات</div>
+            <div class="stat-value">${totalClinicsInFilter}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">العيادات العاملة</div>
+            <div class="stat-value" style="color: #22c55e;">${totalWorkingInFilter}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">العيادات المكهنة</div>
+            <div class="stat-value" style="color: #f59e0b;">${totalOutOfOrderInFilter}</div>
+          </div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 5%;">م</th>
+            <th style="width: 20%;">اسم المنشأة</th>
+            <th style="width: 10%;">رمز المنشأة</th>
+            <th style="width: 10%;">القطاع</th>
+            <th style="width: 10%;">التصنيف</th>
+            <th style="width: 8%;">الحالة</th>
+            <th style="width: 8%;">مجموع العيادات</th>
+            <th style="width: 8%;">تعمل</th>
+            <th style="width: 8%;">مكهن</th>
+            <th style="width: 8%;">لا تعمل</th>
+            <th style="width: 15%;">الموقع</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+
+      <div class="footer">
+        <p><strong>نظام إدارة المستودعات الطبية</strong></p>
+        <p>عدد السجلات: ${totalFacilities} منشأة | تم إنشاء التقرير: ${currentDate} ${currentTime}</p>
+        <p>هذا التقرير يحتوي على معلومات سرية ومخصص للاستخدام الرسمي فقط</p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Open print window
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.write(pdfContent);
+    printWindow.document.close();
+    printWindow.focus();
     
-    // You'll need to add an Arabic font - for now using a workaround
-    const doc = new jsPDF();
-    
-    // Title in Arabic (centered)
-    doc.setFontSize(16);
-    doc.text('قائمة المنشآت الصحية', 105, 20, { align: 'center' });
-    
-    let yPosition = 40;
-    
-    filteredFacilities.forEach((facility, index) => {
-      if (yPosition > 250) {
-        doc.addPage();
-        yPosition = 20;
-      }
-      
-      doc.setFontSize(12);
-      
-      // Use English/numbers for now until Arabic font is properly loaded
-      doc.text(`${index + 1}. Facility: ${facility.name}`, 20, yPosition);
-      doc.text(`Code: ${facility.code}`, 20, yPosition + 10);
-      doc.text(`Sector: ${facility.sector}`, 20, yPosition + 20);
-      doc.text(`Status: ${facility.status}`, 20, yPosition + 30);
-      doc.text(`Total Clinics: ${facility.totalClinics}`, 20, yPosition + 40);
-      doc.text(`Working: ${facility.workingClinics || facility.working}`, 20, yPosition + 50);
-      
-      yPosition += 70;
-    });
-    
-    doc.save('facilities-list.pdf');
+    // Small delay to ensure content loads before printing
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
     
     toast({
-      title: "تم تصدير PDF",
-      description: "تم تصدير قائمة المنشآت بصيغة PDF بنجاح",
+      title: "تم إنشاء التقرير",
+      description: "تم فتح نافذة الطباعة، يمكنك الآن الطباعة أو حفظ كـ PDF",
     });
-  } catch (error) {
-    console.error('PDF Export Error:', error);
+  } else {
     toast({
-      title: "خطأ في تصدير PDF",
-      description: "حدث خطأ أثناء تصدير الملف",
+      title: "خطأ",
+      description: "لم يتمكن من فتح نافذة الطباعة. تأكد من عدم حظر النوافط المنبثقة",
       variant: "destructive",
     });
   }
