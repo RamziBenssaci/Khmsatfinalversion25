@@ -460,18 +460,18 @@ const closeImageModal = () => {
     }
   };
 
-  const handleAddSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+const handleAddSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!validateAddForm()) {
+    return;
+  }
+  
+  try {
+    setLoadingAction(true);
     
-    if (!validateAddForm()) {
-      return;
-    }
-    
-    try {
-      setLoadingAction(true);
-      
-  const formData = new FormData();
-    
+    const formData = new FormData();
+  
     // Add all text fields
     formData.append('itemNumber', addFormData.itemNumber);
     formData.append('itemName', addFormData.itemName);
@@ -484,79 +484,84 @@ const closeImageModal = () => {
     formData.append('supplierName', addFormData.supplierName);
     formData.append('beneficiaryFacility', addFormData.beneficiaryFacility);
     formData.append('notes', addFormData.notes || '');
-        
-    const fileInput = document.getElementById('purchaseInvoice');
-
-   if (fileInput && fileInput.files[0]) {
+      
+    // Fix: Properly get the file input and check for files
+    const fileInput = document.getElementById('purchaseInvoice') as HTMLInputElement;
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
       formData.append('image', fileInput.files[0]);
     }
     
-    
     const response = await warehouseApi.addInventoryItem(formData);
-          
-      if (response.success) {
-        toast({
-          title: "تم بنجاح",
-          description: "تم إضافة الصنف بنجاح",
-        });
         
-        // Force reload inventory data and wait for it
-        try {
-          const inventoryResponse = await warehouseApi.getInventory();
-          if (inventoryResponse.success && inventoryResponse.data) {
-            setInventoryItems(inventoryResponse.data);
-          } else {
-            // Fallback: optimistically add the new item to current list
-            const newItem = {
-              id: Date.now().toString(), // Temporary ID
-              ...addFormData,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            };
-            setInventoryItems(prev => [...prev, newItem]);
-          }
-        } catch (reloadError) {
-          console.error('Failed to reload inventory:', reloadError);
-          // Optimistically add the new item
+    if (response.success) {
+      toast({
+        title: "تم بنجاح",
+        description: "تم إضافة الصنف بنجاح",
+      });
+      
+      // Force reload inventory data and wait for it
+      try {
+        const inventoryResponse = await warehouseApi.getInventory();
+        if (inventoryResponse.success && inventoryResponse.data) {
+          setInventoryItems(inventoryResponse.data);
+        } else {
+          // Fallback: optimistically add the new item to current list
           const newItem = {
-            id: Date.now().toString(),
+            id: Date.now().toString(), // Temporary ID
             ...addFormData,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           };
           setInventoryItems(prev => [...prev, newItem]);
         }
-        
-        // Reset form and close modal
-        setShowAddForm(false);
-        setShowEditModal(false);
-        setSelectedItem(null);
-        setSearchTerm(''); // Clear search after adding new item
-        setFormErrors({});
-        setAddFormData({
-          itemNumber: '',
-          itemName: '',
-          receivedQty: '',
-          issuedQty: '',
-          availableQty: '',
-          minQuantity: '',
-          purchaseValue: '',
-          deliveryDate: '',
-          supplierName: '',
-          beneficiaryFacility: '',
-          notes: ''
-        });
+      } catch (reloadError) {
+        console.error('Failed to reload inventory:', reloadError);
+        // Optimistically add the new item
+        const newItem = {
+          id: Date.now().toString(),
+          ...addFormData,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        setInventoryItems(prev => [...prev, newItem]);
       }
-    } catch (error: any) {
-      toast({
-        title: "خطأ في الحفظ",
-        description: error.message || "فشل في حفظ البيانات",
-        variant: "destructive",
+      
+      // Reset form and close modal
+      setShowAddForm(false);
+      setShowEditModal(false);
+      setSelectedItem(null);
+      setSearchTerm(''); // Clear search after adding new item
+      setFormErrors({});
+      
+      // Reset file input
+      if (fileInput) {
+        fileInput.value = '';
+      }
+      
+      setAddFormData({
+        itemNumber: '',
+        itemName: '',
+        receivedQty: '',
+        issuedQty: '',
+        availableQty: '',
+        minQuantity: '',
+        purchaseValue: '',
+        deliveryDate: '',
+        supplierName: '',
+        beneficiaryFacility: '',
+        notes: ''
       });
-    } finally {
-      setLoadingAction(false);
     }
-  };
+  } catch (error: any) {
+    toast({
+      title: "خطأ في الحفظ",
+      description: error.message || "فشل في حفظ البيانات",
+      variant: "destructive",
+    });
+  } finally {
+    setLoadingAction(false);
+  }
+};
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
