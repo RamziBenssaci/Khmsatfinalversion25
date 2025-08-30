@@ -327,7 +327,8 @@ export default function TrackOrders() {
           <div class="header">
             <h1>طلب الشراء المباشر</h1>
             <p>رقم الطلب: ${order.order_number || order.id}</p>
-          </div>... <div class="section">
+          </div>
+          <div class="section">
             <div class="section-header">
               <h2>المعلومات الأساسية</h2>
             </div>
@@ -360,7 +361,6 @@ export default function TrackOrders() {
               </div>
             </div>
           </div>
-
           <div class="section">
             <div class="section-header">
               <h2>المعلومات المالية</h2>
@@ -378,7 +378,6 @@ export default function TrackOrders() {
               </div>
             </div>
           </div>
-
           ${order.supplier_name ? `
           <div class="section">
             <div class="section-header">
@@ -400,7 +399,6 @@ export default function TrackOrders() {
             </div>
           </div>
           ` : ''}
-
           <div class="section">
             <div class="section-header">
               <h2>الحالة</h2>
@@ -411,7 +409,8 @@ export default function TrackOrders() {
                   <span class="status-badge ${getStatusClass(order.status)}">${order.status || '-'}</span>
               </div>
             </div>
-          </div>... ${order.notes ? `
+          </div>
+          ${order.notes ? `
           <div class="section">
             <div class="section-header">
               <h2>الملاحظات</h2>
@@ -423,7 +422,6 @@ export default function TrackOrders() {
             </div>
           </div>
           ` : ''}
-
           <div class="section">
             <div class="section-header">
               <h2>سجل حالات الطلب</h2>
@@ -446,7 +444,6 @@ export default function TrackOrders() {
                 </div>
               </div>
               ` : ''}
-
               ${order.contract_approval_date ? `
               <div class="timeline-item">
                 <h4>تاريخ الموافقة</h4>
@@ -464,7 +461,6 @@ export default function TrackOrders() {
                 </div>
               </div>
               ` : ''}
-
               ${order.contract_date ? `
               <div class="timeline-item">
                 <h4>تاريخ التعاقد</h4>
@@ -482,7 +478,6 @@ export default function TrackOrders() {
                 </div>
               </div>
               ` : ''}
-
               ${order.contract_delivery_date ? `
               <div class="timeline-item">
                 <h4>تاريخ التسليم</h4>
@@ -500,7 +495,6 @@ export default function TrackOrders() {
                 </div>
               </div>
               ` : ''}
-
               ${order.rejection_date ? `
               <div class="timeline-item">
                 <h4>تاريخ الرفض</h4>
@@ -520,7 +514,6 @@ export default function TrackOrders() {
               ` : ''}
             </div>
           </div>
-
           <div class="footer">
             <p>تم طباعة هذا الطلب في: ${new Date().toLocaleDateString('ar-SA')} - ${new Date().toLocaleTimeString('ar-SA')}</p>
           </div>
@@ -533,7 +526,7 @@ export default function TrackOrders() {
     if (printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
-      
+
       // Wait for content to load then print
       printWindow.onload = () => {
         setTimeout(() => {
@@ -563,10 +556,10 @@ export default function TrackOrders() {
 
   const handleStatusUpdate = async () => {
     if (!editingOrder || !statusUpdateData.newStatus || !statusUpdateData.statusDate) return;
-    
+
     try {
       setIsUpdatingStatus(true);
-      
+
       // Use the existing updateOrder API but with status update data including the date
       const updatedOrderData = {
         ...editingOrder,
@@ -574,15 +567,15 @@ export default function TrackOrders() {
         statusNote: statusUpdateData.statusNote,
         statusDate: statusUpdateData.statusDate // This will be sent to your Laravel backend
       };
-      
+
       const response = await directPurchaseApi.updateOrder(editingOrder.id, updatedOrderData);
-      
+
       if (response.success) {
         toast({
           title: "تم التحديث",
           description: "تم تحديث حالة الطلب بنجاح",
         });
-        
+
         // Refresh orders list
         loadOrders();
         setIsEditDialogOpen(false);
@@ -604,13 +597,13 @@ export default function TrackOrders() {
   const getStatusOptions = (currentStatus: string) => {
     const statusFlow = ['جديد', 'موافق عليه', 'تم التعاقد', 'تم التسليم'];
     const currentIndex = statusFlow.indexOf(currentStatus);
-    
+
     // Can move forward in the flow or go to 'مرفوض' from any status
     const availableOptions = [
       ...statusFlow.slice(currentIndex),
       'مرفوض'
     ];
-    
+
     return [...new Set(availableOptions)]; // Remove duplicates
   };
 
@@ -701,19 +694,20 @@ export default function TrackOrders() {
             </button>
           </div>
 
-          {/* Orders Table */}
-          <div className="responsive-table" style={{ overflowX: 'auto', width: '100%' }}>
-            {isLoading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="text-muted-foreground mt-2">جاري تحميل الطلبات...</p>
-              </div>
-            ) : filteredOrders.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">لا توجد طلبات شراء</p>
-              </div>
-            ) : (
-              <table className="w-full text-sm table-fixed border-collapse">
+          {/* Responsive Orders Table */}
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-muted-foreground mt-2">جاري تحميل الطلبات...</p>
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">لا توجد طلبات شراء</p>
+            </div>
+          ) : (
+            <div>
+              {/* Desktop / Tablet Table */}
+              <table className="w-full text-sm table-fixed border-collapse hidden sm:table">
                 <thead>
                   <tr className="border-b border-border text-right">
                     <th className="p-3 w-24">رقم الطلب</th>
@@ -786,8 +780,103 @@ export default function TrackOrders() {
                   ))}
                 </tbody>
               </table>
-            )}
-          </div>
+
+              {/* Mobile Table - Card style */}
+              <div className="space-y-4 sm:hidden">
+                {filteredOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700"
+                    dir="rtl"
+                  >
+                    <div className="flex justify-between mb-2 items-center">
+                      <div className="font-semibold text-lg">{order.item_name || '-'}</div>
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+                          order.status,
+                        )}`}
+                      >
+                        {order.status || '-'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 text-right text-sm">
+                      <div>
+                        <strong>رقم الطلب: </strong>
+                        <span>{order.order_number || order.id}</span>
+                      </div>
+                      <div>
+                        <strong>تاريخ الطلب: </strong>
+                        <span>{order.order_date || '-'}</span>
+                      </div>
+                      <div>
+                        <strong>الجهة المستفيدة: </strong>
+                        <span>{order.beneficiary_facility || '-'}</span>
+                      </div>
+                      <div>
+                        <strong>الكمية: </strong>
+                        <span>{order.quantity || '-'}</span>
+                      </div>
+                      <div>
+                        <strong>رقم التعميد المالي: </strong>
+                        <span>{order.financialApprovalNumber || '-'}</span>
+                      </div>
+                      <div>
+                        <strong>تاريخ التعميد: </strong>
+                        <span>{order.financialApprovalDate || '-'}</span>
+                      </div>
+                      <div>
+                        <strong>التكلفة: </strong>
+                        <span>{order.total_cost ? `${Number(order.total_cost).toLocaleString()} ريال` : '-'}</span>
+                      </div>
+                      {order.supplier_name && (
+                        <div>
+                          <strong>اسم المورد: </strong>
+                          <span>{order.supplier_name}</span>
+                        </div>
+                      )}
+                      {order.supplier_contact && (
+                        <div>
+                          <strong>بيانات التواصل: </strong>
+                          <span>{order.supplier_contact}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-start gap-2 mt-3 flex-wrap">
+                        <button
+                          onClick={() => handleViewOrder(order)}
+                          className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                        >
+                          <Eye size={14} />
+                          عرض
+                        </button>
+                        <button
+                          onClick={() => handleEditOrder(order)}
+                          className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                        >
+                          <Edit size={14} />
+                          تعديل
+                        </button>
+                        <button
+                          onClick={() => handlePrintOrder(order)}
+                          className="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                        >
+                          <Printer size={14} />
+                          طباعة
+                        </button>
+                        <button
+                          onClick={() => handleShowImage(order.image_url)}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                        >
+                          <Eye size={14} />
+                          صورة التعميد
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -800,7 +889,7 @@ export default function TrackOrders() {
               عرض تفاصيل الطلب رقم: {selectedOrder?.order_number || selectedOrder?.id}
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedOrder && (
             <div className="space-y-8 p-2">
               {/* Basic Information Section */}
@@ -901,7 +990,6 @@ export default function TrackOrders() {
               <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 p-6 rounded-lg border">
                 <h3 className="text-xl font-bold mb-6 text-right text-indigo-800 dark:text-indigo-200">سجل حالات الطلب</h3>
                 <div className="space-y-4">
-
                   {/* Creation Date */}
                   {selectedOrder.creation_date && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border-l-4 border-blue-400">
@@ -917,7 +1005,6 @@ export default function TrackOrders() {
                       )}
                     </div>
                   )}
-                  {/* Other status dates follow same pattern ... */}
                   {/* Contract Approval Date */}
                   {selectedOrder.contract_approval_date && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-teal-50 dark:bg-teal-900/30 rounded-lg border-l-4 border-teal-400">
@@ -978,7 +1065,6 @@ export default function TrackOrders() {
                       )}
                     </div>
                   )}
-
                 </div>
               </div>
             </div>
@@ -995,7 +1081,7 @@ export default function TrackOrders() {
               تعديل حالة الطلب رقم: {editingOrder?.order_number || editingOrder?.id}
             </DialogDescription>
           </DialogHeader>
-          
+
           {editingOrder && (
             <div className="space-y-6 p-4">
               <div className="text-right bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
