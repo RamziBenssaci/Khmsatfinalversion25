@@ -515,14 +515,7 @@ deleteOrder: async (id: string): Promise<ApiResponse> => {
   }, true);
 },
 
-// Update order function (enhanced version)
-updateOrder: async (id: string, orderData: any): Promise<ApiResponse> => {
-  return apiCall<ApiResponse>(`/direct-purchase/orders/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(orderData)
-  }, true);
-},
+
   // Submit purchase order
   submitPurchaseOrder: (formData: any): Promise<ApiResponse> => apiCall('/direct-purchase/submit', {
     method: 'POST',
