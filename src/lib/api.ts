@@ -500,7 +500,29 @@ export const directPurchaseApi = {
     const queryString = searchParams.toString();
     return apiCall(`/direct-purchase/dashboard${queryString ? `?${queryString}` : ''}`, {}, true);
   },
+updateOrderFull: async (id: string, orderData: any): Promise<ApiResponse> => {
+  return apiCall<ApiResponse>(`/direct-purchase/orders/${id}/full-update`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(orderData)
+  }, true);
+},
 
+// Delete order function (already exists but here's the implementation)
+deleteOrder: async (id: string): Promise<ApiResponse> => {
+  return apiCall<ApiResponse>(`/direct-purchase/orders/${id}`, {
+    method: 'DELETE'
+  }, true);
+},
+
+// Update order function (enhanced version)
+updateOrder: async (id: string, orderData: any): Promise<ApiResponse> => {
+  return apiCall<ApiResponse>(`/direct-purchase/orders/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(orderData)
+  }, true);
+},
   // Submit purchase order
   submitPurchaseOrder: (formData: any): Promise<ApiResponse> => apiCall('/direct-purchase/submit', {
     method: 'POST',
