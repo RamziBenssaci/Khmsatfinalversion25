@@ -113,7 +113,7 @@ const exportToPDF = (data, filename) => {
               <td>${report.facilityName}</td>
               <td>${report.category}</td>
               <td>${report.deviceName}</td>
-              <td>${report.serial_number || 'غير محدد'}</td>
+              <td>${report.serialNumber || 'غير محدد'}</td>
               <td>${report.problem_description || 'غير محدد'}</td>
               <td>
                 <span class="status ${
@@ -680,33 +680,33 @@ const handleFullEditClick = async (report) => {
 
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-6">
             <button
-          // Replace your PDF export button onClick handler with this:
-onClick={() => {
-  try {
-    const exportData = filteredReports.map(report => ({
-      id: report.id,
-      facilityName: report.facility?.name || '',
-      category: report.category,
-      deviceName: report.device_name,
-      serial_number: report.serial_number, // Add this line!
-      problem_description: report.problem_description || 'غير محدد',
-      status: report.status,
-      reportDate: `${report.report_date} ${report.report_time}`,
-      downtimeDays: calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)
-    }));
-    exportToPDF(exportData, 'قائمة_البلاغات');
-    toast({
-      title: "تم تصدير البيانات بنجاح",
-      description: "تم تصدير البلاغات إلى ملف PDF",
-    });
-  } catch(e){
-    toast({
-      title: "خطأ في التصدير",
-      description: "فشل في تصدير البيانات",
-      variant: "destructive"
-    });
-  }
-}}
+              onClick={() => {
+                try {
+                    console.log('Sample report data:', filteredReports[0]); // Add this line
+                  const exportData = filteredReports.map(report => ({
+                    id: report.id,
+                    facilityName: report.facility?.name || '',
+                    category: report.category,
+                    deviceName: report.device_name,
+                    serialNumber: report.serial_number ? report.serial_number : 'غير محدد',
+                    problem_description: report.problem_description || 'غير محدد',
+                    status: report.status,
+                    reportDate: `${report.report_date} ${report.report_time}`,
+                    downtimeDays: calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)
+                  }));
+                  exportToExcel(exportData, 'قائمة_البلاغات');
+                  toast({
+                    title: "تم تصدير البيانات بنجاح",
+                    description: "تم تصدير البلاغات إلى ملف Excel",
+                  });
+                } catch(e){
+                  toast({
+                    title: "خطأ في التصدير",
+                    description: "فشل في تصدير البيانات",
+                    variant: "destructive"
+                  });
+                }
+              }}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2 text-sm transition-colors"
             >
               <Download size={16} />
