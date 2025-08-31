@@ -118,8 +118,11 @@ export default function DirectPurchaseReports() {
         'رقم الطلب': order.id,
         'رقم الصنف': order.itemNumber,
         'اسم الصنف': order.itemName,
+        'الكمية': order.quantity || 'غير محدد',
         'الجهة المستفيدة': order.beneficiary,
         'الشركة الموردة': order.supplier,
+        'رقم التعميد': order.financialApprovalNumber || 'غير محدد',
+        'تاريخ التعميد': order.financialApprovalDate || 'غير محدد',
         'الحالة': order.status,
         'التكلفة': order.totalCost,
         'تاريخ الطلب': order.orderDate,
@@ -147,8 +150,11 @@ export default function DirectPurchaseReports() {
         id: order.id || '',
         itemNumber: order.itemNumber || '',
         itemName: order.itemName || '',
+        quantity: order.quantity || 'غير محدد',
         beneficiary: order.beneficiary || '',
         supplier: order.supplier || '',
+        financialApprovalNumber: order.financialApprovalNumber || 'غير محدد',
+        financialApprovalDate: order.financialApprovalDate || 'غير محدد',
         status: order.status || '',
         totalCost: order.totalCost || 0,
         orderDate: order.orderDate || ''
@@ -166,8 +172,8 @@ export default function DirectPurchaseReports() {
             .header { text-align: center; margin-bottom: 30px; }
             .title { font-size: 24px; font-weight: bold; color: #333; }
             .summary { margin: 20px 0; padding: 15px; background-color: #f5f5f5; border-radius: 5px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+            th, td { border: 1px solid #ddd; padding: 6px; text-align: right; }
             th { background-color: #4f46e5; color: white; font-weight: bold; }
             tr:nth-child(even) { background-color: #f9f9f9; }
             .status-new { background-color: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 4px; }
@@ -194,8 +200,11 @@ export default function DirectPurchaseReports() {
                 <th>رقم الطلب</th>
                 <th>رقم الصنف</th>
                 <th>اسم الصنف</th>
+                <th>الكمية</th>
                 <th>الجهة المستفيدة</th>
                 <th>الشركة الموردة</th>
+                <th>رقم التعميد</th>
+                <th>تاريخ التعميد</th>
                 <th>الحالة</th>
                 <th>التكلفة</th>
                 <th>تاريخ الطلب</th>
@@ -207,8 +216,11 @@ export default function DirectPurchaseReports() {
                   <td>${order.id}</td>
                   <td>${order.itemNumber}</td>
                   <td>${order.itemName}</td>
+                  <td>${order.quantity}</td>
                   <td>${order.beneficiary}</td>
                   <td>${order.supplier}</td>
+                  <td>${order.financialApprovalNumber}</td>
+                  <td>${order.financialApprovalDate}</td>
                   <td><span class="status-${order.status === 'جديد' ? 'new' : order.status === 'موافق عليه' ? 'approved' : order.status === 'تم التعاقد' ? 'contracted' : order.status === 'تم التسليم' ? 'delivered' : 'rejected'}">${order.status}</span></td>
                   <td>${parseFloat(order.totalCost || 0).toLocaleString()} ريال</td>
                   <td>${order.orderDate}</td>
@@ -356,18 +368,24 @@ export default function DirectPurchaseReports() {
         </CardContent>
       </Card>
 
-      {/* Export Buttons */}
+      {/* Export Buttons - Mobile Responsive */}
       <Card>
         <CardHeader>
           <CardTitle className="text-right">تصدير التقرير</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4">
-            <Button onClick={handleExportToExcel} className="bg-green-600 hover:bg-green-700">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <Button 
+              onClick={handleExportToExcel} 
+              className="bg-green-600 hover:bg-green-700 w-full sm:w-auto flex items-center justify-center"
+            >
               <Download className="w-4 h-4 ml-2" />
               تصدير إلى Excel
             </Button>
-            <Button onClick={handleExportToPDF} className="bg-red-600 hover:bg-red-700">
+            <Button 
+              onClick={handleExportToPDF} 
+              className="bg-red-600 hover:bg-red-700 w-full sm:w-auto flex items-center justify-center"
+            >
               <Download className="w-4 h-4 ml-2" />
               تصدير إلى PDF
             </Button>
@@ -394,8 +412,11 @@ export default function DirectPurchaseReports() {
                     <th className="p-2 text-right">رقم الطلب</th>
                     <th className="p-2 text-right">رقم الصنف</th>
                     <th className="p-2 text-right">اسم الصنف</th>
+                    <th className="p-2 text-right">الكمية</th>
                     <th className="p-2 text-right">الجهة المستفيدة</th>
                     <th className="p-2 text-right">الشركة الموردة</th>
+                    <th className="p-2 text-right">رقم التعميد</th>
+                    <th className="p-2 text-right">تاريخ التعميد</th>
                     <th className="p-2 text-right">الحالة</th>
                     <th className="p-2 text-right">التكلفة</th>
                     <th className="p-2 text-right">تاريخ الطلب</th>
@@ -407,8 +428,11 @@ export default function DirectPurchaseReports() {
                       <td className="p-2 font-medium">{order.id}</td>
                       <td className="p-2">{order.itemNumber}</td>
                       <td className="p-2">{order.itemName}</td>
+                      <td className="p-2">{order.quantity || 'غير محدد'}</td>
                       <td className="p-2">{order.beneficiary}</td>
                       <td className="p-2">{order.supplier}</td>
+                      <td className="p-2">{order.financialApprovalNumber || 'غير محدد'}</td>
+                      <td className="p-2">{order.financialApprovalDate || 'غير محدد'}</td>
                       <td className="p-2">
                         <Badge className={statusConfig[order.status as keyof typeof statusConfig]}>
                           {order.status}
@@ -436,8 +460,11 @@ export default function DirectPurchaseReports() {
                       </div>
                       <div className="text-sm space-y-1">
                         <p><strong>الصنف:</strong> {order.itemName}</p>
+                        <p><strong>الكمية:</strong> {order.quantity || 'غير محدد'}</p>
                         <p><strong>الجهة المستفيدة:</strong> {order.beneficiary}</p>
                         <p><strong>الشركة الموردة:</strong> {order.supplier}</p>
+                        <p><strong>رقم التعميد:</strong> {order.financialApprovalNumber || 'غير محدد'}</p>
+                        <p><strong>تاريخ التعميد:</strong> {order.financialApprovalDate || 'غير محدد'}</p>
                         <p><strong>التكلفة:</strong> {order.totalCost.toLocaleString()} ريال</p>
                         <p><strong>تاريخ الطلب:</strong> {order.orderDate}</p>
                       </div>
