@@ -97,7 +97,7 @@ export default function TransactionsList() {
 
   // Fixed transfer destinations (removed API dependency)
   const transferDestinations = [
-    'ادارة تشغيل خدمات الاسنان'.
+    'ادارة تشغيل خدمات الاسنان',
     'ادارة خدمات الاسنان',
     'إدارة صحة المجتمع',
     'إدارة مراكز الرعاية الأولية',
