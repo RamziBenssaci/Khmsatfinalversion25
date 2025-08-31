@@ -113,7 +113,7 @@ const exportToPDF = (data, filename) => {
               <td>${report.facilityName}</td>
               <td>${report.category}</td>
               <td>${report.deviceName}</td>
-              <td>${report.serial_number || 'غير محدد'}</td>
+              <td>${report.serialNumber || 'غير محدد'}</td>
               <td>${report.problem_description || 'غير محدد'}</td>
               <td>
                 <span class="status ${
