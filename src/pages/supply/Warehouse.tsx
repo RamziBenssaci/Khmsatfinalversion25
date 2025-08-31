@@ -24,7 +24,7 @@ export default function Warehouse() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState('');
   
-  // Add Item Form State
+  // Add Item Form State - Modified with new fields
   const [addFormData, setAddFormData] = useState({
     itemNumber: '',
     itemName: '',
@@ -37,10 +37,14 @@ export default function Warehouse() {
     supplierName: '',
     beneficiaryFacility: '',
     notes: '',
-    image: null as string | null // Changed to string for Base64
+    image: null as string | null,
+    // New fields
+    invoiceNumber: '', // رقم فاتورة الشراء
+    invoiceDate: '', // تاريخ الفاتورة
+    supplierContact: '' // بيانات التواصل للشركة الموردة
   });
 
-  // Edit Item Form State
+  // Edit Item Form State - Modified with new fields
   const [editFormData, setEditFormData] = useState({
     itemNumber: '',
     itemName: '',
@@ -53,7 +57,11 @@ export default function Warehouse() {
     supplierName: '',
     beneficiaryFacility: '',
     notes: '',
-    image: null as string | null // Changed to string for Base64
+    image: null as string | null,
+    // New fields
+    invoiceNumber: '', // رقم فاتورة الشراء
+    invoiceDate: '', // تاريخ الفاتورة
+    supplierContact: '' // بيانات التواصل للشركة الموردة
   });
 
   // Image preview states
@@ -120,6 +128,14 @@ export default function Warehouse() {
       const itemValue = unitPrice * availableQty;
       
       return sum + itemValue;
+    }, 0);
+  };
+
+  // NEW: Calculate total purchase value (sum of all purchaseValue)
+  const calculateTotalPurchaseValue = () => {
+    return inventoryItems.reduce((sum, item) => {
+      const purchaseValue = parseFloat(item.purchaseValue) || 0;
+      return sum + purchaseValue;
     }, 0);
   };
 
@@ -439,27 +455,13 @@ export default function Warehouse() {
       // Auto-calculate available quantity
       if (field === 'receivedQty' || field === 'issuedQty') {
         updated.availableQty = calculateAvailableQty(
-          field === 'receivedQty' ? value : prev.receivedQty,
-          field === 'issuedQty' ? value : prev.issuedQty
+          field === 'receivedQty' ? value : updated.receivedQty,
+          field === 'issuedQty' ? value : updated.issuedQty
         ).toString();
       }
       
       return updated;
     });
-    
-    // Clear error for this field
-    if (formErrors[field]) {
-      setFormErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-  };
-
-  const handleWithdrawInputChange = (field: string, value: string) => {
-    setWithdrawFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear error for this field
-    if (formErrors[field]) {
-      setFormErrors(prev => ({ ...prev, [field]: undefined }));
-    }
   };
 
   const handleEditInputChange = (field: string, value: string) => {
@@ -469,18 +471,17 @@ export default function Warehouse() {
       // Auto-calculate available quantity
       if (field === 'receivedQty' || field === 'issuedQty') {
         updated.availableQty = calculateAvailableQty(
-          field === 'receivedQty' ? value : prev.receivedQty,
-          field === 'issuedQty' ? value : prev.issuedQty
+          field === 'receivedQty' ? value : updated.receivedQty,
+          field === 'issuedQty' ? value : updated.issuedQty
         ).toString();
       }
       
       return updated;
     });
-    
-    // Clear error for this field
-    if (formErrors[field]) {
-      setFormErrors(prev => ({ ...prev, [field]: undefined }));
-    }
+  };
+
+  const handleWithdrawInputChange = (field: string, value: string) => {
+    setWithdrawFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleAddSubmit = async (e: React.FormEvent) => {
@@ -493,7 +494,7 @@ export default function Warehouse() {
     try {
       setLoadingAction(true);
       
-      // Now send addFormData directly as it contains Base64 string
+      // Send addFormData directly with new fields
       const response = await warehouseApi.addInventoryItem(addFormData);
       
       if (response.success) {
@@ -524,7 +525,11 @@ export default function Warehouse() {
           supplierName: '',
           beneficiaryFacility: '',
           notes: '',
-          image: null
+          image: null,
+          // Reset new fields
+          invoiceNumber: '',
+          invoiceDate: '',
+          supplierContact: ''
         });
       }
     } catch (error: any) {
@@ -549,7 +554,7 @@ export default function Warehouse() {
     try {
       setLoadingAction(true);
       
-      // Send editFormData directly
+      // Send editFormData directly with new fields
       const response = await warehouseApi.updateInventoryItem(selectedItem.id, editFormData);
       
       if (response.success) {
@@ -580,7 +585,11 @@ export default function Warehouse() {
           supplierName: '',
           beneficiaryFacility: '',
           notes: '',
-          image: null
+          image: null,
+          // Reset new fields
+          invoiceNumber: '',
+          invoiceDate: '',
+          supplierContact: ''
         });
       }
     } catch (error: any) {
@@ -676,7 +685,11 @@ export default function Warehouse() {
       supplierName: item.supplierName || '',
       beneficiaryFacility: item.beneficiaryFacility || '',
       notes: item.notes || '',
-      image: null // Reset image when opening edit form
+      image: null, // Reset image when opening edit form
+      // Set new fields with null handling
+      invoiceNumber: item.invoiceNumber || '',
+      invoiceDate: item.invoiceDate || '',
+      supplierContact: item.supplierContact || ''
     });
     
     // Set existing image preview if available
@@ -772,6 +785,7 @@ export default function Warehouse() {
           <div style="margin-top: 30px; text-align: center; color: #666;">
             <p>إجمالي الأصناف: ${filteredItems.length}</p>
             <p>إجمالي قيمة المخزون: ${calculateTotalInventoryValue().toFixed(2)} ريال</p>
+            <p>إجمالي قيمة الشراء: ${calculateTotalPurchaseValue().toFixed(2)} ريال</p>
           </div>
         </body>
         </html>
@@ -872,11 +886,17 @@ export default function Warehouse() {
         </button>
       </div>
 
-      {/* Inventory Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Inventory Stats - MODIFIED: Added new stat card for total purchase value */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="stat-card">
           <div className="stat-number">{inventoryItems.length}</div>
           <div className="stat-label">إجمالي الأصناف</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-number text-info text-sm">
+            {calculateTotalPurchaseValue().toFixed(2)} ريال
+          </div>
+          <div className="stat-label">إجمالي قيمة الشراء</div>
         </div>
         <div className="stat-card">
           <div className="stat-number text-danger">
@@ -989,15 +1009,15 @@ export default function Warehouse() {
                         <button 
                           onClick={() => handleWithdrawClick(item)}
                           className="p-1.5 text-primary hover:bg-primary/10 rounded" 
-                          title="أمر صرف"
+                          title="صرف"
                         >
                           <ShoppingCart size={14} />
                         </button>
                         <button 
                           onClick={() => {
-                          setItemToDelete(item);
-                          setShowDeleteModal(true);
-                           }}
+                            setItemToDelete(item);
+                            setShowDeleteModal(true);
+                          }}
                           className="p-1.5 text-danger hover:bg-danger/10 rounded" 
                           title="حذف"
                         >
@@ -1104,7 +1124,7 @@ export default function Warehouse() {
         </div>
       </div>
 
-      {/* Add Item Modal */}
+      {/* Add Item Modal - MODIFIED: Added new fields */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-background rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -1228,7 +1248,7 @@ export default function Warehouse() {
                 </div>
               </div>
 
-              {/* Financial and Supplier Information */}
+              {/* Financial and Supplier Information - MODIFIED: Added new fields */}
               <div className="admin-card">
                 <div className="admin-header">
                   <h3>المعلومات المالية والموردين</h3>
@@ -1296,6 +1316,36 @@ export default function Warehouse() {
                           <option key={facility.id} value={facility.name}>{facility.name}</option>
                         ))}
                       </select>
+                    </div>
+                    {/* NEW FIELDS */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-right">رقم فاتورة الشراء (اختياري)</label>
+                      <input
+                        type="text"
+                        value={addFormData.invoiceNumber}
+                        onChange={(e) => handleAddInputChange('invoiceNumber', e.target.value)}
+                        className="w-full p-2 border border-input rounded-md text-right text-sm"
+                        placeholder="رقم الفاتورة أو التعميد"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-right">تاريخ الفاتورة (اختياري)</label>
+                      <input
+                        type="date"
+                        value={addFormData.invoiceDate}
+                        onChange={(e) => handleAddInputChange('invoiceDate', e.target.value)}
+                        className="w-full p-2 border border-input rounded-md text-right text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium mb-2 text-right">بيانات التواصل للشركة الموردة (اختياري)</label>
+                      <input
+                        type="text"
+                        value={addFormData.supplierContact}
+                        onChange={(e) => handleAddInputChange('supplierContact', e.target.value)}
+                        className="w-full p-2 border border-input rounded-md text-right text-sm"
+                        placeholder="رقم الهاتف، البريد الإلكتروني، العنوان..."
+                      />
                     </div>
                   </div>
                 </div>
@@ -1388,13 +1438,13 @@ export default function Warehouse() {
           </div>
         </div>
       )}
-      
-      {/* Withdraw Order Modal */}
+
+      {/* Withdraw Form Modal */}
       {showWithdrawForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-background rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-background rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="admin-header flex justify-between items-center">
-              <h2>أمر صرف - {selectedItem?.itemName}</h2>
+              <h2>إنشاء أمر صرف</h2>
               <button 
                 onClick={() => setShowWithdrawForm(false)}
                 className="text-muted-foreground hover:text-foreground"
@@ -1430,13 +1480,10 @@ export default function Warehouse() {
                       />
                     </div>
                   </div>
-                  <div className="mt-2 text-sm text-info">
-                    الكمية المتاحة: {selectedItem?.availableQty || 0}
-                  </div>
                 </div>
               </div>
 
-              {/* Withdraw Information */}
+              {/* Withdrawal Information */}
               <div className="admin-card">
                 <div className="admin-header">
                   <h3>معلومات الصرف</h3>
@@ -1444,7 +1491,7 @@ export default function Warehouse() {
                 <div className="p-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2 text-right">الجهة المستفيدة/المنشأة *</label>
+                      <label className="block text-sm font-medium mb-2 text-right">الجهة المستفيدة *</label>
                       <select
                         value={withdrawFormData.beneficiaryFacility}
                         onChange={(e) => handleWithdrawInputChange('beneficiaryFacility', e.target.value)}
@@ -1453,7 +1500,7 @@ export default function Warehouse() {
                         }`}
                         required
                       >
-                        <option value="">اختر المنشأة</option>
+                        <option value="">اختر الجهة المستفيدة</option>
                         {facilities.map(facility => (
                           <option key={facility.id} value={facility.name}>{facility.name}</option>
                         ))}
@@ -1478,6 +1525,9 @@ export default function Warehouse() {
                       {formErrors.withdrawQty && (
                         <p className="text-red-500 text-xs mt-1 text-right">{formErrors.withdrawQty}</p>
                       )}
+                      <p className="text-xs text-muted-foreground mt-1 text-right">
+                        الكمية المتاحة: {selectedItem?.availableQty || 0}
+                      </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2 text-right">تاريخ الصرف *</label>
@@ -1597,7 +1647,7 @@ export default function Warehouse() {
         </div>
       )}
 
-      {/* View Item Modal */}
+      {/* View Item Modal - MODIFIED: Added new fields display */}
       {showViewModal && selectedItem && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-background rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
@@ -1624,6 +1674,10 @@ export default function Warehouse() {
                     <div><span className="font-medium">رقم الصنف:</span> {selectedItem.itemNumber}</div>
                     <div><span className="font-medium">اسم الصنف:</span> {selectedItem.itemName}</div>
                     <div><span className="font-medium">الشركة الموردة:</span> {selectedItem.supplierName}</div>
+                    {/* NEW FIELDS DISPLAY */}
+                    {selectedItem.supplierContact && (
+                      <div><span className="font-medium">بيانات التواصل:</span> {selectedItem.supplierContact}</div>
+                    )}
                   </div>
                 </div>
                 
@@ -1647,6 +1701,13 @@ export default function Warehouse() {
                     <div><span className="font-medium">قيمة الشراء:</span> {selectedItem.purchaseValue} ريال</div>
                     <div><span className="font-medium">الجهة المستفيدة:</span> {selectedItem.beneficiaryFacility}</div>
                     <div><span className="font-medium">تاريخ التوريد:</span> {selectedItem.deliveryDate || 'غير محدد'}</div>
+                    {/* NEW FIELDS DISPLAY */}
+                    {selectedItem.invoiceNumber && (
+                      <div><span className="font-medium">رقم الفاتورة:</span> {selectedItem.invoiceNumber}</div>
+                    )}
+                    {selectedItem.invoiceDate && (
+                      <div><span className="font-medium">تاريخ الفاتورة:</span> {selectedItem.invoiceDate}</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1804,53 +1865,43 @@ export default function Warehouse() {
                                 <span className="font-medium mr-1">{order.recipientContact}</span>
                               </div>
                             </div>
-                            
-                            {order.notes && (
-                              <div className="mt-2 text-xs text-muted-foreground text-right">
-                                <span className="font-medium">ملاحظات:</span> {order.notes}
-                              </div>
-                            )}
                           </div>
                         ))}
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <div className="text-muted-foreground mb-2">
-                        <ShoppingCart size={48} className="mx-auto mb-2" />
-                      </div>
-                      <p className="text-muted-foreground">لا توجد أوامر صرف لهذا الصنف</p>
+                    <div className="text-center py-8 text-muted-foreground">
+                      <ShoppingCart size={48} className="mx-auto mb-4 opacity-50" />
+                      <p>لا توجد أوامر صرف لهذا الصنف</p>
                     </div>
                   )}
                 </div>
               </div>
-            </div>
-            
-            {/* Close button only */}
-            <div className="p-6 pt-0">
-              <div className="flex justify-center">
-                <button
-                  onClick={() => {
-                    setShowViewModal(false);
-                    setSelectedItem(null);
-                  }}
-                  className="admin-btn-secondary flex items-center gap-2 px-4 py-2"
-                >
-                  <X size={16} />
-                  إغلاق
-                </button>
-              </div>
+
+              {/* Notes Section */}
+              {selectedItem.notes && (
+                <div className="admin-card">
+                  <div className="admin-header">
+                    <h3>ملاحظات</h3>
+                  </div>
+                  <div className="p-4">
+                    <div className="bg-accent/50 p-3 rounded-md text-right">
+                      <p className="leading-relaxed">{selectedItem.notes}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Edit Item Modal */}
-      {showEditModal && (
+      {/* Edit Item Modal - MODIFIED: Added new fields */}
+      {showEditModal && selectedItem && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-background rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="admin-header flex justify-between items-center">
-              <h2>تعديل الصنف - {selectedItem?.itemName}</h2>
+              <h2>تعديل الصنف</h2>
               <button 
                 onClick={() => {
                   setShowEditModal(false);
@@ -1972,7 +2023,7 @@ export default function Warehouse() {
                 </div>
               </div>
 
-              {/* Financial and Supplier Information */}
+              {/* Financial and Supplier Information - MODIFIED: Added new fields */}
               <div className="admin-card">
                 <div className="admin-header">
                   <h3>المعلومات المالية والموردين</h3>
@@ -2040,6 +2091,36 @@ export default function Warehouse() {
                           <option key={facility.id} value={facility.name}>{facility.name}</option>
                         ))}
                       </select>
+                    </div>
+                    {/* NEW FIELDS */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-right">رقم فاتورة الشراء (اختياري)</label>
+                      <input
+                        type="text"
+                        value={editFormData.invoiceNumber}
+                        onChange={(e) => handleEditInputChange('invoiceNumber', e.target.value)}
+                        className="w-full p-2 border border-input rounded-md text-right text-sm"
+                        placeholder="رقم الفاتورة أو التعميد"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-right">تاريخ الفاتورة (اختياري)</label>
+                      <input
+                        type="date"
+                        value={editFormData.invoiceDate}
+                        onChange={(e) => handleEditInputChange('invoiceDate', e.target.value)}
+                        className="w-full p-2 border border-input rounded-md text-right text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium mb-2 text-right">بيانات التواصل للشركة الموردة (اختياري)</label>
+                      <input
+                        type="text"
+                        value={editFormData.supplierContact}
+                        onChange={(e) => handleEditInputChange('supplierContact', e.target.value)}
+                        className="w-full p-2 border border-input rounded-md text-right text-sm"
+                        placeholder="رقم الهاتف، البريد الإلكتروني، العنوان..."
+                      />
                     </div>
                   </div>
                 </div>
