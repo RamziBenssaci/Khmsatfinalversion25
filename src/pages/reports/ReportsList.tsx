@@ -201,8 +201,8 @@ export default function ReportsList() {
   });
 
   const predefinedCategories = [
-    'صيانة طبية',
-    'صيانة عامة',
+    'الصيانة الطبية',
+    'الصيانة العامة',
     'تقنية المعلومات',
     'أمن وسلامة',
     'التموين الطبي',
