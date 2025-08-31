@@ -326,7 +326,7 @@ export default function TrackOrders() {
         <div class="print-container">
           <div class="header">
             <h1>طلب الشراء المباشر</h1>
-            <p>رقم الطلب: ${order.order_number || order.id}</p>
+            <p>رقم الصنف: ${order.order_number || order.id}</p>
           </div>
           <div class="section">
             <div class="section-header">
@@ -335,7 +335,7 @@ export default function TrackOrders() {
             <div class="section-content">
               <div class="info-grid">
                 <div class="info-item">
-                  <label>رقم الطلب</label>
+                  <label>رقم الصنف</label>
                   <span>${order.order_number || order.id}</span>
                 </div>
                 <div class="info-item">
@@ -710,7 +710,7 @@ export default function TrackOrders() {
               <table className="w-full text-sm table-fixed border-collapse hidden sm:table">
                 <thead>
                   <tr className="border-b border-border text-right">
-                    <th className="p-3 w-24">رقم الطلب</th>
+                    <th className="p-3 w-24">رقم الصنف</th>
                     <th className="p-3 mobile-hidden w-28">تاريخ الطلب</th>
                     <th className="p-3 w-36">اسم الصنف</th>
                     <th className="p-3 mobile-hidden w-44">الجهة المستفيدة</th>
@@ -802,7 +802,7 @@ export default function TrackOrders() {
 
                     <div className="space-y-2 text-right text-sm">
                       <div>
-                        <strong>رقم الطلب: </strong>
+                        <strong>رقم الصنف: </strong>
                         <span>{order.order_number || order.id}</span>
                       </div>
                       <div>
@@ -897,7 +897,7 @@ export default function TrackOrders() {
                 <h3 className="text-lg font-bold mb-4 text-right text-blue-800 dark:text-blue-200">المعلومات الأساسية</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="text-right">
-                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">رقم الطلب</label>
+                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">رقم الصنف</label>
                     <p className="font-semibold text-lg bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.order_number || selectedOrder.id}</p>
                   </div>
                   <div className="text-right">
