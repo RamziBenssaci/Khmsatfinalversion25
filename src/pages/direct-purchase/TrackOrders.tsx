@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, Eye, X, Save, Edit, Printer, Settings, Trash2, Upload } from 'lucide-react';
+import { Search, Filter, Eye, X, Save, Edit, Printer, Settings, Trash2, Upload, Calendar, AlertTriangle, Building, Phone } from 'lucide-react';
 import { directPurchaseApi, reportsApi, facilitiesApi, itemsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { mockFacilities } from '@/data/mockData';
