@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, FileText, Filter, Printer, TrendingUp, Package, Users, DollarSign, Download, FileSpreadsheet } from 'lucide-react';
+import { Calendar, FileText, Filter, Printer, TrendingUp, Package, Users, DollarSign, Download, FileSpreadsheet, ShoppingCart, Warehouse } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { warehouseApi, reportsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +15,8 @@ export default function DispensingReports() {
   const [dashboardData, setDashboardData] = useState(null);
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sumAll, setSumAll] = useState(0); // اجمالي قيمة الشراء
+  const [sumInv, setSumInv] = useState(0); // اجمالي قيمة المخزون المتبقي
   const { toast } = useToast();
 
   // Filter data based on selected facility
@@ -51,6 +53,9 @@ export default function DispensingReports() {
         if (dispensingResponse.success) {
           setDispensingData(dispensingResponse.data);
           setDashboardData(dispensingResponse.data);
+          // Set the new values from API response
+          setSumAll(dispensingResponse.sum_all || 0);
+          setSumInv(dispensingResponse.sum_inv || 0);
         }
 
         if (operationsResponse.success) {
@@ -134,7 +139,7 @@ export default function DispensingReports() {
           }
           .stats-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(6, 1fr);
             gap: 15px;
             text-align: center;
           }
@@ -180,7 +185,7 @@ export default function DispensingReports() {
           }
           @media print {
             body { margin: 0; font-size: 9px; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
             table { font-size: 8px; }
             th, td { padding: 4px; }
           }
@@ -198,6 +203,14 @@ export default function DispensingReports() {
             <div class="stat-item">
               <div class="stat-label">إجمالي قيمة الصرف</div>
               <div class="stat-value">${totalDispensingValue.toLocaleString()} ريال</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">إجمالي قيمة الشراء</div>
+              <div class="stat-value">${sumAll.toLocaleString()} ريال</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">إجمالي قيمة المخزون المتبقي</div>
+              <div class="stat-value">${sumInv.toLocaleString()} ريال</div>
             </div>
             <div class="stat-item">
               <div class="stat-label">إجمالي الأصناف المصروفة</div>
@@ -479,22 +492,12 @@ export default function DispensingReports() {
               <span class="info-value">${new Date(item.created_at).toLocaleDateString('ar-SA')}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">حالة الطلب:</span>
-              <span class="info-value">
-                <span class="status-badge ${item.status === 'مكتمل' ? 'status-completed' : 'status-pending'}">
-                  ${item.status}
-                </span>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="info-section">
-          <div class="info-title">🏢 بيانات الجهة المستفيدة</div>
-          <div class="info-grid">
-            <div class="info-item">
               <span class="info-label">اسم المنشأة:</span>
-              <span class="info-value">${item.facility || 'غير محدد'}</span>
+              <span class="info-value">${item.facility}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">حالة الطلب:</span>
+              <span class="info-value status-badge ${item.status === 'مكتمل' ? 'status-completed' : 'status-pending'}">${item.status}</span>
             </div>
             <div class="info-item">
               <span class="info-label">اسم المستلم:</span>
@@ -624,7 +627,7 @@ export default function DispensingReports() {
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
@@ -635,6 +638,36 @@ export default function DispensingReports() {
               </div>
               <div className="bg-white/20 p-2 sm:p-3 rounded-full">
                 <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="text-right">
+                <p className="text-indigo-100 text-xs sm:text-sm font-medium">إجمالي قيمة الشراء</p>
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold">{sumAll.toLocaleString()}</p>
+                <p className="text-xs text-indigo-100">ريال</p>
+              </div>
+              <div className="bg-white/20 p-2 sm:p-3 rounded-full">
+                <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-teal-500 to-teal-600 text-white">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="text-right">
+                <p className="text-teal-100 text-xs sm:text-sm font-medium">إجمالي قيمة المخزون المتبقي</p>
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold">{sumInv.toLocaleString()}</p>
+                <p className="text-xs text-teal-100">ريال</p>
+              </div>
+              <div className="bg-white/20 p-2 sm:p-3 rounded-full">
+                <Warehouse className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
               </div>
             </div>
           </CardContent>
@@ -837,7 +870,7 @@ export default function DispensingReports() {
                           className="text-xs"
                         >
                           <Printer className="w-3 h-3 ml-1" />
-                          طباعة مفصل
+                          طباعة
                         </Button>
                       </td>
                     </tr>
