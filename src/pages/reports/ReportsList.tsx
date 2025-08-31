@@ -99,6 +99,7 @@ const exportToPDF = (data, filename) => {
             <th>المنشأة</th>
             <th>التصنيف</th>
             <th>اسم الجهاز</th>
+            <th>الرقم التسلسلي</th>
             <th>وصف المشكلة</th>
             <th>الحالة</th>
             <th>تاريخ البلاغ</th>
@@ -112,6 +113,7 @@ const exportToPDF = (data, filename) => {
               <td>${report.facilityName}</td>
               <td>${report.category}</td>
               <td>${report.deviceName}</td>
+              <td>${report.serialNumber || 'غير محدد'}</td>
               <td>${report.problem_description || 'غير محدد'}</td>
               <td>
                 <span class="status ${
@@ -145,6 +147,7 @@ const exportToExcel = (data, filename) => {
       report.facilityName,
       report.category,
       report.deviceName,
+      report.serialNumber || 'غير محدد',
       report.problem_description || 'غير محدد',
       report.status,
       report.reportDate,
@@ -684,6 +687,7 @@ const handleFullEditClick = async (report) => {
                     facilityName: report.facility?.name || '',
                     category: report.category,
                     deviceName: report.device_name,
+                    serialNumber: report.serial_number || 'غير محدد',
                     problem_description: report.problem_description || 'غير محدد',
                     status: report.status,
                     reportDate: `${report.report_date} ${report.report_time}`,
