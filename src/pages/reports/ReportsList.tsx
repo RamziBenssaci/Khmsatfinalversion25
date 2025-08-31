@@ -181,8 +181,8 @@ export default function ReportsList() {
     resolved_at: '',
     resolved_by: ''
   });
-  const [facilities, setFacilities] = useState([]);
-  const [facilitiesLoading, setFacilitiesLoading] = useState(false);
+ const [facilitiesData, setFacilitiesData] = useState([]);
+ const [facilitiesLoading, setFacilitiesLoading] = useState(false);
 const [editFormData,setEditFormData] = useState({
     facility_id: '',
     report_date: '',
@@ -291,12 +291,12 @@ const handleFullEditClick = async (report) => {
     });
     
     // Load facilities when opening full edit modal
-    if (facilities.length === 0) {
+    if (facilitiesData.length === 0) {
       setFacilitiesLoading(true);
       try {
         const facilitiesResponse = await reportsApi.getFacilities();
         if (facilitiesResponse.success) {
-          setFacilities(facilitiesResponse.data || []);
+          setFacilitiesData(facilitiesResponse.data || []);
         }
       } catch (error) {
         console.error('Failed to load facilities:', error);
@@ -1125,7 +1125,7 @@ const handleFullEditClick = async (report) => {
                     className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">اختر اسم المنشأة</option>
-                    {facilities.map((facility) => (
+{facilitiesData.map((facility) => (
                       <option key={facility.id} value={facility.id.toString()}>
                         {facility.name}
                       </option>
