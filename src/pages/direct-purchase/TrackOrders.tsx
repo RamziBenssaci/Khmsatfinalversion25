@@ -303,7 +303,7 @@ export default function TrackOrders() {
 
     try {
       setIsUpdatingStatus(true);
-      const response = await directPurchaseApi.updateOrder(editingOrder.id, fullUpdateData);
+      const response = await directPurchaseApi.updateOrderFull(editingOrder.id, fullUpdateData);
 
       if (response.success) {
         toast({
