@@ -113,7 +113,7 @@ const exportToPDF = (data, filename) => {
               <td>${report.facilityName}</td>
               <td>${report.category}</td>
               <td>${report.deviceName}</td>
-              <td>${report.serialNumber || 'غير محدد'}</td>
+              <td>${report.serial_number || 'غير محدد'}</td>
               <td>${report.problem_description || 'غير محدد'}</td>
               <td>
                 <span class="status ${
@@ -141,7 +141,7 @@ const exportToPDF = (data, filename) => {
 
 const exportToExcel = (data, filename) => {
   const csvContent = [
-    ['رقم البلاغ', 'المنشأة', 'التصنيف', 'اسم الجهاز', 'وصف المشكلة', 'الحالة', 'تاريخ البلاغ', 'فترة التوقف (أيام)'],
+    ['رقم البلاغ', 'المنشأة', 'التصنيف', 'اسم الجهاز', 'الرقم التسلسلي', 'وصف المشكلة', 'الحالة', 'تاريخ البلاغ', 'فترة التوقف (أيام)'],
     ...data.map(report => [
       report.id,
       report.facilityName,
