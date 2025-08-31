@@ -97,12 +97,12 @@ export default function ReportsDashboard() {
     fill: `hsl(${Math.random() * 360}, 70%, 50%)`
   }));
 
-  // Facility chart data based on filtered reports with improved mobile display
-  const facilityChartData = facilities.map(facility => ({
-    name: facility.length > 12 ? facility.substring(0, 12) + '...' : facility, // Truncate long names for mobile
-    fullName: facility, // Keep full name for tooltip
-    reports: filteredReports.filter(r => r.facility?.name === facility).length
-  }));
+  // Generate beautiful horizontal bar chart data for facilities
+  const facilityChartData = facilities.map((facility, index) => ({
+    name: facility,
+    reports: filteredReports.filter(r => r.facility?.name === facility).length,
+    fill: `hsl(${(index * 45) % 360}, 65%, 55%)`
+  })).sort((a, b) => b.reports - a.reports); // Sort by report count
 
   // Generate monthly trend from filtered reports using report_date
   const generateMonthlyTrend = () => {
@@ -304,7 +304,7 @@ export default function ReportsDashboard() {
 
       {/* AdminLTE 3 Style Charts Row */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* Facility Reports Bar Chart - Mobile Optimized */}
+        {/* Facility Reports - Beautiful Grid Layout */}
         <div className="bg-white dark:bg-card rounded-lg shadow-lg border border-border overflow-hidden">
           <div className="bg-gradient-to-r from-warning to-warning/80 text-warning-foreground px-3 sm:px-4 py-3 border-b border-border">
             <h3 className="font-semibold text-right flex items-center gap-2 text-sm sm:text-base">
@@ -313,59 +313,56 @@ export default function ReportsDashboard() {
             </h3>
           </div>
           <div className="p-3 sm:p-4">
-            <div className="h-[300px] sm:h-[350px] w-full">
-              <ChartContainer config={{}} className="h-full w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart 
-                    data={facilityChartData} 
-                    margin={{ 
-                      top: 20, 
-                      right: 10, 
-                      left: 10, 
-                      bottom: 120 
-                    }}
-                  >
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={110}
-                      fontSize={9}
-                      interval={0}
-                      tick={{ fontSize: 9 }}
-                      tickMargin={5}
-                    />
-                    <YAxis 
-                      fontSize={10} 
-                      tick={{ fontSize: 10 }}
-                      width={30}
-                    />
-                    <ChartTooltip 
-                      content={({ active, payload, label }) => {
-                        if (active && payload && payload.length) {
-                          const data = facilityChartData.find(item => item.name === label);
-                          return (
-                            <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-                              <p className="text-sm font-medium text-right">{data?.fullName || label}</p>
-                              <p className="text-sm text-muted-foreground text-right">
-                                عدد البلاغات: {payload[0].value}
-                              </p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Bar 
-                      dataKey="reports" 
-                      fill="hsl(var(--warning))" 
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={40}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </div>
+            {facilityChartData.length > 0 ? (
+              <div className="space-y-3">
+                {facilityChartData.map((facility, index) => (
+                  <div key={facility.name} className="group">
+                    {/* Facility Name and Count */}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-4 h-4 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: facility.fill }}
+                        ></div>
+                        <span className="text-sm font-medium text-foreground">
+                          {facility.reports}
+                        </span>
+                      </div>
+                      <div className="text-right flex-1 min-w-0 mr-3">
+                        <span className="text-sm font-medium text-foreground block truncate">
+                          {facility.name}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Progress Bar */}
+                    <div className="relative">
+                      <div className="w-full bg-accent rounded-full h-3 overflow-hidden">
+                        <div 
+                          className="h-full rounded-full transition-all duration-700 ease-out group-hover:shadow-lg"
+                          style={{ 
+                            backgroundColor: facility.fill,
+                            width: `${totalReports > 0 ? (facility.reports / Math.max(...facilityChartData.map(f => f.reports))) * 100 : 0}%`,
+                            background: `linear-gradient(90deg, ${facility.fill}, ${facility.fill}dd)`
+                          }}
+                        ></div>
+                      </div>
+                      
+                      {/* Percentage Label */}
+                      <div className="absolute left-2 top-0 h-full flex items-center">
+                        <span className="text-xs font-medium text-white drop-shadow-sm">
+                          {totalReports > 0 ? Math.round((facility.reports / totalReports) * 100) : 0}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                لا توجد بيانات لعرضها
+              </div>
+            )}
           </div>
         </div>
 
@@ -462,7 +459,7 @@ export default function ReportsDashboard() {
                       {report.status}
                     </span>
                     <span className="text-muted-foreground text-right">
-                      {new Date(report.created_at).toLocaleDateString('en-GB')} {new Date(report.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                      {report.report_date}
                     </span>
                   </div>
                 </div>
@@ -544,9 +541,9 @@ export default function ReportsDashboard() {
                   <div className="flex items-start gap-3 text-right">
                     <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground mt-1 flex-shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium text-foreground text-sm sm:text-base">تاريخ الإنشاء</div>
+                      <div className="font-medium text-foreground text-sm sm:text-base">تاريخ البلاغ</div>
                       <div className="text-muted-foreground text-sm">
-                        {new Date(selectedReport.created_at).toLocaleDateString('en-GB')} {new Date(selectedReport.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                        {selectedReport.report_date}
                       </div>
                     </div>
                   </div>
@@ -557,7 +554,7 @@ export default function ReportsDashboard() {
                       <div className="min-w-0 flex-1">
                         <div className="font-medium text-foreground text-sm sm:text-base">آخر تحديث</div>
                         <div className="text-muted-foreground text-sm">
-                          {new Date(selectedReport.updated_at).toLocaleDateString('en-GB')} {new Date(selectedReport.updated_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                          {selectedReport.updated_at}
                         </div>
                       </div>
                     </div>
