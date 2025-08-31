@@ -181,12 +181,15 @@ export default function ReportsList() {
     resolved_at: '',
     resolved_by: ''
   });
-
-  const [editFormData,setEditFormData] = useState({
+  const [facilities, setFacilities] = useState([]);
+  const [facilitiesLoading, setFacilitiesLoading] = useState(false);
+const [editFormData,setEditFormData] = useState({
+    facility_id: '',
     report_date: '',
     report_time: '',
     category: '',
     device_name: '',
+    serial_number: '',
     problem_description: '',
     under_warranty: '',
     repair_company: '',
@@ -265,14 +268,15 @@ export default function ReportsList() {
       resolved_by: report.resolved_by || ''
     });
   };
-
-  const handleFullEditClick = (report) => {
+const handleFullEditClick = async (report) => {
     setFullEditingReport(report);
     setEditFormData({
+      facility_id: report.facility?.id?.toString() || '',
       report_date: report.report_date || '',
       report_time: report.report_time || '',
       category: report.category || '',
       device_name: report.device_name || '',
+      serial_number: report.serial_number || '',
       problem_description: report.problem_description || '',
       under_warranty: report.under_warranty || '',
       repair_company: report.repair_company || '',
@@ -285,6 +289,21 @@ export default function ReportsList() {
       resolution: report.resolution || '',
       resolved_by: report.resolved_by || ''
     });
+    
+    // Load facilities when opening full edit modal
+    if (facilities.length === 0) {
+      setFacilitiesLoading(true);
+      try {
+        const facilitiesResponse = await reportsApi.getFacilities();
+        if (facilitiesResponse.success) {
+          setFacilities(facilitiesResponse.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to load facilities:', error);
+      } finally {
+        setFacilitiesLoading(false);
+      }
+    }
   };
 
   const handleModifySubmit = async(e) => {
@@ -1090,11 +1109,45 @@ export default function ReportsList() {
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleFullEditSubmit} className="p-4 md:p-6 space-y-6" dir="rtl">
+           <form onSubmit={handleFullEditSubmit} className="p-4 md:p-6 space-y-6" dir="rtl">
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١- اسم المنشأة</label>
+                {facilitiesLoading ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="mr-2">جاري تحميل المنشآت...</span>
+                  </div>
+                ) : (
+                  <select
+                    value={editFormData.facility_id}
+                    onChange={e => handleEditInputChange('facility_id', e.target.value)}
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">اختر اسم المنشأة</option>
+                    {facilities.map((facility) => (
+                      <option key={facility.id} value={facility.id.toString()}>
+                        {facility.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٢- الرقم التسلسلي</label>
+                <input
+                  type="text"
+                  value={editFormData.serial_number}
+                  onChange={e => handleEditInputChange('serial_number', e.target.value)}
+                  placeholder="الرقم التسلسلي للجهاز"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٢- تاريخ إنشاء البلاغ *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٣- تاريخ إنشاء البلاغ *</label>
                   <input
                     type="date"
                     value={editFormData.report_date}
