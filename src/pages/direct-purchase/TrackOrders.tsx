@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, Eye, X, Save, Edit, Printer } from 'lucide-react';
-import { directPurchaseApi, reportsApi } from '@/lib/api';
+import { Search, Filter, Eye, X, Save, Edit, Printer, Settings, Trash2, Upload } from 'lucide-react';
+import { directPurchaseApi, reportsApi, facilitiesApi, itemsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { mockFacilities } from '@/data/mockData';
 import {
@@ -11,30 +11,66 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function TrackOrders() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<any[]>([]);
   const [facilities, setFacilities] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [facilityFilter, setFacilityFilter] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isFullUpdateDialogOpen, setIsFullUpdateDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<any>(null);
+  const [orderToDelete, setOrderToDelete] = useState<any>(null);
   const [statusUpdateData, setStatusUpdateData] = useState({
     newStatus: '',
     statusNote: '',
     statusDate: '' // Added status date field
   });
 
+  // Full update form data
+  const [fullUpdateData, setFullUpdateData] = useState({
+    orderNumber: '',
+    orderDate: '',
+    itemNumber: '',
+    itemName: '',
+    quantity: '',
+    beneficiaryFacility: '',
+    financialApprovalNumber: '',
+    financialApprovalDate: '',
+    totalCost: '',
+    supplierCompany: '',
+    supplierContact: '',
+    supplierPhone: '',
+    supplierEmail: '',
+    orderStatus: '',
+    deliveryDate: '',
+    handoverDate: '',
+    notes: '',
+    authorizationImage: null
+  });
+
   // New states for Image Dialog
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const [imageToShow, setImageToShow] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   // Available status options for approved orders
   const statusOptions = [
@@ -48,6 +84,7 @@ export default function TrackOrders() {
   useEffect(() => {
     loadOrders();
     loadFacilities();
+    loadItems();
   }, []);
 
   // React-based filtering (fast, client-side as requested)
@@ -93,12 +130,31 @@ export default function TrackOrders() {
 
   const loadFacilities = async () => {
     try {
-      const response = await reportsApi.getFacilities();
+      const response = await facilitiesApi.getFacilities();
       if (response.success) {
         setFacilities(response.data);
       }
     } catch (error) {
       setFacilities(mockFacilities);
+    }
+  };
+
+  const loadItems = async () => {
+    try {
+      const response = await itemsApi.getItems();
+      if (response.success) {
+        setItems(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading items:', error);
+      // Fallback to mock data if API fails
+      setItems([
+        { id: 1, itemNumber: 'ITM-001', itemName: 'قفازات طبية', availableQty: 500 },
+        { id: 2, itemNumber: 'ITM-002', itemName: 'كمامات جراحية', availableQty: 1000 },
+        { id: 3, itemNumber: 'ITM-003', itemName: 'محاقن طبية', availableQty: 200 },
+        { id: 4, itemNumber: 'ITM-004', itemName: 'شاش طبي', availableQty: 300 },
+        { id: 5, itemNumber: 'ITM-005', itemName: 'مطهر طبي', availableQty: 150 }
+      ]);
     }
   };
 
@@ -117,6 +173,67 @@ export default function TrackOrders() {
     setIsEditDialogOpen(true);
   };
 
+  // New handler for full update
+  const handleFullUpdateOrder = (order: any) => {
+    setEditingOrder(order);
+    setFullUpdateData({
+      orderNumber: order.order_number || order.id,
+      orderDate: order.order_date || '',
+      itemNumber: order.item_number || '',
+      itemName: order.item_name || '',
+      quantity: order.quantity || '',
+      beneficiaryFacility: order.beneficiary_facility || '',
+      financialApprovalNumber: order.financialApprovalNumber || '',
+      financialApprovalDate: order.financialApprovalDate || '',
+      totalCost: order.total_cost || '',
+      supplierCompany: order.supplier_name || '',
+      supplierContact: order.supplier_contact || '',
+      supplierPhone: order.supplier_phone || '',
+      supplierEmail: order.supplier_email || '',
+      orderStatus: order.status || 'جديد',
+      deliveryDate: order.delivery_date || '',
+      handoverDate: order.handover_date || '',
+      notes: order.notes || '',
+      authorizationImage: order.image_url || null
+    });
+    setImagePreview(order.image_url || null);
+    setIsFullUpdateDialogOpen(true);
+  };
+
+  // New handler for delete confirmation
+  const handleDeleteOrder = (order: any) => {
+    setOrderToDelete(order);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Confirm delete function
+  const confirmDeleteOrder = async () => {
+    if (!orderToDelete) return;
+
+    try {
+      setIsDeleting(true);
+      const response = await directPurchaseApi.deleteOrder(orderToDelete.id);
+      
+      if (response.success) {
+        toast({
+          title: "تم الحذف",
+          description: "تم حذف الطلب بنجاح",
+        });
+        loadOrders(); // Refresh the list
+        setIsDeleteDialogOpen(false);
+        setOrderToDelete(null);
+      }
+    } catch (error: any) {
+      toast({
+        title: "خطأ في الحذف",
+        description: error.message || "فشل في حذف الطلب",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // New handler to show image dialog
   const handleShowImage = (imageBase64: string | undefined) => {
     if (!imageBase64) {
@@ -129,6 +246,83 @@ export default function TrackOrders() {
     }
     setImageToShow(imageBase64);
     setIsImageDialogOpen(true);
+  };
+
+  // Handle image upload for full update
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "حجم الملف كبير جداً",
+          description: "يرجى اختيار ملف أقل من 5 ميجابايت",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "نوع ملف غير صحيح",
+          description: "يرجى اختيار ملف صورة (JPG, PNG, GIF, etc.)",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64String = event.target?.result as string;
+        setFullUpdateData(prev => ({ ...prev, authorizationImage: base64String }));
+        setImagePreview(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setFullUpdateData(prev => ({ ...prev, authorizationImage: null }));
+    setImagePreview(null);
+    // Clear the input
+    const fileInput = document.getElementById('authorizationImage') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
+  // Handle full update form input changes
+  const handleFullUpdateInputChange = (field: string, value: string) => {
+    setFullUpdateData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Submit full update
+  const handleFullUpdateSubmit = async () => {
+    if (!editingOrder) return;
+
+    try {
+      setIsUpdatingStatus(true);
+      const response = await directPurchaseApi.updateOrder(editingOrder.id, fullUpdateData);
+
+      if (response.success) {
+        toast({
+          title: "تم التحديث",
+          description: "تم تحديث الطلب بنجاح",
+        });
+        loadOrders();
+        setIsFullUpdateDialogOpen(false);
+        setEditingOrder(null);
+      }
+    } catch (error: any) {
+      toast({
+        title: "خطأ في التحديث",
+        description: error.message || "فشل في تحديث الطلب",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   const handlePrintOrder = (order: any) => {
@@ -422,98 +616,6 @@ export default function TrackOrders() {
             </div>
           </div>
           ` : ''}
-          <div class="section">
-            <div class="section-header">
-              <h2>سجل حالات الطلب</h2>
-            </div>
-            <div class="section-content">
-              ${order.creation_date ? `
-              <div class="timeline-item">
-                <h4>تاريخ الإنشاء</h4>
-                <div class="timeline-content">
-                  <div class="timeline-field">
-                    <label>التاريخ</label>
-                    <span>${order.creation_date}</span>
-                  </div>
-                  ${order.creation_date_note ? `
-                  <div class="timeline-field">
-                    <label>الملاحظة</label>
-                    <span>${order.creation_date_note}</span>
-                  </div>
-                  ` : ''}
-                </div>
-              </div>
-              ` : ''}
-              ${order.contract_approval_date ? `
-              <div class="timeline-item">
-                <h4>تاريخ الموافقة</h4>
-                <div class="timeline-content">
-                  <div class="timeline-field">
-                    <label>التاريخ</label>
-                    <span>${order.contract_approval_date}</span>
-                  </div>
-                  ${order.contract_approval_date_note ? `
-                  <div class="timeline-field">
-                    <label>الملاحظة</label>
-                    <span>${order.contract_approval_date_note}</span>
-                  </div>
-                  ` : ''}
-                </div>
-              </div>
-              ` : ''}
-              ${order.contract_date ? `
-              <div class="timeline-item">
-                <h4>تاريخ التعاقد</h4>
-                <div class="timeline-content">
-                  <div class="timeline-field">
-                    <label>التاريخ</label>
-                    <span>${order.contract_date}</span>
-                  </div>
-                  ${order.contract_date_note ? `
-                  <div class="timeline-field">
-                    <label>الملاحظة</label>
-                    <span>${order.contract_date_note}</span>
-                  </div>
-                  ` : ''}
-                </div>
-              </div>
-              ` : ''}
-              ${order.contract_delivery_date ? `
-              <div class="timeline-item">
-                <h4>تاريخ التسليم</h4>
-                <div class="timeline-content">
-                  <div class="timeline-field">
-                    <label>التاريخ</label>
-                    <span>${order.contract_delivery_date}</span>
-                  </div>
-                  ${order.contract_delivery_date_note ? `
-                  <div class="timeline-field">
-                    <label>الملاحظة</label>
-                    <span>${order.contract_delivery_date_note}</span>
-                  </div>
-                  ` : ''}
-                </div>
-              </div>
-              ` : ''}
-              ${order.rejection_date ? `
-              <div class="timeline-item">
-                <h4>تاريخ الرفض</h4>
-                <div class="timeline-content">
-                  <div class="timeline-field">
-                    <label>التاريخ</label>
-                    <span>${order.rejection_date}</span>
-                  </div>
-                  ${order.rejection_date_note ? `
-                  <div class="timeline-field">
-                    <label>الملاحظة</label>
-                    <span>${order.rejection_date_note}</span>
-                  </div>
-                  ` : ''}
-                </div>
-              </div>
-              ` : ''}
-            </div>
-          </div>
           <div class="footer">
             <p>تم طباعة هذا الطلب في: ${new Date().toLocaleDateString('ar-SA')} - ${new Date().toLocaleTimeString('ar-SA')}</p>
           </div>
@@ -706,83 +808,104 @@ export default function TrackOrders() {
             </div>
           ) : (
             <div>
-              {/* Desktop / Tablet Table */}
-              <table className="w-full text-sm table-fixed border-collapse hidden sm:table">
-                <thead>
-                  <tr className="border-b border-border text-right">
-                    <th className="p-3 w-24">رقم الصنف</th>
-                    <th className="p-3 mobile-hidden w-28">تاريخ الطلب</th>
-                    <th className="p-3 w-36">اسم الصنف</th>
-                    <th className="p-3 mobile-hidden w-44">الجهة المستفيدة</th>
-                    <th className="p-3 mobile-hidden w-20">الكمية</th>
-                    <th className="p-3 mobile-hidden w-36">رقم التعميد المالي</th>
-                    <th className="p-3 mobile-hidden w-28">تاريخ التعميد</th>
-                    <th className="p-3 w-24">الحالة</th>
-                    <th className="p-3 mobile-hidden w-32">التكلفة</th>
-                    <th className="p-3 mobile-hidden w-36 text-center">صورة التعميد</th>
-                    <th className="p-3 w-52">الإجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredOrders.map((order) => (
-                    <tr key={order.id} className="border-b border-border text-right hover:bg-muted/50">
-                      <td className="p-3 font-medium">{order.order_number || order.id}</td>
-                      <td className="p-3 mobile-hidden">{order.order_date}</td>
-                      <td className="p-3">{order.item_name}</td>
-                      <td className="p-3 mobile-hidden">{order.beneficiary_facility}</td>
-                      <td className="p-3 mobile-hidden">{order.quantity}</td>
-                      <td className="p-3 mobile-hidden">{order.financialApprovalNumber || '-'}</td>
-                      <td className="p-3 mobile-hidden">{order.financialApprovalDate || '-'}</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(order.status)}`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="p-3 mobile-hidden">
-                        {order.total_cost ? `${Number(order.total_cost).toLocaleString()} ريال` : '-'}
-                      </td>
-                      <td className="p-3 mobile-hidden text-center">
-                        <button
-                          onClick={() => handleShowImage(order.image_url)}
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors mx-auto"
-                          title="عرض صورة التعميد"
-                        >
-                          <Eye size={14} />
-                          صورة التعميد
-                        </button>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2 flex-wrap">
+              {/* Desktop / Tablet Table - Improved styling */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full text-sm border-collapse bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                  <thead>
+                    <tr className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                      <th className="p-4 text-right font-semibold text-gray-700 dark:text-gray-200 min-w-[100px]">رقم الصنف</th>
+                      <th className="p-4 text-right font-semibold text-gray-700 dark:text-gray-200 min-w-[120px]">تاريخ الطلب</th>
+                      <th className="p-4 text-right font-semibold text-gray-700 dark:text-gray-200 min-w-[200px]">اسم الصنف</th>
+                      <th className="p-4 text-right font-semibold text-gray-700 dark:text-gray-200 min-w-[180px]">الجهة المستفيدة</th>
+                      <th className="p-4 text-right font-semibold text-gray-700 dark:text-gray-200 min-w-[80px]">الكمية</th>
+                      <th className="p-4 text-right font-semibold text-gray-700 dark:text-gray-200 min-w-[140px]">رقم التعميد</th>
+                      <th className="p-4 text-right font-semibold text-gray-700 dark:text-gray-200 min-w-[120px]">تاريخ التعميد</th>
+                      <th className="p-4 text-right font-semibold text-gray-700 dark:text-gray-200 min-w-[100px]">الحالة</th>
+                      <th className="p-4 text-right font-semibold text-gray-700 dark:text-gray-200 min-w-[120px]">التكلفة</th>
+                      <th className="p-4 text-center font-semibold text-gray-700 dark:text-gray-200 min-w-[120px]">صورة التعميد</th>
+                      <th className="p-4 text-center font-semibold text-gray-700 dark:text-gray-200 min-w-[280px]">الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOrders.map((order, index) => (
+                      <tr key={order.id} className={`border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-800/50'}`}>
+                        <td className="p-4 font-medium text-gray-900 dark:text-gray-100">{order.order_number || order.id}</td>
+                        <td className="p-4 text-gray-700 dark:text-gray-300">{order.order_date}</td>
+                        <td className="p-4 text-gray-700 dark:text-gray-300 max-w-[200px] truncate" title={order.item_name}>{order.item_name}</td>
+                        <td className="p-4 text-gray-700 dark:text-gray-300 max-w-[180px] truncate" title={order.beneficiary_facility}>{order.beneficiary_facility}</td>
+                        <td className="p-4 text-gray-700 dark:text-gray-300">{order.quantity}</td>
+                        <td className="p-4 text-gray-700 dark:text-gray-300">{order.financialApprovalNumber || '-'}</td>
+                        <td className="p-4 text-gray-700 dark:text-gray-300">{order.financialApprovalDate || '-'}</td>
+                        <td className="p-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-gray-700 dark:text-gray-300 font-medium">
+                          {order.total_cost ? `${Number(order.total_cost).toLocaleString()} ريال` : '-'}
+                        </td>
+                        <td className="p-4 text-center">
                           <button
-                            onClick={() => handleViewOrder(order)}
-                            className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                            onClick={() => handleShowImage(order.image_url)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors mx-auto"
+                            title="عرض صورة التعميد"
                           >
                             <Eye size={14} />
-                            عرض
+                            عرض الصورة
                           </button>
-                          <button
-                            onClick={() => handleEditOrder(order)}
-                            className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
-                          >
-                            <Edit size={14} />
-                            تعديل
-                          </button>
-                          <button
-                            onClick={() => handlePrintOrder(order)}
-                            className="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
-                          >
-                            <Printer size={14} />
-                            طباعة
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-center gap-2 flex-wrap">
+                            <button
+                              onClick={() => handleViewOrder(order)}
+                              className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                              title="عرض التفاصيل"
+                            >
+                              <Eye size={14} />
+                              عرض
+                            </button>
+                            <button
+                              onClick={() => handleEditOrder(order)}
+                              className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                              title="تعديل الحالة"
+                            >
+                              <Edit size={14} />
+                              تعديل
+                            </button>
+                            <button
+                              onClick={() => handleFullUpdateOrder(order)}
+                              className="bg-purple-500 hover:bg-purple-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                              title="التعديل الكامل"
+                            >
+                              <Settings size={14} />
+                              تعديل كامل
+                            </button>
+                            <button
+                              onClick={() => handleDeleteOrder(order)}
+                              className="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                              title="حذف الطلب"
+                            >
+                              <Trash2 size={14} />
+                              حذف
+                            </button>
+                            <button
+                              onClick={() => handlePrintOrder(order)}
+                              className="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                              title="طباعة الطلب"
+                            >
+                              <Printer size={14} />
+                              طباعة
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               {/* Mobile Table - Card style */}
-              <div className="space-y-4 sm:hidden">
+              <div className="space-y-4 lg:hidden">
                 {filteredOrders.map((order) => (
                   <div
                     key={order.id}
@@ -857,6 +980,20 @@ export default function TrackOrders() {
                           تعديل
                         </button>
                         <button
+                          onClick={() => handleFullUpdateOrder(order)}
+                          className="bg-purple-500 hover:bg-purple-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                        >
+                          <Settings size={14} />
+                          تعديل كامل
+                        </button>
+                        <button
+                          onClick={() => handleDeleteOrder(order)}
+                          className="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                          حذف
+                        </button>
+                        <button
                           onClick={() => handlePrintOrder(order)}
                           className="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
                         >
@@ -880,10 +1017,10 @@ export default function TrackOrders() {
         </div>
       </div>
 
-      {/* Order Details Popup */}
+      {/* View Order Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
-          <DialogHeader className="sticky top-0 bg-background pb-4 border-b">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
             <DialogTitle className="text-right text-xl font-bold">تفاصيل طلب الشراء المباشر</DialogTitle>
             <DialogDescription className="text-right">
               عرض تفاصيل الطلب رقم: {selectedOrder?.order_number || selectedOrder?.id}
@@ -891,181 +1028,160 @@ export default function TrackOrders() {
           </DialogHeader>
 
           {selectedOrder && (
-            <div className="space-y-8 p-2">
-              {/* Basic Information Section */}
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-6 rounded-lg border">
-                <h3 className="text-lg font-bold mb-4 text-right text-blue-800 dark:text-blue-200">المعلومات الأساسية</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">رقم الصنف</label>
-                    <p className="font-semibold text-lg bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.order_number || selectedOrder.id}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">تاريخ الطلب</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.order_date || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">اسم الصنف</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.item_name || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">الكمية</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.quantity || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">الجهة المستفيدة</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.beneficiary_facility || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">التكلفة الإجمالية</label>
-                    <p className="font-semibold text-lg bg-white dark:bg-gray-800 p-2 rounded">
-                      {selectedOrder.total_cost ? `${Number(selectedOrder.total_cost).toLocaleString()} ريال` : '-'}
-                    </p>
-                  </div>
+            <div className="space-y-6 p-4">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border-l-4 border-blue-400">
+                <div className="text-right">
+                  <label className="block text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">رقم الصنف</label>
+                  <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.order_number || selectedOrder.id}</p>
+                </div>
+                <div className="text-right">
+                  <label className="block text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">تاريخ الطلب</label>
+                  <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.order_date}</p>
+                </div>
+                <div className="text-right">
+                  <label className="block text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">اسم الصنف</label>
+                  <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.item_name}</p>
+                </div>
+                <div className="text-right">
+                  <label className="block text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">الكمية</label>
+                  <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.quantity}</p>
+                </div>
+                <div className="text-right">
+                  <label className="block text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">الجهة المستفيدة</label>
+                  <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.beneficiary_facility}</p>
+                </div>
+                <div className="text-right">
+                  <label className="block text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">الحالة</label>
+                  <span className={`inline-block px-4 py-2 rounded-full text-sm font-semibold ${getStatusStyle(selectedOrder.status)}`}>
+                    {selectedOrder.status}
+                  </span>
                 </div>
               </div>
 
-              {/* Financial Information Section */}
-              <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-6 rounded-lg border">
-                <h3 className="text-lg font-bold mb-4 text-right text-green-800 dark:text-green-200">المعلومات المالية</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-green-600 dark:text-green-300 mb-2">رقم التعميد المالي</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.financialApprovalNumber || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-green-600 dark:text-green-300 mb-2">تاريخ التعميد</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.financialApprovalDate || '-'}</p>
-                  </div>
+              {/* Financial Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border-l-4 border-green-400">
+                <div className="text-right">
+                  <label className="block text-sm font-semibold text-green-700 dark:text-green-300 mb-2">رقم التعميد المالي</label>
+                  <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.financialApprovalNumber || '-'}</p>
+                </div>
+                <div className="text-right">
+                  <label className="block text-sm font-semibold text-green-700 dark:text-green-300 mb-2">تاريخ التعميد</label>
+                  <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.financialApprovalDate || '-'}</p>
+                </div>
+                <div className="text-right">
+                  <label className="block text-sm font-semibold text-green-700 dark:text-green-300 mb-2">التكلفة الإجمالية</label>
+                  <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">
+                    {selectedOrder.total_cost ? `${Number(selectedOrder.total_cost).toLocaleString()} ريال` : '-'}
+                  </p>
                 </div>
               </div>
 
-              {/* Supplier Information Section */}
+              {/* Supplier Information */}
               {(selectedOrder.supplier_name || selectedOrder.supplier_contact) && (
-                <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-6 rounded-lg border">
-                  <h3 className="text-lg font-bold mb-4 text-right text-purple-800 dark:text-purple-200">معلومات المورد</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {selectedOrder.supplier_name && (
-                      <div className="text-right">
-                        <label className="block text-sm font-medium text-purple-600 dark:text-purple-300 mb-2">اسم المورد</label>
-                        <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.supplier_name}</p>
-                      </div>
-                    )}
-                    {selectedOrder.supplier_contact && (
-                      <div className="text-right">
-                        <label className="block text-sm font-medium text-purple-600 dark:text-purple-300 mb-2">بيانات التواصل</label>
-                        <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.supplier_contact}</p>
-                      </div>
-                    )}
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border-l-4 border-purple-400">
+                  {selectedOrder.supplier_name && (
+                    <div className="text-right">
+                      <label className="block text-sm font-semibold text-purple-700 dark:text-purple-300 mb-2">اسم المورد</label>
+                      <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.supplier_name}</p>
+                    </div>
+                  )}
+                  {selectedOrder.supplier_contact && (
+                    <div className="text-right">
+                      <label className="block text-sm font-semibold text-purple-700 dark:text-purple-300 mb-2">بيانات التواصل</label>
+                      <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.supplier_contact}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Status Section */}
-              <div className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 p-6 rounded-lg border">
-                <h3 className="text-lg font-bold mb-4 text-right text-orange-800 dark:text-orange-200">الحالة</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-orange-600 dark:text-orange-300 mb-2">حالة الطلب</label>
-                    <div className="bg-white dark:bg-gray-800 p-2 rounded">
-                      <span className={`inline-block px-4 py-2 rounded-full text-sm font-semibold ${getStatusStyle(selectedOrder.status)}`}>
-                        {selectedOrder.status || '-'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes Section */}
+              {/* Notes */}
               {selectedOrder.notes && (
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/20 dark:to-gray-700/20 p-6 rounded-lg border">
-                  <h3 className="text-lg font-bold mb-4 text-right text-gray-800 dark:text-gray-200">الملاحظات</h3>
-                  <div className="text-right">
-                    <p className="font-medium bg-white dark:bg-gray-800 p-4 rounded-lg border">{selectedOrder.notes}</p>
-                  </div>
+                <div className="p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg border-l-4 border-yellow-400">
+                  <label className="block text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-2">الملاحظات</label>
+                  <p className="font-medium bg-white dark:bg-gray-800 p-3 rounded leading-relaxed">{selectedOrder.notes}</p>
                 </div>
               )}
 
-              {/* Status History Section */}
-              <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 p-6 rounded-lg border">
-                <h3 className="text-xl font-bold mb-6 text-right text-indigo-800 dark:text-indigo-200">سجل حالات الطلب</h3>
-                <div className="space-y-4">
-                  {/* Creation Date */}
-                  {selectedOrder.creation_date && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border-l-4 border-blue-400">
-                      <div className="text-right">
-                        <label className="block text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">تاريخ الإنشاء</label>
-                        <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.creation_date}</p>
-                      </div>
-                      {selectedOrder.creation_date_note && (
-                        <div className="text-right">
-                          <label className="block text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">ملاحظة الإنشاء</label>
-                          <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.creation_date_note}</p>
-                        </div>
-                      )}
+              {/* Timeline Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold text-right">سجل حالات الطلب</h3>
+                
+                {/* Creation Date */}
+                {selectedOrder.creation_date && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border-l-4 border-blue-400">
+                    <div className="text-right">
+                      <label className="block text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">تاريخ الإنشاء</label>
+                      <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.creation_date}</p>
                     </div>
-                  )}
-                  {/* Contract Approval Date */}
-                  {selectedOrder.contract_approval_date && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-teal-50 dark:bg-teal-900/30 rounded-lg border-l-4 border-teal-400">
+                    {selectedOrder.creation_date_note && (
                       <div className="text-right">
-                        <label className="block text-sm font-semibold text-teal-700 dark:text-teal-300 mb-2">تاريخ الموافقة</label>
-                        <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.contract_approval_date}</p>
+                        <label className="block text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">ملاحظة الإنشاء</label>
+                        <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.creation_date_note}</p>
                       </div>
-                      {selectedOrder.contract_approval_date_note && (
-                        <div className="text-right">
-                          <label className="block text-sm font-semibold text-teal-700 dark:text-teal-300 mb-2">ملاحظة الموافقة</label>
-                          <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.contract_approval_date_note}</p>
-                        </div>
-                      )}
+                    )}
+                  </div>
+                )}
+                {/* Contract Approval Date */}
+                {selectedOrder.contract_approval_date && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-teal-50 dark:bg-teal-900/30 rounded-lg border-l-4 border-teal-400">
+                    <div className="text-right">
+                      <label className="block text-sm font-semibold text-teal-700 dark:text-teal-300 mb-2">تاريخ الموافقة</label>
+                      <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.contract_approval_date}</p>
                     </div>
-                  )}
-                  {/* Contract Date */}
-                  {selectedOrder.contract_date && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg border-l-4 border-yellow-400">
+                    {selectedOrder.contract_approval_date_note && (
                       <div className="text-right">
-                        <label className="block text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-2">تاريخ التعاقد</label>
-                        <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.contract_date}</p>
+                        <label className="block text-sm font-semibold text-teal-700 dark:text-teal-300 mb-2">ملاحظة الموافقة</label>
+                        <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.contract_approval_date_note}</p>
                       </div>
-                      {selectedOrder.contract_date_note && (
-                        <div className="text-right">
-                          <label className="block text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-2">ملاحظة التعاقد</label>
-                          <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.contract_date_note}</p>
-                        </div>
-                      )}
+                    )}
+                  </div>
+                )}
+                {/* Contract Date */}
+                {selectedOrder.contract_date && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg border-l-4 border-yellow-400">
+                    <div className="text-right">
+                      <label className="block text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-2">تاريخ التعاقد</label>
+                      <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.contract_date}</p>
                     </div>
-                  )}
-                  {/* Delivery Date */}
-                  {selectedOrder.contract_delivery_date && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border-l-4 border-emerald-400">
+                    {selectedOrder.contract_date_note && (
                       <div className="text-right">
-                        <label className="block text-sm font-semibold text-emerald-700 dark:text-emerald-300 mb-2">تاريخ التسليم</label>
-                        <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.contract_delivery_date}</p>
+                        <label className="block text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-2">ملاحظة التعاقد</label>
+                        <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.contract_date_note}</p>
                       </div>
-                      {selectedOrder.contract_delivery_date_note && (
-                        <div className="text-right">
-                          <label className="block text-sm font-semibold text-emerald-700 dark:text-emerald-300 mb-2">ملاحظة التسليم</label>
-                          <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.contract_delivery_date_note}</p>
-                        </div>
-                      )}
+                    )}
+                  </div>
+                )}
+                {/* Delivery Date */}
+                {selectedOrder.contract_delivery_date && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border-l-4 border-emerald-400">
+                    <div className="text-right">
+                      <label className="block text-sm font-semibold text-emerald-700 dark:text-emerald-300 mb-2">تاريخ التسليم</label>
+                      <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.contract_delivery_date}</p>
                     </div>
-                  )}
-                  {/* Rejection Date */}
-                  {selectedOrder.rejection_date && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-red-50 dark:bg-red-900/30 rounded-lg border-l-4 border-red-400">
+                    {selectedOrder.contract_delivery_date_note && (
                       <div className="text-right">
-                        <label className="block text-sm font-semibold text-red-700 dark:text-red-300 mb-2">تاريخ الرفض</label>
-                        <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.rejection_date}</p>
+                        <label className="block text-sm font-semibold text-emerald-700 dark:text-emerald-300 mb-2">ملاحظة التسليم</label>
+                        <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.contract_delivery_date_note}</p>
                       </div>
-                      {selectedOrder.rejection_date_note && (
-                        <div className="text-right">
-                          <label className="block text-sm font-semibold text-red-700 dark:text-red-300 mb-2">ملاحظة الرفض</label>
-                          <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.rejection_date_note}</p>
-                        </div>
-                      )}
+                    )}
+                  </div>
+                )}
+                {/* Rejection Date */}
+                {selectedOrder.rejection_date && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-red-50 dark:bg-red-900/30 rounded-lg border-l-4 border-red-400">
+                    <div className="text-right">
+                      <label className="block text-sm font-semibold text-red-700 dark:text-red-300 mb-2">تاريخ الرفض</label>
+                      <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.rejection_date}</p>
                     </div>
-                  )}
-                </div>
+                    {selectedOrder.rejection_date_note && (
+                      <div className="text-right">
+                        <label className="block text-sm font-semibold text-red-700 dark:text-red-300 mb-2">ملاحظة الرفض</label>
+                        <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedOrder.rejection_date_note}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1148,6 +1264,380 @@ export default function TrackOrders() {
         </DialogContent>
       </Dialog>
 
+      {/* Full Update Dialog */}
+      <Dialog open={isFullUpdateDialogOpen} onOpenChange={setIsFullUpdateDialogOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-right text-xl font-bold">التعديل الكامل للطلب</DialogTitle>
+            <DialogDescription className="text-right">
+              تعديل جميع بيانات الطلب رقم: {editingOrder?.order_number || editingOrder?.id}
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingOrder && (
+            <div className="space-y-6 p-4" dir="rtl">
+              {/* Basic Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-right flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    المعلومات الأساسية
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="orderNumber">رقم الصنف بالنظام</Label>
+                    <Input
+                      id="orderNumber"
+                      value={fullUpdateData.orderNumber}
+                      onChange={(e) => handleFullUpdateInputChange('orderNumber', e.target.value)}
+                      className="text-right"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="orderDate">تاريخ الطلب</Label>
+                    <Input
+                      id="orderDate"
+                      type="date"
+                      value={fullUpdateData.orderDate}
+                      onChange={(e) => handleFullUpdateInputChange('orderDate', e.target.value)}
+                      className="text-right"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="itemNumber">رقم الصنف</Label>
+                    <Input
+                      id="itemNumber"
+                      value={fullUpdateData.itemNumber}
+                      onChange={(e) => handleFullUpdateInputChange('itemNumber', e.target.value)}
+                      className="text-right"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="itemName">اسم الصنف</Label>
+                    <Input
+                      id="itemName"
+                      value={fullUpdateData.itemName}
+                      onChange={(e) => handleFullUpdateInputChange('itemName', e.target.value)}
+                      className="text-right"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="quantity">الكمية</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      value={fullUpdateData.quantity}
+                      onChange={(e) => handleFullUpdateInputChange('quantity', e.target.value)}
+                      className="text-right"
+                      placeholder="أدخل الكمية"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Beneficiary and Financial Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-right flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    معلومات الجهة المستفيدة والتعميد المالي
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="beneficiaryFacility">الجهة المستفيدة أو المنشأة</Label>
+                    <Select value={fullUpdateData.beneficiaryFacility} onValueChange={(value) => handleFullUpdateInputChange('beneficiaryFacility', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر الجهة المستفيدة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {facilities.map((facility) => (
+                          <SelectItem key={facility.id} value={facility.name}>
+                            {facility.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="financialApprovalNumber">رقم التعميد المالي</Label>
+                    <Input
+                      id="financialApprovalNumber"
+                      value={fullUpdateData.financialApprovalNumber}
+                      onChange={(e) => handleFullUpdateInputChange('financialApprovalNumber', e.target.value)}
+                      className="text-right"
+                      placeholder="أدخل رقم التعميد المالي"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="financialApprovalDate">تاريخ التعميد</Label>
+                    <Input
+                      id="financialApprovalDate"
+                      type="date"
+                      value={fullUpdateData.financialApprovalDate}
+                      onChange={(e) => handleFullUpdateInputChange('financialApprovalDate', e.target.value)}
+                      className="text-right"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="totalCost">التكلفة الإجمالية</Label>
+                    <Input
+                      id="totalCost"
+                      type="number"
+                      value={fullUpdateData.totalCost}
+                      onChange={(e) => handleFullUpdateInputChange('totalCost', e.target.value)}
+                      className="text-right"
+                      placeholder="أدخل التكلفة بالريال"
+                    />
+                  </div>
+                  
+                  {/* Authorization Image Upload */}
+                  <div className="md:col-span-2">
+                    <Label htmlFor="authorizationImage">إضافة التعميد</Label>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="authorizationImage"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="text-right"
+                        />
+                        <Upload className="h-5 w-5 text-gray-500" />
+                      </div>
+                      
+                      {imagePreview && (
+                        <div className="border-2 border-dashed border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm text-gray-600">معاينة التعميد المرفوع</span>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowImageModal(true)}
+                                className="flex items-center gap-1"
+                              >
+                                <Eye className="h-4 w-4" />
+                                عرض
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                onClick={removeImage}
+                                className="flex items-center gap-1"
+                              >
+                                <X className="h-4 w-4" />
+                                حذف
+                              </Button>
+                            </div>
+                          </div>
+                          <img
+                            src={imagePreview}
+                            alt="Authorization Preview"
+                            className="max-w-full h-32 object-contain rounded border"
+                          />
+                        </div>
+                      )}
+                      
+                      <p className="text-xs text-gray-500 text-right">
+                        حجم الملف الأقصى: 5 ميجابايت - الصيغ المدعومة: JPG, PNG, GIF
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Supplier Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-right flex items-center gap-2">
+                    <Phone className="h-5 w-5" />
+                    معلومات الشركة الموردة
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="supplierCompany">الشركة الموردة</Label>
+                    <Input
+                      id="supplierCompany"
+                      value={fullUpdateData.supplierCompany}
+                      onChange={(e) => handleFullUpdateInputChange('supplierCompany', e.target.value)}
+                      className="text-right"
+                      placeholder="أدخل اسم الشركة الموردة"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="supplierContact">اسم المسؤول</Label>
+                    <Input
+                      id="supplierContact"
+                      value={fullUpdateData.supplierContact}
+                      onChange={(e) => handleFullUpdateInputChange('supplierContact', e.target.value)}
+                      className="text-right"
+                      placeholder="أدخل اسم المسؤول بالشركة"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="supplierPhone">رقم التواصل</Label>
+                    <Input
+                      id="supplierPhone"
+                      value={fullUpdateData.supplierPhone}
+                      onChange={(e) => handleFullUpdateInputChange('supplierPhone', e.target.value)}
+                      className="text-right"
+                      placeholder="05xxxxxxxx"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="supplierEmail">البريد الإلكتروني</Label>
+                    <Input
+                      id="supplierEmail"
+                      type="email"
+                      value={fullUpdateData.supplierEmail}
+                      onChange={(e) => handleFullUpdateInputChange('supplierEmail', e.target.value)}
+                      className="text-right"
+                      placeholder="supplier@company.com"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Status and Dates */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-right flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    الحالة والتواريخ
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="orderStatus">حالة الطلب</Label>
+                    <Select value={fullUpdateData.orderStatus} onValueChange={(value) => handleFullUpdateInputChange('orderStatus', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر حالة الطلب" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statusOptions.map((status) => (
+                          <SelectItem key={status.value} value={status.value}>
+                            {status.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="deliveryDate">تاريخ التسليم المتوقع</Label>
+                    <Input
+                      id="deliveryDate"
+                      type="date"
+                      value={fullUpdateData.deliveryDate}
+                      onChange={(e) => handleFullUpdateInputChange('deliveryDate', e.target.value)}
+                      className="text-right"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="handoverDate">تاريخ التسليم الفعلي</Label>
+                    <Input
+                      id="handoverDate"
+                      type="date"
+                      value={fullUpdateData.handoverDate}
+                      onChange={(e) => handleFullUpdateInputChange('handoverDate', e.target.value)}
+                      className="text-right"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Notes */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-right">الملاحظات</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    value={fullUpdateData.notes}
+                    onChange={(e) => handleFullUpdateInputChange('notes', e.target.value)}
+                    className="text-right"
+                    rows={4}
+                    placeholder="أدخل أي ملاحظات إضافية..."
+                  />
+                </CardContent>
+              </Card>
+
+              <div className="flex justify-start gap-3 pt-4">
+                <Button 
+                  onClick={handleFullUpdateSubmit}
+                  disabled={isUpdatingStatus}
+                  className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white flex items-center gap-2 px-6 py-3"
+                >
+                  <Save size={18} />
+                  {isUpdatingStatus ? 'جاري الحفظ...' : 'حفظ التحديث الكامل'}
+                </Button>
+                <Button 
+                  onClick={() => setIsFullUpdateDialogOpen(false)}
+                  variant="outline"
+                  className="px-6 py-3"
+                >
+                  إلغاء
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-right text-lg font-bold text-red-600">تأكيد الحذف</DialogTitle>
+            <DialogDescription className="text-right">
+              هل أنت متأكد من حذف هذا الطلب؟
+            </DialogDescription>
+          </DialogHeader>
+
+          {orderToDelete && (
+            <div className="space-y-4 p-4">
+              <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded-lg border border-red-200 dark:border-red-800">
+                <div className="text-right space-y-2">
+                  <p><strong>رقم الطلب:</strong> {orderToDelete.order_number || orderToDelete.id}</p>
+                  <p><strong>اسم الصنف:</strong> {orderToDelete.item_name}</p>
+                  <p><strong>الجهة المستفيدة:</strong> {orderToDelete.beneficiary_facility}</p>
+                </div>
+              </div>
+              
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-right">
+                  تحذير: هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع البيانات المرتبطة بهذا الطلب نهائياً.
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex justify-start gap-3 pt-4">
+                <Button 
+                  onClick={confirmDeleteOrder}
+                  disabled={isDeleting}
+                  variant="destructive"
+                  className="flex items-center gap-2 px-6 py-3"
+                >
+                  <Trash2 size={18} />
+                  {isDeleting ? 'جاري الحذف...' : 'تأكيد الحذف'}
+                </Button>
+                <Button 
+                  onClick={() => setIsDeleteDialogOpen(false)}
+                  variant="outline"
+                  className="px-6 py-3"
+                >
+                  إلغاء
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Image Display Dialog */}
       <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto p-4 flex flex-col items-center justify-center">
@@ -1159,6 +1649,24 @@ export default function TrackOrders() {
             <img
               src={imageToShow}
               alt="صورة التعميد"
+              className="max-w-full max-h-[70vh] rounded-md shadow-md"
+            />
+          ) : (
+            <p className="text-center text-muted-foreground">لا توجد صورة للعرض.</p>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Preview Modal for Full Update */}
+      <Dialog open={showImageModal} onOpenChange={setShowImageModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto p-4 flex flex-col items-center justify-center">
+          <DialogHeader>
+            <DialogTitle className="text-right text-lg font-bold">معاينة صورة التعميد</DialogTitle>
+          </DialogHeader>
+          {imagePreview ? (
+            <img
+              src={imagePreview}
+              alt="معاينة التعميد"
               className="max-w-full max-h-[70vh] rounded-md shadow-md"
             />
           ) : (
