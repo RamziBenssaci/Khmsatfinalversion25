@@ -688,7 +688,7 @@ const handleFullEditClick = async (report) => {
                     facilityName: report.facility?.name || '',
                     category: report.category,
                     deviceName: report.device_name,
-                    serialNumber: report.serial_number || 'غير محدد',
+                    serialNumber: report.serial_number ? report.serial_number : 'غير محدد',
                     problem_description: report.problem_description || 'غير محدد',
                     status: report.status,
                     reportDate: `${report.report_date} ${report.report_time}`,
