@@ -474,22 +474,7 @@ export default function DentalDashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-            <Select value={selectedMaintenanceStatus} onValueChange={setSelectedMaintenanceStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="حالة الصيانة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الأجهزة</SelectItem>
-                {maintenanceStatusOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div className="flex items-center gap-2">
-                      <Wrench className={`w-4 h-4 ${option.value === 'needs_maintenance' ? 'text-orange-600' : 'text-green-600'}`} />
-                      {option.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          
 
             <Select value={selectedWarrantyStatus} onValueChange={setSelectedWarrantyStatus}>
               <SelectTrigger>
