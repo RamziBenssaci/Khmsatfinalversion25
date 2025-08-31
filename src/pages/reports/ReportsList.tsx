@@ -682,6 +682,7 @@ const handleFullEditClick = async (report) => {
             <button
               onClick={() => {
                 try {
+                    console.log('Sample report data:', filteredReports[0]); // Add this line
                   const exportData = filteredReports.map(report => ({
                     id: report.id,
                     facilityName: report.facility?.name || '',
