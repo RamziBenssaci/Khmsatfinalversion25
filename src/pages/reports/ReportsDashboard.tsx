@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AlertCircle, TrendingUp, Clock, CheckCircle, XCircle, Package, Loader2, X, User, Calendar, FileText, MapPin } from 'lucide-react';
+import { AlertCircle, TrendingUp, Clock, CheckCircle, XCircle, Package, X, User, Calendar, FileText, MapPin } from 'lucide-react';
 import StatCard from '@/components/StatCard';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line } from 'recharts';
@@ -8,7 +8,6 @@ import { reportsApi } from '@/lib/api';
 
 export default function ReportsDashboard() {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [dashboardData, setDashboardData] = useState({
@@ -25,39 +24,40 @@ export default function ReportsDashboard() {
   const [selectedFacility, setSelectedFacility] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
-  // Load dashboard data and reports
+  // Load dashboard data and reports - Optimized
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        // Load both dashboard stats and all reports
-        const [dashboardResponse, reportsResponse] = await Promise.all([
-          reportsApi.getDashboardStats(),
-          reportsApi.getReports()
-        ]);
-
-        if (dashboardResponse.success) {
-          setDashboardData(dashboardResponse.data);
-        }
+        // Load reports first (since we can calculate stats from them if needed)
+        const reportsResponse = await reportsApi.getReports();
 
         if (reportsResponse.success) {
           setReports(reportsResponse.data || []);
         }
 
-        if (!dashboardResponse.success && !reportsResponse.success) {
+        // Try to load dashboard stats in parallel, but don't wait for it
+        reportsApi.getDashboardStats().then(dashboardResponse => {
+          if (dashboardResponse.success) {
+            setDashboardData(dashboardResponse.data);
+          }
+        }).catch(error => {
+          console.warn('Dashboard stats loading failed:', error);
+        });
+
+        if (!reportsResponse.success) {
           toast({
             title: "خطأ في تحميل البيانات",
-            description: "فشل في تحميل بيانات لوحة التحكم",
+            description: "فشل في تحميل بيانات البلاغات",
             variant: "destructive"
           });
         }
       } catch (error) {
+        console.error('Data loading error:', error);
         toast({
           title: "خطأ في تحميل البيانات",
           description: error.message || "فشل في تحميل بيانات لوحة التحكم",
           variant: "destructive"
         });
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -146,15 +146,6 @@ export default function ReportsDashboard() {
     setShowModal(false);
     setSelectedReport(null);
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="mr-3">جاري تحميل لوحة التحكم...</span>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4 p-2 sm:p-4">
