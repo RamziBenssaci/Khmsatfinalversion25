@@ -1,4 +1,3 @@
-improved-dental-contracts.tsx
 import { useState, useEffect, useCallback } from 'react';
 import { Save, Plus, Eye, Edit, Trash2, Printer, Settings, Image as ImageIcon, X, AlertTriangle } from 'lucide-react';
 import { dentalContractsApi, dashboardApi } from '@/lib/api';
