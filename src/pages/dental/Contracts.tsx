@@ -35,13 +35,6 @@ export default function DentalContracts() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isGeneralModifyDialogOpen, setIsGeneralModifyDialogOpen] = useState(false);
-  const [isImageViewOpen, setIsImageViewOpen] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string>("");
-
-  const handleViewImage = (image: string) => {
-    setSelectedImage(image);
-    setIsImageViewOpen(true);
-  };
   const [editingContract, setEditingContract] = useState<any>(null);
   const [statusUpdateData, setStatusUpdateData] = useState({
     newStatus: '',
@@ -755,7 +748,7 @@ export default function DentalContracts() {
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="space-y-6">
       <div className="text-right">
         <h1 className="text-3xl font-bold text-foreground">عقود الأسنان - بلانكت</h1>
         <p className="text-muted-foreground mt-2">إدارة عقود وطلبات أجهزة ومستلزمات الأسنان</p>
@@ -934,119 +927,136 @@ export default function DentalContracts() {
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium mb-2 text-right">ملاحظات إضافية</label>
+              <label className="block text-sm font-medium mb-2 text-right">ملاحظات</label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                 className="w-full p-3 border border-input rounded-md text-right"
                 rows={3}
-                placeholder="أضف أي ملاحظات أو تفاصيل إضافية..."
+                placeholder="ملاحظات حول العقد أو التركيب..."
               />
             </div>
 
-            <div className="flex justify-end">
-              <button
-                type="submit"
+            <div className="flex justify-start">
+              <button 
+                type="submit" 
                 disabled={loading}
-                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md flex items-center gap-2"
+                className="admin-btn-success flex items-center gap-2 px-6 py-3 disabled:opacity-50"
               >
-                <Save size={18} />
-                {loading ? 'جاري الإنشاء...' : 'إنشاء العقد'}
+                <Save size={20} />
+                {loading ? 'جاري الحفظ...' : 'حفظ عقد الأسنان'}
               </button>
             </div>
           </form>
         </div>
       </div>
 
+      {/* Recent Dental Contracts Table */}
       <div className="admin-card">
         <div className="admin-header">
-          <h2>قائمة العقود</h2>
+          <h2>عقود الأسنان الحديثة</h2>
         </div>
-        <div className="p-6">
-          {loading ? (
-            <div className="text-center py-4">
-              <p>جاري تحميل العقود...</p>
-            </div>
-          ) : contracts.length === 0 ? (
-            <div className="text-center py-4">
-              <p>لا توجد عقود حاليًا.</p>
-            </div>
-          ) : (
-            <div className="hidden md:block overflow-x-auto">
-              <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
-                <thead className="bg-gray-100 dark:bg-gray-800">
+        <div className="p-4">
+          <div className="responsive-table">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-right">
+                  <th className="p-3">رقم العقد</th>
+                  <th className="p-3 mobile-hidden">نوع الجهاز</th>
+                  <th className="p-3 mobile-hidden">العيادة</th>
+                  <th className="p-3 mobile-hidden">الكمية</th>
+                  <th className="p-3 mobile-hidden">رقم التعميد</th>
+                  <th className="p-3 mobile-hidden">تاريخ التعميد</th>
+                  <th className="p-3 mobile-hidden">اسم الشركة الموردة</th>
+                  <th className="p-3">صورة التعميد</th>
+                  <th className="p-3">الحالة</th>
+                  <th className="p-3 mobile-hidden">التكلفة</th>
+                  <th className="p-3">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
                   <tr>
-                    <th className="p-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">رقم العقد</th>
-                    <th className="p-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">تاريخ الطلب</th>
-                    <th className="p-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">اسم الصنف</th>
-                    <th className="p-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">العيادة المستفيدة</th>
-                    <th className="p-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">صورة التعميد</th>
-                    <th className="p-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">الحالة</th>
-                    <th className="p-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">التكلفة الإجمالية</th>
-                    <th className="p-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">الإجراءات</th>
+                    <td colSpan={11} className="p-8 text-center text-muted-foreground">
+                      جاري تحميل العقود...
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {contracts.map((contract) => (
-                    <tr key={contract.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                      <td className="p-3 text-sm text-gray-800 dark:text-gray-200">{contract.id}</td>
-                      <td className="p-3 text-sm text-gray-800 dark:text-gray-200">{contract.orderDate}</td>
-                      <td className="p-3 text-sm text-gray-800 dark:text-gray-200">{contract.itemName}</td>
-                      <td className="p-3 text-sm text-gray-800 dark:text-gray-200">{contract.beneficiaryFacility}</td>
+                ) : contracts.length === 0 ? (
+                  <tr>
+                    <td colSpan={11} className="p-8 text-center text-muted-foreground">
+                      لا توجد عقود أسنان مسجلة
+                    </td>
+                  </tr>
+                ) : (
+                  contracts.map((contract, index) => (
+                    <tr key={contract.id || index} className="border-b border-border text-right">
+                      <td className="p-3 font-medium">{contract.id}</td>
+                      <td className="p-3 mobile-hidden">{contract.itemName}</td>
+                      <td className="p-3 mobile-hidden">{contract.beneficiaryFacility}</td>
+                      <td className="p-3 mobile-hidden">{contract.quantity}</td>
+                      <td className="p-3 mobile-hidden">{contract.financialApprovalNumber || '-'}</td>
+                      <td className="p-3 mobile-hidden">{contract.approvalDate || '-'}</td>
+                      <td className="p-3 mobile-hidden">{contract.supplierName || '-'}</td>
                       <td className="p-3">
                         {contract.imagebase64 ? (
                           <button
-                            onClick={() => handleViewImage(contract.imagebase64)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 font-medium flex items-center gap-1"
+                            onClick={() => {
+                              const imgWindow = window.open('');
+                              if (imgWindow) {
+                                imgWindow.document.write(`<html><head><title>صورة التعميد</title></head><body><img src="${contract.imagebase64}" style="max-width:100%; height:auto;" /></body></html>`);
+                                imgWindow.document.close();
+                              }
+                            }}
+                            className="text-blue-500 hover:text-blue-700"
                           >
-                            <ImageIcon size={16} />
+                            <ImageIcon size={20} />
                             عرض الصورة
                           </button>
                         ) : (
-                          <span className="text-muted-foreground text-sm">لا توجد صورة</span>
+                          <span className="text-muted-foreground">لا توجد صورة</span>
                         )}
                       </td>
                       <td className="p-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusStyle(contract.status)}`}>
+                        <span className={`px-2 py-1 rounded-full text-xs ${getStatusStyle(contract.status)}`}>
                           {contract.status}
                         </span>
                       </td>
-                      <td className="p-3 text-sm text-gray-800 dark:text-gray-200">
+                      <td className="p-3 mobile-hidden">
                         {contract.totalCost ? `${Number(contract.totalCost).toLocaleString()} ريال` : '-'}
                       </td>
                       <td className="p-3">
                         <div className="flex items-center gap-2">
                           <button 
                             onClick={() => handleViewContract(contract)}
-                            className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors shadow-sm"
+                            className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
                           >
                             <Eye size={14} />
                             عرض
                           </button>
                           <button 
                             onClick={() => handleGeneralModifyContract(contract)}
-                            className="bg-purple-500 hover:bg-purple-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors shadow-sm"
+                            className="bg-purple-500 hover:bg-purple-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
                           >
                             <Settings size={14} />
                             تعديل عام
                           </button>
                           <button 
                             onClick={() => handleEditContract(contract)}
-                            className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors shadow-sm"
+                            className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
                           >
                             <Edit size={14} />
                             تعديل حالة
                           </button>
                           <button 
                             onClick={() => handlePrintContract(contract)}
-                            className="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors shadow-sm"
+                            className="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
                           >
                             <Printer size={14} />
                             طباعة
                           </button>
                           <button 
                             onClick={() => handleDeleteContract(contract.id)}
-                            className="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors shadow-sm"
+                            className="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
                           >
                             <Trash2 size={14} />
                             حذف
@@ -1054,78 +1064,11 @@ export default function DentalContracts() {
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="md:hidden space-y-4">
-              {contracts.map((contract) => (
-                <div key={contract.id} className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">عقد رقم: {contract.id}</h3>
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusStyle(contract.status)}`}>
-                      {contract.status}
-                    </span>
-                  </div>
-                  <div className="space-y-2 text-gray-700 dark:text-gray-300 text-right">
-                    <p><span className="font-semibold">تاريخ الطلب:</span> {contract.orderDate}</p>
-                    <p><span className="font-semibold">اسم الصنف:</span> {contract.itemName}</p>
-                    <p><span className="font-semibold">العيادة المستفيدة:</span> {contract.beneficiaryFacility}</p>
-                    <p><span className="font-semibold">التكلفة الإجمالية:</span> {contract.totalCost ? `${Number(contract.totalCost).toLocaleString()} ريال` : '-'}</p>
-                    {contract.imagebase64 && (
-                      <div className="pt-2">
-                        <button
-                          onClick={() => handleViewImage(contract.imagebase64)}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 font-medium flex items-center gap-1"
-                        >
-                          <ImageIcon size={16} />
-                          عرض صورة التعميد
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap justify-end gap-2 mt-4">
-                    <button 
-                      onClick={() => handleViewContract(contract)}
-                      className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-2 rounded-lg flex items-center gap-1 transition-colors shadow-sm w-full sm:w-auto justify-center"
-                    >
-                      <Eye size={14} />
-                      عرض التفاصيل
-                    </button>
-                    <button 
-                      onClick={() => handleGeneralModifyContract(contract)}
-                      className="bg-purple-500 hover:bg-purple-600 text-white text-sm px-3 py-2 rounded-lg flex items-center gap-1 transition-colors shadow-sm w-full sm:w-auto justify-center"
-                    >
-                      <Settings size={14} />
-                      تعديل عام
-                    </button>
-                    <button 
-                      onClick={() => handleEditContract(contract)}
-                      className="bg-orange-500 hover:bg-orange-600 text-white text-sm px-3 py-2 rounded-lg flex items-center gap-1 transition-colors shadow-sm w-full sm:w-auto justify-center"
-                    >
-                      <Edit size={14} />
-                      تعديل حالة
-                    </button>
-                    <button 
-                      onClick={() => handlePrintContract(contract)}
-                      className="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-2 rounded-lg flex items-center gap-1 transition-colors shadow-sm w-full sm:w-auto justify-center"
-                    >
-                      <Printer size={14} />
-                      طباعة
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteContract(contract.id)}
-                      className="bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-2 rounded-lg flex items-center gap-1 transition-colors shadow-sm w-full sm:w-auto justify-center"
-                    >
-                      <Trash2 size={14} />
-                      حذف
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1290,6 +1233,7 @@ export default function DentalContracts() {
                       )}
                     </div>
                   )}
+
                 </div>
               </div>
             </div>
@@ -1321,7 +1265,7 @@ export default function DentalContracts() {
                 <select
                   value={statusUpdateData.newStatus}
                   onChange={(e) => setStatusUpdateData(prev => ({ ...prev, newStatus: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
+                  className="w-full p-3 border-2 border-input rounded-lg text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                   required
                 >
                   <option value="">اختر الحالة الجديدة</option>
@@ -1337,7 +1281,7 @@ export default function DentalContracts() {
                   type="date"
                   value={statusUpdateData.statusDate}
                   onChange={(e) => setStatusUpdateData(prev => ({ ...prev, statusDate: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
+                  className="w-full p-3 border-2 border-input rounded-lg text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                 />
               </div>
 
@@ -1346,26 +1290,24 @@ export default function DentalContracts() {
                 <textarea
                   value={statusUpdateData.statusNote}
                   onChange={(e) => setStatusUpdateData(prev => ({ ...prev, statusNote: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
+                  className="w-full p-3 border-2 border-input rounded-lg text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                   rows={4}
-                  placeholder="أضف ملاحظة حول تحديث الحالة..."
+                  placeholder="ملاحظة حول تغيير الحالة..."
                 />
               </div>
 
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
+              <div className="flex justify-start gap-3 pt-4">
+                <button 
                   onClick={handleStatusUpdate}
                   disabled={loading || !statusUpdateData.newStatus}
-                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-md flex items-center gap-2"
+                  className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50"
                 >
                   <Save size={18} />
-                  {loading ? 'جاري التحديث...' : 'تحديث الحالة'}
+                  {loading ? 'جاري الحفظ...' : 'حفظ التحديث'}
                 </button>
-                <button
-                  type="button"
+                <button 
                   onClick={() => setIsEditDialogOpen(false)}
-                  className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-md"
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-all"
                 >
                   إلغاء
                 </button>
@@ -1375,215 +1317,215 @@ export default function DentalContracts() {
         </DialogContent>
       </Dialog>
 
-      {/* General Modify Contract Dialog */}
+      {/* General Modify Dialog */}
       <Dialog open={isGeneralModifyDialogOpen} onOpenChange={setIsGeneralModifyDialogOpen}>
         <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
           <DialogHeader className="sticky top-0 bg-background pb-4 border-b">
             <DialogTitle className="text-right text-xl font-bold">تعديل عام للعقد</DialogTitle>
             <DialogDescription className="text-right">
-              تعديل بيانات العقد رقم: {editingContract?.id}
+              تعديل جميع تفاصيل العقد رقم: {editingContract?.id}
             </DialogDescription>
           </DialogHeader>
-          
           {editingContract && (
-            <div className="p-4">
-              <form onSubmit={handleUpdateContract} className="space-y-6">
-                {/* Basic Info */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-right">تاريخ الطلب *</label>
-                    <input
-                      type="date"
-                      value={editingContract.orderDate || ''}
-                      onChange={(e) => setEditingContract(prev => ({ ...prev, orderDate: e.target.value }))}
-                      className="w-full p-3 border border-input rounded-md text-right"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-right">رقم الصنف *</label>
-                    <input
-                      type="text"
-                      value={editingContract.itemNumber || ''}
-                      onChange={(e) => setEditingContract(prev => ({ ...prev, itemNumber: e.target.value }))}
-                      className="w-full p-3 border border-input rounded-md text-right"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-right">اسم الصنف *</label>
-                    <input
-                      type="text"
-                      value={editingContract.itemName || ''}
-                      onChange={(e) => setEditingContract(prev => ({ ...prev, itemName: e.target.value }))}
-                      className="w-full p-3 border border-input rounded-md text-right"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Quantity and Facility */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-right">الكمية *</label>
-                    <input
-                      type="number"
-                      value={editingContract.quantity || ''}
-                      onChange={(e) => setEditingContract(prev => ({ ...prev, quantity: e.target.value }))}
-                      className="w-full p-3 border border-input rounded-md text-right"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-right">عيادة الأسنان المستفيدة *</label>
-                    <select
-                      value={editingContract.beneficiaryFacility || ''}
-                      onChange={(e) => setEditingContract(prev => ({ ...prev, beneficiaryFacility: e.target.value }))}
-                      className="w-full p-3 border border-input rounded-md text-right"
-                      required
-                    >
-                      <option value="">اختر العيادة</option>
-                      {facilities.map(facility => (
-                        <option key={facility.id} value={facility.name}>{facility.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Financial Approval */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-right">رقم التعميد المالي</label>
-                    <input
-                      type="text"
-                      value={editingContract.financialApprovalNumber || ''}
-                      onChange={(e) => setEditingContract(prev => ({ ...prev, financialApprovalNumber: e.target.value }))}
-                      className="w-full p-3 border border-input rounded-md text-right"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-right">تاريخ التعميد</label>
-                    <input
-                      type="date"
-                      value={editingContract.approvalDate || ''}
-                      onChange={(e) => setEditingContract(prev => ({ ...prev, approvalDate: e.target.value }))}
-                      className="w-full p-3 border border-input rounded-md text-right"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-right">التكلفة الإجمالية</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editingContract.totalCost || ''}
-                      onChange={(e) => setEditingContract(prev => ({ ...prev, totalCost: e.target.value }))}
-                      className="w-full p-3 border border-input rounded-md text-right"
-                    />
-                  </div>
-                </div>
-
-                {/* Supplier Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-right">شركة أجهزة الأسنان</label>
-                    <input
-                      type="text"
-                      value={editingContract.supplierName || ''}
-                      onChange={(e) => setEditingContract(prev => ({ ...prev, supplierName: e.target.value }))}
-                      className="w-full p-3 border border-input rounded-md text-right"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-right">بيانات التواصل للشركة</label>
-                    <input
-                      type="text"
-                      value={editingContract.supplierContact || ''}
-                      onChange={(e) => setEditingContract(prev => ({ ...prev, supplierContact: e.target.value }))}
-                      className="w-full p-3 border border-input rounded-md text-right"
-                    />
-                  </div>
-                </div>
-
-                {/* Image Upload */}
+            <form onSubmit={handleUpdateContract} className="space-y-6 p-4">
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right">صورة التعميد</label>
+                  <label className="block text-sm font-medium mb-2 text-right">تاريخ الطلب *</label>
                   <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleGeneralModifyImageUpload}
+                    type="date"
+                    value={editingContract.orderDate}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, orderDate: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
+                    required
                   />
-                  {editingContract.imagebase64 && (
-                    <div className="mt-2 text-right">
-                      <img src={editingContract.imagebase64} alt="Image Preview" className="max-w-[150px] max-h-[150px] object-contain border rounded-md" />
-                    </div>
-                  )}
                 </div>
-
-                {/* Status and Delivery */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-right">تاريخ التسليم المخطط</label>
-                    <input
-                      type="date"
-                      value={editingContract.deliveryDate || ''}
-                      onChange={(e) => setEditingContract(prev => ({ ...prev, deliveryDate: e.target.value }))}
-                      className="w-full p-3 border border-input rounded-md text-right"
-                    />
-                  </div>
-                </div>
-
-                {/* Notes */}
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right">ملاحظات إضافية</label>
-                  <textarea
-                    value={editingContract.notes || ''}
-                    onChange={(e) => setEditingContract(prev => ({ ...prev, notes: e.target.value }))}
+                  <label className="block text-sm font-medium mb-2 text-right">رقم الصنف *</label>
+                  <input
+                    type="text"
+                    value={editingContract.itemNumber}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, itemNumber: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
-                    rows={3}
-                    placeholder="ملاحظات حول العقد أو التركيب..."
+                    placeholder="رقم صنف الأسنان"
+                    required
                   />
                 </div>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <button 
-                    type="submit" 
-                    disabled={loading}
-                    className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50"
-                  >
-                    <Save size={18} />
-                    {loading ? 'جاري الحفظ...' : 'حفظ التعديلات'}
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setIsGeneralModifyDialogOpen(false)}
-                    className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-all"
-                  >
-                    إلغاء
-                  </button>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">اسم الصنف *</label>
+                  <input
+                    type="text"
+                    value={editingContract.itemName}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, itemName: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="جهاز أو مستلزم أسنان"
+                    required
+                  />
                 </div>
-              </form>
-            </div>
+              </div>
+
+              {/* Quantity and Facility */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">الكمية *</label>
+                  <input
+                    type="number"
+                    value={editingContract.quantity}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, quantity: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="الكمية"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">عيادة الأسنان المستفيدة *</label>
+                  <select
+                    value={editingContract.beneficiaryFacility}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, beneficiaryFacility: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    required
+                  >
+                    <option value="">اختر العيادة</option>
+                    {facilities.map(facility => (
+                      <option key={facility.id} value={facility.name}>{facility.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Financial Approval */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">رقم التعميد المالي</label>
+                  <input
+                    type="text"
+                    value={editingContract.financialApprovalNumber}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, financialApprovalNumber: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="رقم التعميد"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">تاريخ التعميد</label>
+                  <input
+                    type="date"
+                    value={editingContract.approvalDate}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, approvalDate: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">التكلفة الإجمالية</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingContract.totalCost}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, totalCost: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="التكلفة بالريال"
+                  />
+                </div>
+              </div>
+
+              {/* Supplier Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">شركة أجهزة الأسنان</label>
+                  <input
+                    type="text"
+                    value={editingContract.supplierName}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, supplierName: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="اسم شركة أجهزة الأسنان"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">بيانات التواصل للشركة</label>
+                  <input
+                    type="text"
+                    value={editingContract.supplierContact}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, supplierContact: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="رقم الهاتف والإيميل"
+                  />
+                </div>
+              </div>
+
+              {/* Image Upload for General Modify */}
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">صورة التعميد</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleGeneralModifyImageUpload}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                />
+                {editingContract.imagebase64 && (
+                  <div className="mt-2 text-right">
+                    <img src={editingContract.imagebase64} alt="Image Preview" className="max-w-[150px] max-h-[150px] object-contain border rounded-md" />
+                  </div>
+                )}
+              </div>
+
+              {/* Status and Delivery */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">حالة العقد</label>
+                  <select
+                    value={editingContract.status}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, status: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    required
+                  >
+                    {['جديد', 'موافق عليه', 'تم التعاقد', 'تم التسليم', 'مرفوض'].map(status => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">تاريخ التسليم المخطط</label>
+                  <input
+                    type="date"
+                    value={editingContract.deliveryDate}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, deliveryDate: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">ملاحظات</label>
+                <textarea
+                  value={editingContract.notes}
+                  onChange={(e) => setEditingContract(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  rows={3}
+                  placeholder="ملاحظات حول العقد أو التركيب..."
+                />
+              </div>
+
+              <div className="flex justify-start gap-3 pt-4">
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50"
+                >
+                  <Save size={18} />
+                  {loading ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setIsGeneralModifyDialogOpen(false)}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-all"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
           )}
         </DialogContent>
       </Dialog>
     </div>
   );
 }
-
-
-
-      {/* Image View Dialog */}
-      <Dialog open={isImageViewOpen} onOpenChange={setIsImageViewOpen}>
-        <DialogContent className="max-w-3xl p-0 overflow-hidden rounded-lg shadow-xl">
-          <div className="relative w-full h-full flex items-center justify-center bg-black">
-            <img src={selectedImage} alt="Full Size" className="max-w-full max-h-[90vh] object-contain" />
-            <button
-              onClick={() => setIsImageViewOpen(false)}
-              className="absolute top-2 right-2 p-2 bg-white rounded-full text-gray-800 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
