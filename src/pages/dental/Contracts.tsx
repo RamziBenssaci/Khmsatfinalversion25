@@ -1,5 +1,6 @@
+improved-dental-contracts.tsx
 import { useState, useEffect, useCallback } from 'react';
-import { Save, Plus, Eye, Edit, Trash2, Printer, Settings, Image as ImageIcon } from 'lucide-react';
+import { Save, Plus, Eye, Edit, Trash2, Printer, Settings, Image as ImageIcon, X, AlertTriangle } from 'lucide-react';
 import { dentalContractsApi, dashboardApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -35,6 +36,8 @@ export default function DentalContracts() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isGeneralModifyDialogOpen, setIsGeneralModifyDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [contractToDelete, setContractToDelete] = useState<any>(null);
   const [editingContract, setEditingContract] = useState<any>(null);
   const [statusUpdateData, setStatusUpdateData] = useState({
     newStatus: '',
@@ -215,34 +218,42 @@ export default function DentalContracts() {
     }
   };
 
-  const handleDeleteContract = async (id: string) => {
-    if (window.confirm('هل أنت متأكد أنك تريد حذف هذا العقد؟ لن تتمكن من التراجع عن هذا الإجراء.')) {
-      try {
-        setLoading(true);
-        const response = await dentalContractsApi.deleteContract(id);
-        if (response.success) {
-          toast({
-            title: "تم الحذف!",
-            description: "تم حذف العقد بنجاح.",
-          });
-          fetchContracts();
-        } else {
-          toast({
-            title: "خطأ!",
-            description: response.message || 'فشل في حذف العقد.',
-            variant: "destructive",
-          });
-        }
-      } catch (error: any) {
-        console.error('Error deleting contract:', error);
+  // Custom Delete Confirmation Dialog
+  const handleDeleteContract = (contract: any) => {
+    setContractToDelete(contract);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteContract = async () => {
+    if (!contractToDelete) return;
+    
+    try {
+      setLoading(true);
+      const response = await dentalContractsApi.deleteContract(contractToDelete.id);
+      if (response.success) {
+        toast({
+          title: "تم الحذف!",
+          description: "تم حذف العقد بنجاح.",
+        });
+        fetchContracts();
+        setIsDeleteDialogOpen(false);
+        setContractToDelete(null);
+      } else {
         toast({
           title: "خطأ!",
-          description: error.message || 'فشل في حذف العقد.',
+          description: response.message || 'فشل في حذف العقد.',
           variant: "destructive",
         });
-      } finally {
-        setLoading(false);
       }
+    } catch (error: any) {
+      console.error('Error deleting contract:', error);
+      toast({
+        title: "خطأ!",
+        description: error.message || 'فشل في حذف العقد.',
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -474,14 +485,6 @@ export default function DentalContracts() {
                   <label>تاريخ الطلب</label>
                   <span>${contract.orderDate || '-'}</span>
                 </div>
-                <div className="info-item">
-                  <label>صورة التعميد</label>
-                  {contract.imagebase64 ? (
-                    <img src={contract.imagebase64} alt="Approval" style={{ maxWidth: '100px', maxHeight: '100px' }} />
-                  ) : (
-                    <span>لا توجد صورة</span>
-                  )}
-                </div>
               </div>
             </div>
           </div>
@@ -556,103 +559,6 @@ export default function DentalContracts() {
             </div>
           </div>
           ` : ''}
-
-          <div class="section">
-            <div class="section-header">
-              <h2>سجل حالات العقد</h2>
-            </div>
-            <div class="section-content">
-              ${contract.creation_date ? `
-              <div class="timeline-item">
-                <h4>تاريخ الإنشاء</h4>
-                <div class="timeline-content">
-                  <div class="timeline-field">
-                    <label>التاريخ</label>
-                    <span>${contract.creation_date}</span>
-                  </div>
-                  ${contract.creation_date_note ? `
-                  <div class="timeline-field">
-                    <label>الملاحظة</label>
-                    <span>${contract.creation_date_note}</span>
-                  </div>
-                  ` : ''}
-                </div>
-              </div>
-              ` : ''}
-
-              ${contract.contract_approval_date ? `
-              <div class="timeline-item">
-                <h4>تاريخ الموافقة</h4>
-                <div class="timeline-content">
-                  <div class="timeline-field">
-                    <label>التاريخ</label>
-                    <span>${contract.contract_approval_date}</span>
-                  </div>
-                  ${contract.contract_approval_date_note ? `
-                  <div class="timeline-field">
-                    <label>الملاحظة</label>
-                    <span>${contract.contract_approval_date_note}</span>
-                  </div>
-                  ` : ''}
-                </div>
-              </div>
-              ` : ''}
-
-              ${contract.contract_date ? `
-              <div class="timeline-item">
-                <h4>تاريخ التعاقد</h4>
-                <div class="timeline-content">
-                  <div class="timeline-field">
-                    <label>التاريخ</label>
-                    <span>${contract.contract_date}</span>
-                  </div>
-                  ${contract.contract_date_note ? `
-                  <div class="timeline-field">
-                    <label>الملاحظة</label>
-                    <span>${contract.contract_date_note}</span>
-                  </div>
-                  ` : ''}
-                </div>
-              </div>
-              ` : ''}
-
-              ${contract.contract_delivery_date ? `
-              <div class="timeline-item">
-                <h4>تاريخ التسليم</h4>
-                <div class="timeline-content">
-                  <div class="timeline-field">
-                    <label>التاريخ</label>
-                    <span>${contract.contract_delivery_date}</span>
-                  </div>
-                  ${contract.contract_delivery_date_note ? `
-                  <div class="timeline-field">
-                    <label>الملاحظة</label>
-                    <span>${contract.contract_delivery_date_note}</span>
-                  </div>
-                  ` : ''}
-                </div>
-              </div>
-              ` : ''}
-
-              ${contract.rejection_date ? `
-              <div class="timeline-item">
-                <h4>تاريخ الرفض</h4>
-                <div class="timeline-content">
-                  <div class="timeline-field">
-                    <label>التاريخ</label>
-                    <span>${contract.rejection_date}</span>
-                  </div>
-                  ${contract.rejection_date_note ? `
-                  <div class="timeline-field">
-                    <label>الملاحظة</label>
-                    <span>${contract.rejection_date_note}</span>
-                  </div>
-                  ` : ''}
-                </div>
-              </div>
-              ` : ''}
-            </div>
-          </div>
 
           <div class="footer">
             <p>تم طباعة هذا العقد في: ${new Date().toLocaleDateString('ar-SA')} - ${new Date().toLocaleTimeString('ar-SA')}</p>
@@ -933,144 +839,363 @@ export default function DentalContracts() {
                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                 className="w-full p-3 border border-input rounded-md text-right"
                 rows={3}
-                placeholder="ملاحظات حول العقد أو التركيب..."
+                placeholder="أي ملاحظات إضافية"
               />
             </div>
 
-            <div className="flex justify-start">
-              <button 
-                type="submit" 
+            <div className="flex justify-end">
+              <button
+                type="submit"
                 disabled={loading}
-                className="admin-btn-success flex items-center gap-2 px-6 py-3 disabled:opacity-50"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
               >
                 <Save size={20} />
-                {loading ? 'جاري الحفظ...' : 'حفظ عقد الأسنان'}
+                {loading ? 'جاري الحفظ...' : 'حفظ العقد'}
               </button>
             </div>
           </form>
         </div>
       </div>
 
-      {/* Recent Dental Contracts Table */}
+      {/* Contracts Table */}
       <div className="admin-card">
         <div className="admin-header">
           <h2>عقود الأسنان الحديثة</h2>
         </div>
-        <div className="p-4">
-          <div className="responsive-table">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-right">
-                  <th className="p-3">رقم العقد</th>
-                  <th className="p-3 mobile-hidden">نوع الجهاز</th>
-                  <th className="p-3 mobile-hidden">العيادة</th>
-                  <th className="p-3 mobile-hidden">الكمية</th>
-                  <th className="p-3 mobile-hidden">رقم التعميد</th>
-                  <th className="p-3 mobile-hidden">تاريخ التعميد</th>
-                  <th className="p-3 mobile-hidden">اسم الشركة الموردة</th>
-                  <th className="p-3">صورة التعميد</th>
-                  <th className="p-3">الحالة</th>
-                  <th className="p-3 mobile-hidden">التكلفة</th>
-                  <th className="p-3">الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={11} className="p-8 text-center text-muted-foreground">
-                      جاري تحميل العقود...
-                    </td>
-                  </tr>
-                ) : contracts.length === 0 ? (
-                  <tr>
-                    <td colSpan={11} className="p-8 text-center text-muted-foreground">
-                      لا توجد عقود أسنان مسجلة
-                    </td>
-                  </tr>
-                ) : (
-                  contracts.map((contract, index) => (
-                    <tr key={contract.id || index} className="border-b border-border text-right">
-                      <td className="p-3 font-medium">{contract.id}</td>
-                      <td className="p-3 mobile-hidden">{contract.itemName}</td>
-                      <td className="p-3 mobile-hidden">{contract.beneficiaryFacility}</td>
-                      <td className="p-3 mobile-hidden">{contract.quantity}</td>
-                      <td className="p-3 mobile-hidden">{contract.financialApprovalNumber || '-'}</td>
-                      <td className="p-3 mobile-hidden">{contract.approvalDate || '-'}</td>
-                      <td className="p-3 mobile-hidden">{contract.supplierName || '-'}</td>
-                      <td className="p-3">
-                        {contract.imagebase64 ? (
-                          <button
-                            onClick={() => {
-                              const imgWindow = window.open('');
-                              if (imgWindow) {
-                                imgWindow.document.write(`<html><head><title>صورة التعميد</title></head><body><img src="${contract.imagebase64}" style="max-width:100%; height:auto;" /></body></html>`);
-                                imgWindow.document.close();
-                              }
-                            }}
-                            className="text-blue-500 hover:text-blue-700"
-                          >
-                            <ImageIcon size={20} />
-                            عرض الصورة
-                          </button>
-                        ) : (
-                          <span className="text-muted-foreground">لا توجد صورة</span>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        <span className={`px-2 py-1 rounded-full text-xs ${getStatusStyle(contract.status)}`}>
+        <div className="p-6">
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="mt-2 text-muted-foreground">جاري تحميل العقود...</p>
+            </div>
+          ) : contracts.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">📋</div>
+              <h3 className="text-xl font-semibold mb-2">لا توجد عقود</h3>
+              <p className="text-muted-foreground">لم يتم إنشاء أي عقود أسنان بعد</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-x-auto">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800 shadow-sm">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                        <th className="p-4 text-right font-semibold text-sm">رقم العقد</th>
+                        <th className="p-4 text-right font-semibold text-sm">تاريخ الطلب</th>
+                        <th className="p-4 text-right font-semibold text-sm">اسم الصنف</th>
+                        <th className="p-4 text-right font-semibold text-sm">العيادة المستفيدة</th>
+                        <th className="p-4 text-right font-semibold text-sm">الكمية</th>
+                        <th className="p-4 text-right font-semibold text-sm">صورة التعميد</th>
+                        <th className="p-4 text-right font-semibold text-sm">الحالة</th>
+                        <th className="p-4 text-right font-semibold text-sm">التكلفة</th>
+                        <th className="p-4 text-right font-semibold text-sm">الإجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {contracts.map((contract, index) => (
+                        <tr 
+                          key={contract.id} 
+                          className={`
+                            border-b border-blue-100 dark:border-blue-800 
+                            hover:bg-blue-50 dark:hover:bg-blue-900/30 
+                            transition-all duration-200
+                            ${index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-blue-25 dark:bg-gray-800'}
+                          `}
+                        >
+                          <td className="p-4">
+                            <div className="font-semibold text-blue-700 dark:text-blue-300">
+                              #{contract.id}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="text-sm text-gray-700 dark:text-gray-300">
+                              {contract.orderDate || '-'}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="font-medium text-gray-900 dark:text-gray-100 max-w-[200px] truncate">
+                              {contract.itemName || '-'}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              رقم: {contract.itemNumber || '-'}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="text-sm text-gray-700 dark:text-gray-300 max-w-[150px] truncate">
+                              {contract.beneficiaryFacility || '-'}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="font-medium text-gray-900 dark:text-gray-100">
+                              {contract.quantity || '-'}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            {contract.imagebase64 ? (
+                              <button
+                                onClick={() => {
+                                  const imgWindow = window.open('');
+                                  if (imgWindow) {
+                                    imgWindow.document.write(`<html><head><title>صورة التعميد</title></head><body style="margin:0;padding:20px;background:#f5f5f5;"><img src="${contract.imagebase64}" style="max-width:100%; height:auto; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);" /></body></html>`);
+                                    imgWindow.document.close();
+                                  }
+                                }}
+                                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                              >
+                                <ImageIcon size={16} />
+                                <span className="text-xs">عرض</span>
+                              </button>
+                            ) : (
+                              <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg">
+                                لا توجد صورة
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusStyle(contract.status)}`}>
+                              {contract.status}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <div className="font-semibold text-green-700 dark:text-green-400">
+                              {contract.totalCost ? `${Number(contract.totalCost).toLocaleString()} ريال` : '-'}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <button 
+                                onClick={() => handleViewContract(contract)}
+                                className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1.5 rounded-md flex items-center gap-1 transition-all duration-200 hover:shadow-md"
+                                title="عرض التفاصيل"
+                              >
+                                <Eye size={12} />
+                                <span className="hidden xl:inline">عرض</span>
+                              </button>
+                              <button 
+                                onClick={() => handleGeneralModifyContract(contract)}
+                                className="bg-purple-500 hover:bg-purple-600 text-white text-xs px-2 py-1.5 rounded-md flex items-center gap-1 transition-all duration-200 hover:shadow-md"
+                                title="تعديل عام"
+                              >
+                                <Settings size={12} />
+                                <span className="hidden xl:inline">تعديل</span>
+                              </button>
+                              <button 
+                                onClick={() => handleEditContract(contract)}
+                                className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-2 py-1.5 rounded-md flex items-center gap-1 transition-all duration-200 hover:shadow-md"
+                                title="تعديل الحالة"
+                              >
+                                <Edit size={12} />
+                                <span className="hidden xl:inline">حالة</span>
+                              </button>
+                              <button 
+                                onClick={() => handlePrintContract(contract)}
+                                className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1.5 rounded-md flex items-center gap-1 transition-all duration-200 hover:shadow-md"
+                                title="طباعة"
+                              >
+                                <Printer size={12} />
+                                <span className="hidden xl:inline">طباعة</span>
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteContract(contract)}
+                                className="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1.5 rounded-md flex items-center gap-1 transition-all duration-200 hover:shadow-md"
+                                title="حذف"
+                              >
+                                <Trash2 size={12} />
+                                <span className="hidden xl:inline">حذف</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="lg:hidden space-y-4">
+                {contracts.map((contract) => (
+                  <div 
+                    key={contract.id} 
+                    className="bg-gradient-to-br from-white to-blue-50 dark:from-gray-900 dark:to-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden"
+                  >
+                    {/* Card Header */}
+                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-bold text-lg">عقد #{contract.id}</h3>
+                          <p className="text-blue-100 text-sm">{contract.orderDate || 'تاريخ غير محدد'}</p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusStyle(contract.status)} bg-opacity-90`}>
                           {contract.status}
                         </span>
-                      </td>
-                      <td className="p-3 mobile-hidden">
-                        {contract.totalCost ? `${Number(contract.totalCost).toLocaleString()} ريال` : '-'}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleViewContract(contract)}
-                            className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
-                          >
-                            <Eye size={14} />
-                            عرض
-                          </button>
-                          <button 
-                            onClick={() => handleGeneralModifyContract(contract)}
-                            className="bg-purple-500 hover:bg-purple-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
-                          >
-                            <Settings size={14} />
-                            تعديل عام
-                          </button>
-                          <button 
-                            onClick={() => handleEditContract(contract)}
-                            className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
-                          >
-                            <Edit size={14} />
-                            تعديل حالة
-                          </button>
-                          <button 
-                            onClick={() => handlePrintContract(contract)}
-                            className="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
-                          >
-                            <Printer size={14} />
-                            طباعة
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteContract(contract.id)}
-                            className="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
-                          >
-                            <Trash2 size={14} />
-                            حذف
-                          </button>
+                      </div>
+                    </div>
+
+                    {/* Card Content */}
+                    <div className="p-4 space-y-4">
+                      {/* Item Info */}
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg">
+                          <label className="block text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1">اسم الصنف</label>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{contract.itemName || '-'}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">رقم: {contract.itemNumber || '-'}</p>
                         </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">الكمية</label>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">{contract.quantity || '-'}</p>
+                          </div>
+                          <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg">
+                            <label className="block text-xs font-semibold text-green-700 dark:text-green-300 mb-1">التكلفة</label>
+                            <p className="font-medium text-green-800 dark:text-green-200">
+                              {contract.totalCost ? `${Number(contract.totalCost).toLocaleString()} ريال` : '-'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="bg-purple-50 dark:bg-purple-900/30 p-3 rounded-lg">
+                          <label className="block text-xs font-semibold text-purple-700 dark:text-purple-300 mb-1">العيادة المستفيدة</label>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{contract.beneficiaryFacility || '-'}</p>
+                        </div>
+
+                        {/* Image Section */}
+                        {contract.imagebase64 && (
+                          <div className="bg-yellow-50 dark:bg-yellow-900/30 p-3 rounded-lg">
+                            <label className="block text-xs font-semibold text-yellow-700 dark:text-yellow-300 mb-2">صورة التعميد</label>
+                            <button
+                              onClick={() => {
+                                const imgWindow = window.open('');
+                                if (imgWindow) {
+                                  imgWindow.document.write(`<html><head><title>صورة التعميد</title></head><body style="margin:0;padding:20px;background:#f5f5f5;"><img src="${contract.imagebase64}" style="max-width:100%; height:auto; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);" /></body></html>`);
+                                  imgWindow.document.close();
+                                }
+                              }}
+                              className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 transition-colors bg-yellow-100 dark:bg-yellow-900/50 px-3 py-2 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-900/70 w-full justify-center"
+                            >
+                              <ImageIcon size={16} />
+                              <span className="text-sm font-medium">عرض الصورة</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex flex-wrap gap-2 pt-2 border-t border-blue-100 dark:border-blue-800">
+                        <button 
+                          onClick={() => handleViewContract(contract)}
+                          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-md"
+                        >
+                          <Eye size={16} />
+                          عرض
+                        </button>
+                        <button 
+                          onClick={() => handleGeneralModifyContract(contract)}
+                          className="flex-1 bg-purple-500 hover:bg-purple-600 text-white text-sm px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-md"
+                        >
+                          <Settings size={16} />
+                          تعديل
+                        </button>
+                        <button 
+                          onClick={() => handleEditContract(contract)}
+                          className="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-sm px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-md"
+                        >
+                          <Edit size={16} />
+                          حالة
+                        </button>
+                        <button 
+                          onClick={() => handlePrintContract(contract)}
+                          className="flex-1 bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-md"
+                        >
+                          <Printer size={16} />
+                          طباعة
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteContract(contract)}
+                          className="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-md"
+                        >
+                          <Trash2 size={16} />
+                          حذف
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Custom Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="text-center">
+            <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-red-800 dark:text-red-200">
+              تأكيد حذف العقد
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-400 mt-2">
+              هل أنت متأكد من حذف العقد رقم <span className="font-bold text-red-600 dark:text-red-400">#{contractToDelete?.id}</span>؟
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 my-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-red-800 dark:text-red-200">
+                <p className="font-semibold mb-1">تحذير مهم:</p>
+                <p>لن تتمكن من التراجع عن هذا الإجراء. سيتم حذف جميع البيانات المرتبطة بهذا العقد نهائياً.</p>
+              </div>
+            </div>
+          </div>
+
+          {contractToDelete && (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">تفاصيل العقد:</h4>
+              <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                <p><span className="font-medium">اسم الصنف:</span> {contractToDelete.itemName || '-'}</p>
+                <p><span className="font-medium">العيادة:</span> {contractToDelete.beneficiaryFacility || '-'}</p>
+                <p><span className="font-medium">التاريخ:</span> {contractToDelete.orderDate || '-'}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setContractToDelete(null);
+              }}
+              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              إلغاء
+            </button>
+            <button
+              onClick={confirmDeleteContract}
+              disabled={loading}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  جاري الحذف...
+                </>
+              ) : (
+                <>
+                  <Trash2 size={16} />
+                  تأكيد الحذف
+                </>
+              )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Contract Details Popup */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
@@ -1265,7 +1390,7 @@ export default function DentalContracts() {
                 <select
                   value={statusUpdateData.newStatus}
                   onChange={(e) => setStatusUpdateData(prev => ({ ...prev, newStatus: e.target.value }))}
-                  className="w-full p-3 border-2 border-input rounded-lg text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  className="w-full p-3 border border-input rounded-md text-right"
                   required
                 >
                   <option value="">اختر الحالة الجديدة</option>
@@ -1276,12 +1401,12 @@ export default function DentalContracts() {
               </div>
 
               <div className="text-right">
-                <label className="block text-sm font-semibold mb-3">تاريخ التحديث</label>
+                <label className="block text-sm font-semibold mb-3">تاريخ تحديث الحالة</label>
                 <input
                   type="date"
                   value={statusUpdateData.statusDate}
                   onChange={(e) => setStatusUpdateData(prev => ({ ...prev, statusDate: e.target.value }))}
-                  className="w-full p-3 border-2 border-input rounded-lg text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  className="w-full p-3 border border-input rounded-md text-right"
                 />
               </div>
 
@@ -1290,26 +1415,25 @@ export default function DentalContracts() {
                 <textarea
                   value={statusUpdateData.statusNote}
                   onChange={(e) => setStatusUpdateData(prev => ({ ...prev, statusNote: e.target.value }))}
-                  className="w-full p-3 border-2 border-input rounded-lg text-right focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                  rows={4}
-                  placeholder="ملاحظة حول تغيير الحالة..."
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  rows={3}
+                  placeholder="أي ملاحظات حول تحديث الحالة"
                 />
               </div>
 
-              <div className="flex justify-start gap-3 pt-4">
-                <button 
-                  onClick={handleStatusUpdate}
-                  disabled={loading || !statusUpdateData.newStatus}
-                  className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50"
-                >
-                  <Save size={18} />
-                  {loading ? 'جاري الحفظ...' : 'حفظ التحديث'}
-                </button>
-                <button 
+              <div className="flex justify-end gap-3">
+                <button
                   onClick={() => setIsEditDialogOpen(false)}
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-all"
+                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   إلغاء
+                </button>
+                <button
+                  onClick={handleStatusUpdate}
+                  disabled={loading || !statusUpdateData.newStatus}
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'جاري التحديث...' : 'تحديث الحالة'}
                 </button>
               </div>
             </div>
@@ -1317,15 +1441,16 @@ export default function DentalContracts() {
         </DialogContent>
       </Dialog>
 
-      {/* General Modify Dialog */}
+      {/* General Modify Contract Dialog */}
       <Dialog open={isGeneralModifyDialogOpen} onOpenChange={setIsGeneralModifyDialogOpen}>
-        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
-          <DialogHeader className="sticky top-0 bg-background pb-4 border-b">
-            <DialogTitle className="text-right text-xl font-bold">تعديل عام للعقد</DialogTitle>
+        <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-right text-lg font-bold">تعديل عام للعقد</DialogTitle>
             <DialogDescription className="text-right">
-              تعديل جميع تفاصيل العقد رقم: {editingContract?.id}
+              تعديل بيانات العقد رقم: {editingContract?.id}
             </DialogDescription>
           </DialogHeader>
+          
           {editingContract && (
             <form onSubmit={handleUpdateContract} className="space-y-6 p-4">
               {/* Basic Info */}
@@ -1334,7 +1459,7 @@ export default function DentalContracts() {
                   <label className="block text-sm font-medium mb-2 text-right">تاريخ الطلب *</label>
                   <input
                     type="date"
-                    value={editingContract.orderDate}
+                    value={editingContract.orderDate || ''}
                     onChange={(e) => setEditingContract(prev => ({ ...prev, orderDate: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
                     required
@@ -1344,7 +1469,7 @@ export default function DentalContracts() {
                   <label className="block text-sm font-medium mb-2 text-right">رقم الصنف *</label>
                   <input
                     type="text"
-                    value={editingContract.itemNumber}
+                    value={editingContract.itemNumber || ''}
                     onChange={(e) => setEditingContract(prev => ({ ...prev, itemNumber: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
                     placeholder="رقم صنف الأسنان"
@@ -1355,7 +1480,7 @@ export default function DentalContracts() {
                   <label className="block text-sm font-medium mb-2 text-right">اسم الصنف *</label>
                   <input
                     type="text"
-                    value={editingContract.itemName}
+                    value={editingContract.itemName || ''}
                     onChange={(e) => setEditingContract(prev => ({ ...prev, itemName: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
                     placeholder="جهاز أو مستلزم أسنان"
@@ -1370,7 +1495,7 @@ export default function DentalContracts() {
                   <label className="block text-sm font-medium mb-2 text-right">الكمية *</label>
                   <input
                     type="number"
-                    value={editingContract.quantity}
+                    value={editingContract.quantity || ''}
                     onChange={(e) => setEditingContract(prev => ({ ...prev, quantity: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
                     placeholder="الكمية"
@@ -1380,7 +1505,7 @@ export default function DentalContracts() {
                 <div>
                   <label className="block text-sm font-medium mb-2 text-right">عيادة الأسنان المستفيدة *</label>
                   <select
-                    value={editingContract.beneficiaryFacility}
+                    value={editingContract.beneficiaryFacility || ''}
                     onChange={(e) => setEditingContract(prev => ({ ...prev, beneficiaryFacility: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
                     required
@@ -1399,7 +1524,7 @@ export default function DentalContracts() {
                   <label className="block text-sm font-medium mb-2 text-right">رقم التعميد المالي</label>
                   <input
                     type="text"
-                    value={editingContract.financialApprovalNumber}
+                    value={editingContract.financialApprovalNumber || ''}
                     onChange={(e) => setEditingContract(prev => ({ ...prev, financialApprovalNumber: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
                     placeholder="رقم التعميد"
@@ -1409,7 +1534,7 @@ export default function DentalContracts() {
                   <label className="block text-sm font-medium mb-2 text-right">تاريخ التعميد</label>
                   <input
                     type="date"
-                    value={editingContract.approvalDate}
+                    value={editingContract.approvalDate || ''}
                     onChange={(e) => setEditingContract(prev => ({ ...prev, approvalDate: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
                   />
@@ -1419,7 +1544,7 @@ export default function DentalContracts() {
                   <input
                     type="number"
                     step="0.01"
-                    value={editingContract.totalCost}
+                    value={editingContract.totalCost || ''}
                     onChange={(e) => setEditingContract(prev => ({ ...prev, totalCost: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
                     placeholder="التكلفة بالريال"
@@ -1433,7 +1558,7 @@ export default function DentalContracts() {
                   <label className="block text-sm font-medium mb-2 text-right">شركة أجهزة الأسنان</label>
                   <input
                     type="text"
-                    value={editingContract.supplierName}
+                    value={editingContract.supplierName || ''}
                     onChange={(e) => setEditingContract(prev => ({ ...prev, supplierName: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
                     placeholder="اسم شركة أجهزة الأسنان"
@@ -1443,7 +1568,7 @@ export default function DentalContracts() {
                   <label className="block text-sm font-medium mb-2 text-right">بيانات التواصل للشركة</label>
                   <input
                     type="text"
-                    value={editingContract.supplierContact}
+                    value={editingContract.supplierContact || ''}
                     onChange={(e) => setEditingContract(prev => ({ ...prev, supplierContact: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
                     placeholder="رقم الهاتف والإيميل"
@@ -1451,7 +1576,7 @@ export default function DentalContracts() {
                 </div>
               </div>
 
-              {/* Image Upload for General Modify */}
+              {/* Image Upload */}
               <div>
                 <label className="block text-sm font-medium mb-2 text-right">صورة التعميد</label>
                 <input
@@ -1467,26 +1592,13 @@ export default function DentalContracts() {
                 )}
               </div>
 
-              {/* Status and Delivery */}
+              {/* Delivery Date */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-right">حالة العقد</label>
-                  <select
-                    value={editingContract.status}
-                    onChange={(e) => setEditingContract(prev => ({ ...prev, status: e.target.value }))}
-                    className="w-full p-3 border border-input rounded-md text-right"
-                    required
-                  >
-                    {['جديد', 'موافق عليه', 'تم التعاقد', 'تم التسليم', 'مرفوض'].map(status => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
-                </div>
                 <div>
                   <label className="block text-sm font-medium mb-2 text-right">تاريخ التسليم المخطط</label>
                   <input
                     type="date"
-                    value={editingContract.deliveryDate}
+                    value={editingContract.deliveryDate || ''}
                     onChange={(e) => setEditingContract(prev => ({ ...prev, deliveryDate: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
                   />
@@ -1497,29 +1609,29 @@ export default function DentalContracts() {
               <div>
                 <label className="block text-sm font-medium mb-2 text-right">ملاحظات</label>
                 <textarea
-                  value={editingContract.notes}
+                  value={editingContract.notes || ''}
                   onChange={(e) => setEditingContract(prev => ({ ...prev, notes: e.target.value }))}
                   className="w-full p-3 border border-input rounded-md text-right"
                   rows={3}
-                  placeholder="ملاحظات حول العقد أو التركيب..."
+                  placeholder="أي ملاحظات إضافية"
                 />
               </div>
 
-              <div className="flex justify-start gap-3 pt-4">
-                <button 
-                  type="submit" 
-                  disabled={loading}
-                  className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50"
-                >
-                  <Save size={18} />
-                  {loading ? 'جاري الحفظ...' : 'حفظ التعديلات'}
-                </button>
-                <button 
+              <div className="flex justify-end gap-3">
+                <button
                   type="button"
                   onClick={() => setIsGeneralModifyDialogOpen(false)}
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-all"
+                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <Save size={16} />
+                  {loading ? 'جاري التحديث...' : 'حفظ التغييرات'}
                 </button>
               </div>
             </form>
