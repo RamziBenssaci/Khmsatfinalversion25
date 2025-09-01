@@ -637,7 +637,7 @@ const handleFullEditClick = async (report) => {
 
           ${report.notes ? `<div class="info-item full-width"><div class="info-label">ملاحظات:</div><div>${report.notes}</div></div>` : ''}
           ${report.resolution ? `<div class="info-item full-width"><div class="info-label">الحل:</div><div>${report.resolution}</div></div>` : ''}
-          ${report.resolved_at ? `<div class="info-item"><div class="info-label">تاريخ الإغلاق/التكهين:</div><div>${new Date(report.resolved_at).toLocaleDateString('ar-SA')}</div></div>` : ''}
+          ${report.resolved_at ? `<div class="info-item"><div class="info-label">تاريخ الإغلاق/التكهين:</div><div>${new Date(report.resolved_at).toLocaleDateString('en-US')}</div></div>` : ''}
           <div class="info-item"><div class="info-label">فترة التوقف:</div><div>${downtimePeriod}</div></div>
         </div>
       </body>
@@ -965,7 +965,7 @@ const handleFullEditClick = async (report) => {
                       <div>
                         <strong>تاريخ الإغلاق/التكهين:</strong>
                         <span className="text-gray-700 dark:text-gray-300 mr-2">
-                         {new Date(viewingReport.resolved_at).toLocaleDateString()}
+{new Date(viewingReport.resolved_at).toLocaleDateString('en-US')}
                         </span>
                       </div>
                     )}
