@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Save, Edit } from 'lucide-react';
+import { Save, Edit, Image as ImageIcon } from 'lucide-react';
 
 interface Asset {
   id: string;
@@ -20,6 +20,7 @@ interface Asset {
   warrantyStatus?: string;
   malfunctionCount?: number;
   outOfWarrantyDays?: number;
+  image?: string; // Add image property
 }
 
 interface Facility {
@@ -31,6 +32,41 @@ interface EditAssetDialogProps {
   asset: Asset;
   onSave: (asset: Asset) => void;
   facilities: Facility[];
+}
+
+// Image Preview Modal (re-using from Assets.tsx for consistency)
+interface ImagePreviewModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  imageUrl: string;
+  title: string;
+}
+
+function ImagePreviewModal({ isOpen, onClose, imageUrl, title }: ImagePreviewModalProps) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div className="bg-background rounded-lg max-w-4xl max-h-[90vh] overflow-auto">
+        <div className="p-4 border-b border-border flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-right">{title}</h3>
+          <button 
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground text-xl"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="p-4">
+          <img 
+            src={imageUrl} 
+            alt={title}
+            className="max-w-full max-h-[70vh] object-contain mx-auto"
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function EditAssetDialog({ asset, onSave, facilities }: EditAssetDialogProps) {
@@ -47,8 +83,45 @@ export default function EditAssetDialog({ asset, onSave, facilities }: EditAsset
     installationDate: asset.installationDate || '',
     warrantyPeriod: asset.warrantyPeriod || 1,
     deviceStatus: asset.deviceStatus || 'يعمل',
-    notes: asset.notes || ''
+    notes: asset.notes || '',
+    image: asset.image || '' // Initialize image from asset
   });
+
+  const [previewImage, setPreviewImage] = useState<string>(asset.image || '');
+  const [imagePreviewModal, setImagePreviewModal] = useState<{ isOpen: boolean; url: string; title: string }>({ isOpen: false, url: '', title: '' });
+
+  useEffect(() => {
+    // Update form data and preview image when asset prop changes (e.g., when opening dialog for a different asset)
+    setFormData({
+      deviceName: asset.deviceName || '',
+      serialNumber: asset.serialNumber || '',
+      facilityName: asset.facilityName || '',
+      supplierName: asset.supplierName || '',
+      supplierContact: asset.supplierContact || '',
+      supplierEmail: asset.supplierEmail || '',
+      deviceModel: asset.deviceModel || '',
+      deliveryDate: asset.deliveryDate || '',
+      installationDate: asset.installationDate || '',
+      warrantyPeriod: asset.warrantyPeriod || 1,
+      deviceStatus: asset.deviceStatus || 'يعمل',
+      notes: asset.notes || '',
+      image: asset.image || ''
+    });
+    setPreviewImage(asset.image || '');
+  }, [asset]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        setFormData(prev => ({ ...prev, image: base64 }));
+        setPreviewImage(base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,9 +275,9 @@ export default function EditAssetDialog({ asset, onSave, facilities }: EditAsset
             </div>
           </div>
 
-          {/* Status and Notes */}
+          {/* Status, Notes and Image Upload */}
           <div className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
-            <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-100 text-right mb-4">الحالة والملاحظات</h3>
+            <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-100 text-right mb-4">الحالة والملاحظات وشهادة التكهين</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-orange-800 dark:text-orange-200 text-right">حالة الجهاز</label>
@@ -226,6 +299,25 @@ export default function EditAssetDialog({ asset, onSave, facilities }: EditAsset
                   rows={4}
                   placeholder="ملاحظات إضافية..."
                 />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="block text-sm font-semibold text-orange-800 dark:text-orange-200 text-right">شهادة التكهين (اختياري)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full p-3 border-2 border-orange-200 dark:border-orange-700 rounded-lg text-right bg-white dark:bg-gray-800 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
+                />
+                {previewImage && (
+                  <div className="mt-2">
+                    <img 
+                      src={previewImage} 
+                      alt="معاينة الشهادة" 
+                      className="w-32 h-32 object-cover rounded-lg border border-orange-300 cursor-pointer"
+                      onClick={() => setImagePreviewModal({ isOpen: true, url: previewImage, title: 'معاينة شهادة التكهين' })}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -250,6 +342,13 @@ export default function EditAssetDialog({ asset, onSave, facilities }: EditAsset
           </div>
         </form>
       </DialogContent>
+      <ImagePreviewModal
+        isOpen={imagePreviewModal.isOpen}
+        onClose={() => setImagePreviewModal({ isOpen: false, url: '', title: '' })}
+        imageUrl={imagePreviewModal.url}
+        title={imagePreviewModal.title}
+      />
     </Dialog>
   );
 }
+
