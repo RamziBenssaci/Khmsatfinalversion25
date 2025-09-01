@@ -579,6 +579,9 @@ export const dentalContractsApi = {
       body: JSON.stringify(contractData),
     }, true);
   },
+   updateContract: (id: string, data: any) => apiCall(`/dental-contracts/${id}`, data, false, 'PUT'),
+  deleteContract: (id: string) => apiCall(`/dental-contracts/${id}`, {}, false, 'DELETE'),
+  
 updateContractStatus: async (contractId: string, statusData: {
   newStatus: string;
   statusNote?: string;
