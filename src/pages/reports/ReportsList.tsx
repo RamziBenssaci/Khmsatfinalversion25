@@ -37,7 +37,7 @@ const calculateDowntimePeriod = (reportDate, reportTime, resolvedAt) => {
 
 export default function ReportsList() {
   const { toast } = useToast();
-  const [loading,setLoading] = useState(true);
+  const [loading,setLoading] = useState(false);
   const [reports,setReports] = useState([]);
   const [searchTerm,setSearchTerm] = useState('');
   const [selectedFacility,setSelectedFacility] = useState('');
@@ -374,6 +374,7 @@ const handleFullEditClick = async (report) => {
               <th>البريد الإلكتروني</th>
               <th>اسم المبلغ</th>
               <th>رقم اتصال المبلغ</th>
+              <th>تاريخ اغلاق البلاغ</th>
               <th>فترة التوقف</th>
             </tr>
           </thead>
@@ -400,6 +401,7 @@ const handleFullEditClick = async (report) => {
                 <td>${report.email || 'غير محدد'}</td>
                 <td>${report.reporter_name || 'غير محدد'}</td>
                 <td>${report.reporter_contact || 'غير محدد'}</td>
+                <td>${report.resolved_at ? new Date(report.resolved_at).toLocaleDateString(\'ar-SA\') : \'غير محدد\'}</td>
                 <td>${calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)}</td>
               </tr>
             `).join('')}
@@ -650,14 +652,7 @@ const handleFullEditClick = async (report) => {
     }
   };
 
-  if(loading){
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="mr-3">جاري تحميل البلاغات...</span>
-      </div>
-    );
-  }
+
 
   return (
     <div className="space-y-6 p-4 max-w-7xl mx-auto">
