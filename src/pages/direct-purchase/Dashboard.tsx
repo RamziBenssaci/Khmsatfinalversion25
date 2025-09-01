@@ -3,18 +3,28 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ShoppingCart, Clock, CheckCircle, XCircle, AlertTriangle, DollarSign, TrendingUp, Loader2 } from 'lucide-react';
+import { ShoppingCart, Clock, CheckCircle, XCircle, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { directPurchaseApi, facilitiesApi, suppliersApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 export default function DirectPurchaseDashboard() {
-  const [dashboardData, setDashboardData] = useState<any>({});
+  const [dashboardData, setDashboardData] = useState<any>({
+    total: 0,
+    new: 0,
+    approved: 0,
+    contracted: 0,
+    delivered: 0,
+    rejected: 0,
+    totalValue: 0,
+    topSuppliers: [],
+    monthlyData: [],
+    statusData: []
+  });
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<any[]>([]);
   const [facilities, setFacilities] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedFacility, setSelectedFacility] = useState('');
   const [selectedItem, setSelectedItem] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState('');
@@ -56,8 +66,6 @@ export default function DirectPurchaseDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true);
-      
       // Fetch all required data in parallel
       const [ordersResponse, facilitiesResponse, suppliersResponse] = await Promise.all([
         directPurchaseApi.getOrders(),
@@ -85,8 +93,6 @@ export default function DirectPurchaseDashboard() {
         description: "فشل في جلب بيانات لوحة التحكم. يرجى المحاولة مرة أخرى.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -117,7 +123,7 @@ export default function DirectPurchaseDashboard() {
       .sort((a: any, b: any) => b.value - a.value)
       .slice(0, 4);
 
-    // Calculate monthly data (last 4 months)
+    // Calculate monthly data (all 12 months)
     const monthlyData = calculateMonthlyData(orders);
     
     // Status distribution data
@@ -139,13 +145,10 @@ export default function DirectPurchaseDashboard() {
 
   const calculateMonthlyData = (orders: any[]) => {
     const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-    const currentMonth = new Date().getMonth();
     const monthlyStats: any[] = [];
 
-    for (let i = 3; i >= 0; i--) {
-      const monthIndex = (currentMonth - i + 12) % 12;
-      const monthName = months[monthIndex];
-      
+    // Initialize all 12 months with 0
+    months.forEach((monthName, monthIndex) => {
       const monthOrders = orders.filter(order => {
         if (!order.orderDate) return false;
         const orderDate = new Date(order.orderDate);
@@ -157,11 +160,10 @@ export default function DirectPurchaseDashboard() {
         orders: monthOrders.length,
         value: monthOrders.reduce((sum, order) => sum + (order.totalCost || 0), 0)
       });
-    }
+    });
 
     return monthlyStats;
   };
-
 
   const clearFilters = () => {
     setSelectedFacility('');
@@ -173,17 +175,6 @@ export default function DirectPurchaseDashboard() {
     const originalStats = calculateDashboardStats(allOrders);
     setDashboardData(originalStats);
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-          <p className="mt-2 text-muted-foreground">جاري تحميل بيانات لوحة التحكم...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-4 md:p-6 space-y-6" dir="rtl">
@@ -335,14 +326,13 @@ export default function DirectPurchaseDashboard() {
             <CardTitle className="text-right">توزيع حالة الطلبات</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
                   data={dashboardData.statusData || []}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -351,9 +341,21 @@ export default function DirectPurchaseDashboard() {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip 
+                  formatter={(value, name) => [`${value}`, name]}
+                  labelFormatter={() => ''}
+                />
               </PieChart>
             </ResponsiveContainer>
+            {/* Legend below chart */}
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mt-3 sm:mt-4">
+              {(dashboardData.statusData || []).map((item: any) => (
+                <div key={item.name} className="flex items-center gap-1 sm:gap-2 bg-accent/50 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
+                  <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                  <span className="text-xs sm:text-sm font-medium">{item.name} ({item.value})</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
@@ -363,15 +365,36 @@ export default function DirectPurchaseDashboard() {
             <CardTitle className="text-right">اتجاه الطلبات الشهرية</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dashboardData.monthlyData || []}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="orders" fill="#3b82f6" name="عدد الطلبات" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  data={dashboardData.monthlyData || []} 
+                  margin={{ 
+                    top: 20, 
+                    right: 10, 
+                    left: 10, 
+                    bottom: 40 
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="month" 
+                    fontSize={10}
+                    tick={{ fontSize: 10 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    fontSize={10} 
+                    tick={{ fontSize: 10 }}
+                    width={30}
+                  />
+                  <Tooltip />
+                  <Bar dataKey="orders" fill="#3b82f6" name="عدد الطلبات" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
