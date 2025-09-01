@@ -965,7 +965,7 @@ const handleFullEditClick = async (report) => {
                       <div>
                         <strong>تاريخ الإغلاق/التكهين:</strong>
                         <span className="text-gray-700 dark:text-gray-300 mr-2">
-                          {new Date(viewingReport.resolved_at).toLocaleDateString('ar-SA')}
+                         {new Date(viewingReport.resolved_at).toLocaleDateString()}
                         </span>
                       </div>
                     )}
