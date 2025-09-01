@@ -771,7 +771,7 @@ const handleFullEditClick = async (report) => {
         {filteredReports.length === 0 && (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
             <FileText size={48} className="mx-auto mb-4 opacity-50" />
-            <p className="text-lg">لا توجد بلاغات تطابق معاييير البحث</p>
+            <p className="text-lg">جارٍ التحميل..</p>
           </div>
         )}
         {filteredReports.map((report, index) => {
