@@ -13,21 +13,20 @@ export default function DentalDashboard() {
     working: 0,
     notWorking: 0,
     underWarranty: 0,
-    outOfWarranty: 0,
-    needsMaintenance: 0
+    outOfWarranty: 0
   });
   const [dashboardData, setDashboardData] = useState({
     total: 0,
     working: 0,
     notWorking: 0,
     underWarranty: 0,
-    outOfWarranty: 0,
-    needsMaintenance: 0
+    outOfWarranty: 0
   });
   const [statusData, setStatusData] = useState([]);
   const [allData, setAllData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [facilitiesDistribution, setFacilitiesDistribution] = useState([]);
+  const [showAllFacilities, setShowAllFacilities] = useState(false);
   
   // Loading states
   const [loading, setLoading] = useState(true);
@@ -38,18 +37,12 @@ export default function DentalDashboard() {
   const [selectedClinic, setSelectedClinic] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState('');
   const [selectedWorkingStatus, setSelectedWorkingStatus] = useState('');
-  const [selectedMaintenanceStatus, setSelectedMaintenanceStatus] = useState('');
   const [selectedWarrantyStatus, setSelectedWarrantyStatus] = useState('');
 
   // Equipment filter options
   const workingStatusOptions = [
     { value: 'working', label: 'الأجهزة التي تعمل' },
     { value: 'not_working', label: 'الأجهزة المعطلة' }
-  ];
-
-  const maintenanceStatusOptions = [
-    { value: 'needs_maintenance', label: 'الأجهزة المحتاجة صيانة' },
-    { value: 'no_maintenance', label: 'الأجهزة التي لا تحتاج صيانة' }
   ];
 
   const warrantyStatusOptions = [
@@ -64,8 +57,7 @@ export default function DentalDashboard() {
       working: data.filter(item => item.deviceStatus === 'يعمل').length,
       notWorking: data.filter(item => item.deviceStatus === 'معطل' || item.deviceStatus === 'لا يعمل').length,
       underWarranty: data.filter(item => item.warrantyActive === 'yes').length,
-      outOfWarranty: data.filter(item => item.warrantyActive === 'no').length,
-      needsMaintenance: data.filter(item => parseInt(item.malfunctionCount) > 0).length
+      outOfWarranty: data.filter(item => item.warrantyActive === 'no').length
     };
     return stats;
   };
@@ -80,9 +72,8 @@ export default function DentalDashboard() {
     });
 
     return Object.entries(facilityCount)
-      .map(([name, count]) => ({ name, count, value: count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10); // Top 10 facilities
+      .map(([name, count]) => ({ name, count, value: count, fill: `hsl(${Math.random() * 360}, 65%, 55%)` }))
+      .sort((a, b) => b.count - a.count);
   };
 
   // Load assets data
@@ -153,17 +144,6 @@ export default function DentalDashboard() {
       });
     }
 
-    if (selectedMaintenanceStatus && selectedMaintenanceStatus !== "all") {
-      filtered = filtered.filter(item => {
-        if (selectedMaintenanceStatus === 'needs_maintenance') {
-          return parseInt(item.malfunctionCount) > 0;
-        } else if (selectedMaintenanceStatus === 'no_maintenance') {
-          return parseInt(item.malfunctionCount) === 0;
-        }
-        return true;
-      });
-    }
-
     if (selectedWarrantyStatus && selectedWarrantyStatus !== "all") {
       filtered = filtered.filter(item => {
         if (selectedWarrantyStatus === 'under_warranty') {
@@ -193,13 +173,12 @@ export default function DentalDashboard() {
     // Update facilities distribution
     setFacilitiesDistribution(calculateFacilitiesDistribution(filtered));
 
-  }, [selectedClinic, selectedSupplier, selectedWorkingStatus, selectedMaintenanceStatus, selectedWarrantyStatus, allData]);
+  }, [selectedClinic, selectedSupplier, selectedWorkingStatus, selectedWarrantyStatus, allData]);
 
   const clearFilters = () => {
     setSelectedClinic('');
     setSelectedSupplier('');
     setSelectedWorkingStatus('');
-    setSelectedMaintenanceStatus('');
     setSelectedWarrantyStatus('');
     // Reset to original dashboard data
     setDashboardData(originalDashboardData);
@@ -251,7 +230,6 @@ export default function DentalDashboard() {
               <div class="stat-card"><h3>الأجهزة المعطلة</h3><p>${dashboardData.notWorking}</p></div>
               <div class="stat-card"><h3>تحت الضمان</h3><p>${dashboardData.underWarranty}</p></div>
               <div class="stat-card"><h3>خارج الضمان</h3><p>${dashboardData.outOfWarranty}</p></div>
-              <div class="stat-card"><h3>تحتاج صيانة</h3><p>${dashboardData.needsMaintenance}</p></div>
             </div>
             <h2>تفاصيل الأجهزة المفلترة</h2>
             <table class="table">
@@ -346,8 +324,7 @@ export default function DentalDashboard() {
   )].sort();
 
   // Check if any filters are active
-  const hasActiveFilters = selectedClinic || selectedSupplier || selectedWorkingStatus || 
-                          selectedMaintenanceStatus || selectedWarrantyStatus;
+  const hasActiveFilters = selectedClinic || selectedSupplier || selectedWorkingStatus || selectedWarrantyStatus;
 
   if (loading) {
     return (
@@ -474,8 +451,6 @@ export default function DentalDashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-          
-
             <Select value={selectedWarrantyStatus} onValueChange={setSelectedWarrantyStatus}>
               <SelectTrigger>
                 <SelectValue placeholder="حالة الضمان" />
@@ -514,7 +489,6 @@ export default function DentalDashboard() {
                     {selectedClinic && <span>المنشأة: {selectedClinic}</span>}
                     {selectedSupplier && <span>المورد: {selectedSupplier}</span>}
                     {selectedWorkingStatus && <span>حالة التشغيل: {workingStatusOptions.find(o => o.value === selectedWorkingStatus)?.label}</span>}
-                    {selectedMaintenanceStatus && <span>حالة الصيانة: {maintenanceStatusOptions.find(o => o.value === selectedMaintenanceStatus)?.label}</span>}
                     {selectedWarrantyStatus && <span>حالة الضمان: {warrantyStatusOptions.find(o => o.value === selectedWarrantyStatus)?.label}</span>}
                   </div>
                 </div>
@@ -546,8 +520,8 @@ export default function DentalDashboard() {
         </CardContent>
       </Card>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* Summary Cards - Removed maintenance card */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Card className="bg-purple-50 border-purple-200">
           <CardContent className="p-4">
             <div className="text-center">
@@ -597,16 +571,6 @@ export default function DentalDashboard() {
             </div>
           </CardContent>
         </Card>
-
-        <Card className="bg-yellow-50 border-yellow-200">
-          <CardContent className="p-4">
-            <div className="text-center">
-              <Wrench className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-yellow-600">تحتاج صيانة</p>
-              <p className="text-xl font-bold text-yellow-800">{dashboardData.needsMaintenance}</p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Charts Section */}
@@ -645,7 +609,7 @@ export default function DentalDashboard() {
           </CardContent>
         </Card>
 
-        {/* Facilities Distribution - Mobile Responsive Chart */}
+        {/* Facilities Distribution - New Style */}
         <Card>
           <CardHeader>
             <CardTitle className="text-right flex items-center gap-2">
@@ -655,94 +619,77 @@ export default function DentalDashboard() {
           </CardHeader>
           <CardContent>
             {facilitiesDistribution.length > 0 ? (
-              <div className="space-y-3">
-                {/* Mobile: Show as list, Desktop: Show as chart */}
-                <div className="block md:hidden">
-                  <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
-                    {facilitiesDistribution.map((facility, index) => (
-                      <div 
-                        key={facility.name} 
-                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg text-sm border"
-                      >
-                        <div className="text-right flex-1 min-w-0">
-                          <span className="font-medium text-sm block truncate" title={facility.name}>
-                            {facility.name}
-                          </span>
-                          <span className="text-xs text-gray-500">#{index + 1}</span>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
+              <div className="space-y-4">
+                {/* Display first 7 facilities or all if showAllFacilities is true */}
+                <div className="space-y-3">
+                  {(showAllFacilities ? facilitiesDistribution : facilitiesDistribution.slice(0, 7)).map((facility, index) => (
+                    <div key={facility.name} className="group">
+                      {/* Facility Name and Count */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-4 h-4 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: facility.fill }}
+                          ></div>
+                          <span className="text-sm font-medium text-foreground">
                             {facility.count}
                           </span>
-                          <Monitor className="w-4 h-4 text-purple-600" />
+                        </div>
+                        <div className="text-right flex-1 min-w-0 mr-3">
+                          <span className="text-sm font-medium text-foreground block truncate">
+                            {facility.name}
+                          </span>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      
+                      {/* Progress Bar */}
+                      <div className="relative">
+                        <div className="w-full bg-accent rounded-full h-3 overflow-hidden">
+                          <div 
+                            className="h-full rounded-full transition-all duration-700 ease-out group-hover:shadow-lg"
+                            style={{ 
+                              backgroundColor: facility.fill,
+                              width: `${dashboardData.total > 0 ? (facility.count / Math.max(...facilitiesDistribution.map(f => f.count))) * 100 : 0}%`,
+                              background: `linear-gradient(90deg, ${facility.fill}, ${facility.fill}dd)`
+                            }}
+                          ></div>
+                        </div>
+                        
+                        {/* Percentage Label */}
+                        <div className="absolute left-2 top-0 h-full flex items-center">
+                          <span className="text-xs font-medium text-white drop-shadow-sm">
+                            {dashboardData.total > 0 ? Math.round((facility.count / dashboardData.total) * 100) : 0}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-                {/* Desktop: Show as horizontal bar chart */}
-                <div className="hidden md:block">
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart
-                      data={facilitiesDistribution}
-                      layout="horizontal"
-                      margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
+                {/* View More/Less Button */}
+                {facilitiesDistribution.length > 7 && (
+                  <div className="flex justify-center mt-4">
+                    <button
+                      onClick={() => setShowAllFacilities(!showAllFacilities)}
+                      className="text-sm px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-2"
                     >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis 
-                        dataKey="name" 
-                        type="category" 
-                        width={120}
-                        tick={{ fontSize: 11, textAnchor: 'end' }}
-                        interval={0}
-                      />
-                      <Tooltip 
-                        formatter={(value) => [value, 'عدد الأجهزة']}
-                        labelStyle={{ direction: 'rtl', textAlign: 'right' }}
-                        contentStyle={{ direction: 'rtl', textAlign: 'right' }}
-                      />
-                      <Bar 
-                        dataKey="count" 
-                        fill="#8b5cf6" 
-                        radius={[0, 4, 4, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                  
-                  {/* Detailed List for Desktop */}
-                  <div className="mt-4 border-t pt-4">
-                    <h4 className="text-sm font-medium text-gray-700 mb-3 text-right">تفصيل المنشآت:</h4>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
-                      {facilitiesDistribution.map((facility, index) => (
-                        <div 
-                          key={facility.name} 
-                          className="flex justify-between items-center p-2 bg-gray-50 rounded-lg text-sm"
-                        >
-                          <div className="text-right flex-1 min-w-0">
-                            <span className="font-medium truncate block" title={facility.name}>
-                              {facility.name}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
-                              {facility.count} جهاز
-                            </span>
-                            <span className="text-xs text-gray-500">#{index + 1}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                      {showAllFacilities ? (
+                        <>
+                          <span>عرض أقل</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>عرض المزيد ({facilitiesDistribution.length - 7} أخرى)</span>
+                        </>
+                      )}
+                    </button>
                   </div>
-                </div>
+                )}
               </div>
             ) : (
-              <div className="flex items-center justify-center h-[300px]">
-                <div className="text-center">
-                  <Building className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">لا توجد بيانات منشآت لعرضها</p>
-                </div>
+              <div className="text-center py-8">
+                <Building className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">لا توجد بيانات منشآت لعرضها</p>
               </div>
             )}
           </CardContent>
@@ -884,19 +831,6 @@ export default function DentalDashboard() {
                     </div>
                   </div>
                 </div>
-
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-yellow-800">تحتاج صيانة</p>
-                      <p className="text-xs text-yellow-600">أجهزة بها أعطال مسجلة</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Wrench className="h-8 w-8 text-yellow-600" />
-                      <span className="text-2xl font-bold text-yellow-800">{dashboardData.needsMaintenance}</span>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* Desktop View */}
@@ -957,7 +891,7 @@ export default function DentalDashboard() {
                         </td>
                         <td className="p-3 text-gray-600 text-xs">مغطاة بالضمان من المورد</td>
                       </tr>
-                      <tr className="border-b border-gray-100">
+                      <tr>
                         <td className="p-3">
                           <div className="flex items-center gap-2 justify-end">
                             <span>خارج الضمان</span>
@@ -971,21 +905,6 @@ export default function DentalDashboard() {
                           </span>
                         </td>
                         <td className="p-3 text-gray-600 text-xs">انتهت فترة الضمان</td>
-                      </tr>
-                      <tr>
-                        <td className="p-3">
-                          <div className="flex items-center gap-2 justify-end">
-                            <span>تحتاج صيانة</span>
-                            <Wrench className="h-4 w-4 text-yellow-600" />
-                          </div>
-                        </td>
-                        <td className="p-3 font-bold text-yellow-800">{dashboardData.needsMaintenance}</td>
-                        <td className="p-3">
-                          <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">
-                            {dashboardData.total > 0 ? ((dashboardData.needsMaintenance / dashboardData.total) * 100).toFixed(1) : 0}%
-                          </span>
-                        </td>
-                        <td className="p-3 text-gray-600 text-xs">أجهزة بها أعطال مسجلة</td>
                       </tr>
                     </tbody>
                   </table>
