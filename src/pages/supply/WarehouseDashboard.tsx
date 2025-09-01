@@ -16,6 +16,7 @@ export default function WarehouseDashboard() {
   const [topSuppliers, setTopSuppliers] = useState<any[]>([]);
   const [facilities, setFacilities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAllFacilities, setShowAllFacilities] = useState(false);
   const { toast } = useToast();
 
   // Get current dashboard data based on selected facility
@@ -73,6 +74,10 @@ export default function WarehouseDashboard() {
 
   // Calculate total items for percentage calculation
   const totalFacilityItems = facilitiesChartData.reduce((sum, facility) => sum + facility.items, 0);
+
+  // Determine how many facilities to show
+  const facilitiesToShow = showAllFacilities ? facilitiesChartData : facilitiesChartData.slice(0, 7);
+  const hasMoreFacilities = facilitiesChartData.length > 7;
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -282,7 +287,7 @@ export default function WarehouseDashboard() {
           <CardContent className="p-3 sm:p-4">
             {facilitiesChartData.length > 0 ? (
               <div className="space-y-3">
-                {facilitiesChartData.map((facility, index) => (
+                {facilitiesToShow.map((facility, index) => (
                   <div key={facility.name} className="group">
                     {/* Facility Name and Count */}
                     <div className="flex items-center justify-between mb-2">
@@ -324,6 +329,32 @@ export default function WarehouseDashboard() {
                     </div>
                   </div>
                 ))}
+                
+                {/* Show More/Less Button */}
+                {hasMoreFacilities && (
+                  <div className="flex justify-center mt-4">
+                    <button
+                      onClick={() => setShowAllFacilities(!showAllFacilities)}
+                      className="px-3 sm:px-4 py-2 text-xs sm:text-sm bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors duration-200 flex items-center gap-2"
+                    >
+                      {showAllFacilities ? (
+                        <>
+                          <span>عرض أقل</span>
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </>
+                      ) : (
+                        <>
+                          <span>عرض المزيد ({facilitiesChartData.length - 7})</span>
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
