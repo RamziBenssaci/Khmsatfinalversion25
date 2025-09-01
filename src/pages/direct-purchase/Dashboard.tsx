@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ShoppingCart, Clock, CheckCircle, XCircle, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { directPurchaseApi, facilitiesApi, suppliersApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -365,9 +365,9 @@ export default function DirectPurchaseDashboard() {
             <CardTitle className="text-right">اتجاه الطلبات الشهرية</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[250px] w-full">
+            <div className="h-[300px] sm:h-[350px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
+                <LineChart 
                   data={dashboardData.monthlyData || []} 
                   margin={{ 
                     top: 20, 
@@ -376,7 +376,6 @@ export default function DirectPurchaseDashboard() {
                     bottom: 40 
                   }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="month" 
                     fontSize={10}
@@ -391,8 +390,16 @@ export default function DirectPurchaseDashboard() {
                     width={30}
                   />
                   <Tooltip />
-                  <Bar dataKey="orders" fill="#3b82f6" name="عدد الطلبات" />
-                </BarChart>
+                  <Line 
+                    type="monotone" 
+                    dataKey="orders" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={3}
+                    dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, stroke: "hsl(var(--primary))", strokeWidth: 2 }}
+                    name="عدد الطلبات"
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
