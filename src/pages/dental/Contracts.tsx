@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Save, Plus, Eye, Edit, Trash2, Printer } from 'lucide-react';
-import { mockFacilities } from '@/data/mockData';
-import { dentalContractsApi } from '@/lib/api';
+import { useState, useEffect, useCallback } from 'react';
+import { Save, Plus, Eye, Edit, Trash2, Printer, Settings, Image as ImageIcon } from 'lucide-react';
+import { dentalContractsApi, dashboardApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -11,6 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import Swal from 'sweetalert2';
 
 export default function DentalContracts() {
   const [formData, setFormData] = useState({
@@ -18,16 +18,16 @@ export default function DentalContracts() {
     itemNumber: '',
     itemName: '',
     quantity: '',
-    beneficiaryFacility: '', // Now text input instead of select
+    beneficiaryFacility: '',
     financialApprovalNumber: '',
     approvalDate: '',
     totalCost: '',
     supplierName: '',
     supplierContact: '',
-    status: 'جديد', // Will be checkbox, always 'جديد'
+    status: 'جديد',
     deliveryDate: '',
-    // Removed actualDeliveryDate field
-    notes: ''
+    notes: '',
+    imagebase64: null as string | null,
   });
 
   const [contracts, setContracts] = useState<any[]>([]);
@@ -35,24 +35,20 @@ export default function DentalContracts() {
   const [selectedContract, setSelectedContract] = useState<any>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isGeneralModifyDialogOpen, setIsGeneralModifyDialogOpen] = useState(false);
   const [editingContract, setEditingContract] = useState<any>(null);
   const [statusUpdateData, setStatusUpdateData] = useState({
     newStatus: '',
     statusNote: '',
     statusDate: ''
   });
+  const [facilities, setFacilities] = useState<any[]>([]);
   const { toast } = useToast();
 
-  // Fetch contracts on component mount
-  useEffect(() => {
-    fetchContracts();
-  }, []);
-
-  const fetchContracts = async () => {
+  const fetchContracts = useCallback(async () => {
     try {
       setLoading(true);
       const response = await dentalContractsApi.getContracts();
-      
       if (response.success && response.data) {
         setContracts(response.data);
       } else {
@@ -75,40 +71,84 @@ export default function DentalContracts() {
     } finally {
       setLoading(false);
     }
+  }, [toast]);
+
+  const fetchFacilities = useCallback(async () => {
+    try {
+      const response = await dashboardApi.getFacilities();
+      if (response.success && response.data) {
+        setFacilities(response.data);
+      } else {
+        console.error('Failed to fetch facilities:', response);
+        toast({
+          title: "تحذير",
+          description: "فشل في تحميل قائمة العيادات.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching facilities:', error);
+      toast({
+        title: "تحذير",
+        description: "فشل في تحميل قائمة العيادات.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchContracts();
+    fetchFacilities();
+  }, [fetchContracts, fetchFacilities]);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, imagebase64: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGeneralModifyImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditingContract(prev => ({
+          ...prev,
+          imagebase64: reader.result as string,
+          image_url: reader.result as string, // Update image_url for preview
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     try {
       setLoading(true);
       const response = await dentalContractsApi.createContract(formData);
-      
       if (response.success) {
         toast({
           title: "نجح الإنشاء",
           description: "تم إنشاء عقد الأسنان بنجاح",
         });
-        
-        // Reset form
         setFormData({
-          orderDate: '',
-          itemNumber: '',
-          itemName: '',
-          quantity: '',
-          beneficiaryFacility: '',
-          financialApprovalNumber: '',
-          approvalDate: '',
-          totalCost: '',
-          supplierName: '',
-          supplierContact: '',
-          status: 'جديد',
-          deliveryDate: '',
-          notes: ''
+          orderDate: '', itemNumber: '', itemName: '', quantity: '', beneficiaryFacility: '',
+          financialApprovalNumber: '', approvalDate: '', totalCost: '', supplierName: '',
+          supplierContact: '', status: 'جديد', deliveryDate: '', notes: '', imagebase64: null,
         });
-        
-        // Refresh contracts list
         fetchContracts();
+      } else {
+        toast({
+          title: "خطأ في الإنشاء",
+          description: response.message || "فشل في إنشاء العقد",
+          variant: "destructive",
+        });
       }
     } catch (error: any) {
       console.error('Error creating contract:', error);
@@ -135,6 +175,88 @@ export default function DentalContracts() {
       statusDate: ''
     });
     setIsEditDialogOpen(true);
+  };
+
+  const handleGeneralModifyContract = (contract: any) => {
+    setEditingContract(contract);
+    setIsGeneralModifyDialogOpen(true);
+  };
+
+  const handleUpdateContract = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingContract) return;
+
+    try {
+      setLoading(true);
+      const response = await dentalContractsApi.updateContract(editingContract.id, editingContract);
+      if (response.success) {
+        toast({
+          title: "تم التحديث",
+          description: "تم تحديث العقد بنجاح",
+        });
+        fetchContracts();
+        setIsGeneralModifyDialogOpen(false);
+        setEditingContract(null);
+      } else {
+        toast({
+          title: "خطأ في التحديث",
+          description: response.message || "فشل في تحديث العقد",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error updating contract:', error);
+      toast({
+        title: "خطأ في التحديث",
+        description: error.message || "فشل في تحديث العقد",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteContract = async (id: string) => {
+    Swal.fire({
+      title: 'هل أنت متأكد؟',
+      text: "لن تتمكن من التراجع عن هذا!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'نعم، احذفه!',
+      cancelButtonText: 'إلغاء'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          setLoading(true);
+          const response = await dentalContractsApi.deleteContract(id);
+          if (response.success) {
+            Swal.fire(
+              'تم الحذف!',
+              'تم حذف العقد بنجاح.',
+              'success'
+            );
+            fetchContracts();
+          } else {
+            Swal.fire(
+              'خطأ!',
+              response.message || 'فشل في حذف العقد.',
+              'error'
+            );
+          }
+        } catch (error: any) {
+          console.error('Error deleting contract:', error);
+          Swal.fire(
+            'خطأ!',
+            error.message || 'فشل في حذف العقد.',
+            'error'
+          );
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   const handlePrintContract = (contract: any) => {
@@ -365,6 +487,14 @@ export default function DentalContracts() {
                   <label>تاريخ الطلب</label>
                   <span>${contract.orderDate || '-'}</span>
                 </div>
+                <div className="info-item">
+                  <label>صورة التعميد</label>
+                  {contract.image_url ? (
+                    <img src={contract.image_url} alt="Approval" style={{ maxWidth: '100px', maxHeight: '100px' }} />
+                  ) : (
+                    <span>لا توجد صورة</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -549,8 +679,6 @@ export default function DentalContracts() {
     if (printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
-      
-      // Wait for content to load then print
       printWindow.onload = () => {
         setTimeout(() => {
           printWindow.print();
@@ -562,24 +690,17 @@ export default function DentalContracts() {
 
   const getStatusClass = (status: string) => {
     switch (status) {
-      case 'جديد':
-        return 'status-new';
-      case 'موافق عليه':
-        return 'status-approved';
-      case 'تم التعاقد':
-        return 'status-contracted';
-      case 'تم التسليم':
-        return 'status-delivered';
-      case 'مرفوض':
-        return 'status-rejected';
-      default:
-        return 'status-new';
+      case 'جديد': return 'status-new';
+      case 'موافق عليه': return 'status-approved';
+      case 'تم التعاقد': return 'status-contracted';
+      case 'تم التسليم': return 'status-delivered';
+      case 'مرفوض': return 'status-rejected';
+      default: return 'status-new';
     }
   };
 
   const handleStatusUpdate = async () => {
     if (!editingContract || !statusUpdateData.newStatus) return;
-    
     try {
       setLoading(true);
       const response = await dentalContractsApi.updateContractStatus(
@@ -590,18 +711,21 @@ export default function DentalContracts() {
           statusDate: statusUpdateData.statusDate
         }
       );
-      
       if (response.success) {
         toast({
           title: "تم التحديث",
           description: "تم تحديث حالة العقد بنجاح",
         });
-        
-        // Refresh contracts list
         fetchContracts();
         setIsEditDialogOpen(false);
         setEditingContract(null);
         setStatusUpdateData({ newStatus: '', statusNote: '', statusDate: '' });
+      } else {
+        toast({
+          title: "خطأ في التحديث",
+          description: response.message || "فشل في تحديث حالة العقد",
+          variant: "destructive",
+        });
       }
     } catch (error: any) {
       console.error('Error updating contract status:', error);
@@ -618,14 +742,22 @@ export default function DentalContracts() {
   const getStatusOptions = (currentStatus: string) => {
     const statusFlow = ['جديد', 'موافق عليه', 'تم التعاقد', 'تم التسليم'];
     const currentIndex = statusFlow.indexOf(currentStatus);
-    
-    // Can move forward in the flow or go to 'مرفوض' from any status
     const availableOptions = [
       ...statusFlow.slice(currentIndex),
       'مرفوض'
     ];
-    
-    return [...new Set(availableOptions)]; // Remove duplicates
+    return [...new Set(availableOptions)];
+  };
+
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case 'جديد': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'موافق عليه': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'تم التعاقد': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'تم التسليم': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200';
+      case 'مرفوض': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
   };
 
   return (
@@ -677,7 +809,7 @@ export default function DentalContracts() {
               </div>
             </div>
 
-            {/* Quantity and Facility - Updated beneficiaryFacility to text input */}
+            {/* Quantity and Facility */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2 text-right">الكمية *</label>
@@ -692,14 +824,17 @@ export default function DentalContracts() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2 text-right">عيادة الأسنان المستفيدة *</label>
-                <input
-                  type="text"
+                <select
                   value={formData.beneficiaryFacility}
                   onChange={(e) => setFormData(prev => ({ ...prev, beneficiaryFacility: e.target.value }))}
                   className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="اسم عيادة الأسنان المستفيدة"
                   required
-                />
+                >
+                  <option value="">اختر العيادة</option>
+                  {facilities.map(facility => (
+                    <option key={facility.id} value={facility.name}>{facility.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -761,7 +896,23 @@ export default function DentalContracts() {
               </div>
             </div>
 
-            {/* Status and Delivery - Updated status to checkbox */}
+            {/* Image Upload */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-right">صورة التعميد</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="w-full p-3 border border-input rounded-md text-right"
+              />
+              {formData.imagebase64 && (
+                <div className="mt-2 text-right">
+                  <img src={formData.imagebase64} alt="Image Preview" className="max-w-[150px] max-h-[150px] object-contain border rounded-md" />
+                </div>
+              )}
+            </div>
+
+            {/* Status and Delivery */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2 text-right">حالة العقد</label>
@@ -826,6 +977,11 @@ export default function DentalContracts() {
                   <th className="p-3">رقم العقد</th>
                   <th className="p-3 mobile-hidden">نوع الجهاز</th>
                   <th className="p-3 mobile-hidden">العيادة</th>
+                  <th className="p-3 mobile-hidden">الكمية</th>
+                  <th className="p-3 mobile-hidden">رقم التعميد</th>
+                  <th className="p-3 mobile-hidden">تاريخ التعميد</th>
+                  <th className="p-3 mobile-hidden">اسم الشركة الموردة</th>
+                  <th className="p-3">صورة التعميد</th>
                   <th className="p-3">الحالة</th>
                   <th className="p-3 mobile-hidden">التكلفة</th>
                   <th className="p-3">الإجراءات</th>
@@ -834,13 +990,13 @@ export default function DentalContracts() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={11} className="p-8 text-center text-muted-foreground">
                       جاري تحميل العقود...
                     </td>
                   </tr>
                 ) : contracts.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={11} className="p-8 text-center text-muted-foreground">
                       لا توجد عقود أسنان مسجلة
                     </td>
                   </tr>
@@ -850,6 +1006,35 @@ export default function DentalContracts() {
                       <td className="p-3 font-medium">{contract.id}</td>
                       <td className="p-3 mobile-hidden">{contract.itemName}</td>
                       <td className="p-3 mobile-hidden">{contract.beneficiaryFacility}</td>
+                      <td className="p-3 mobile-hidden">{contract.quantity}</td>
+                      <td className="p-3 mobile-hidden">{contract.financialApprovalNumber || '-'}</td>
+                      <td className="p-3 mobile-hidden">{contract.approvalDate || '-'}</td>
+                      <td className="p-3 mobile-hidden">{contract.supplierName || '-'}</td>
+                      <td className="p-3">
+                        {contract.image_url ? (
+                          <button
+                            onClick={() => Swal.fire({
+                              title: 'صورة التعميد',
+                              imageUrl: contract.image_url,
+                              imageAlt: 'صورة التعميد',
+                              width: 600,
+                              padding: '3em',
+                              backdrop: `
+                                rgba(0,0,123,0.4)
+                                url("/images/nyan-cat.gif")
+                                left top
+                                no-repeat
+                              `
+                            })}
+                            className="text-blue-500 hover:text-blue-700"
+                          >
+                            <ImageIcon size={20} />
+                            عرض الصورة
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground">لا توجد صورة</span>
+                        )}
+                      </td>
                       <td className="p-3">
                         <span className={`px-2 py-1 rounded-full text-xs ${getStatusStyle(contract.status)}`}>
                           {contract.status}
@@ -868,11 +1053,18 @@ export default function DentalContracts() {
                             عرض
                           </button>
                           <button 
+                            onClick={() => handleGeneralModifyContract(contract)}
+                            className="bg-purple-500 hover:bg-purple-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                          >
+                            <Settings size={14} />
+                            تعديل عام
+                          </button>
+                          <button 
                             onClick={() => handleEditContract(contract)}
                             className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
                           >
                             <Edit size={14} />
-                            تعديل
+                            تعديل حالة
                           </button>
                           <button 
                             onClick={() => handlePrintContract(contract)}
@@ -880,6 +1072,13 @@ export default function DentalContracts() {
                           >
                             <Printer size={14} />
                             طباعة
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteContract(contract.id)}
+                            className="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                            حذف
                           </button>
                         </div>
                       </td>
@@ -901,102 +1100,71 @@ export default function DentalContracts() {
               عرض تفاصيل العقد رقم: {selectedContract?.id}
             </DialogDescription>
           </DialogHeader>
-          
           {selectedContract && (
-            <div className="space-y-8 p-2">
-              {/* Basic Information Section */}
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-6 rounded-lg border">
-                <h3 className="text-lg font-bold mb-4 text-right text-blue-800 dark:text-blue-200">المعلومات الأساسية</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">رقم العقد</label>
-                    <p className="font-semibold text-lg bg-white dark:bg-gray-800 p-2 rounded">{selectedContract.id || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">رقم الصنف</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedContract.itemNumber || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">اسم الصنف</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedContract.itemName || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">الكمية</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedContract.quantity || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">العيادة المستفيدة</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedContract.beneficiaryFacility || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">تاريخ الطلب</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedContract.orderDate || '-'}</p>
-                  </div>
+            <div className="p-4 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">رقم العقد:</p>
+                  <p className="text-lg font-semibold">{selectedContract.id}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">تاريخ الطلب:</p>
+                  <p className="text-lg font-semibold">{selectedContract.orderDate}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">رقم الصنف:</p>
+                  <p className="text-lg font-semibold">{selectedContract.itemNumber}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">اسم الصنف:</p>
+                  <p className="text-lg font-semibold">{selectedContract.itemName}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">الكمية:</p>
+                  <p className="text-lg font-semibold">{selectedContract.quantity}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">العيادة المستفيدة:</p>
+                  <p className="text-lg font-semibold">{selectedContract.beneficiaryFacility}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">رقم التعميد المالي:</p>
+                  <p className="text-lg font-semibold">{selectedContract.financialApprovalNumber || '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">تاريخ التعميد:</p>
+                  <p className="text-lg font-semibold">{selectedContract.approvalDate || '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">التكلفة الإجمالية:</p>
+                  <p className="text-lg font-semibold">{selectedContract.totalCost ? `${Number(selectedContract.totalCost).toLocaleString()} ريال` : '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">شركة الأجهزة:</p>
+                  <p className="text-lg font-semibold">{selectedContract.supplierName || '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">بيانات التواصل للشركة:</p>
+                  <p className="text-lg font-semibold">{selectedContract.supplierContact || '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">تاريخ التسليم المخطط:</p>
+                  <p className="text-lg font-semibold">{selectedContract.deliveryDate || '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg col-span-full">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">صورة التعميد:</p>
+                  {selectedContract.image_url ? (
+                    <img src={selectedContract.image_url} alt="Approval" className="mt-2 max-w-full h-auto rounded-md" />
+                  ) : (
+                    <p className="text-lg font-semibold">لا توجد صورة</p>
+                  )}
                 </div>
               </div>
 
-              {/* Financial Information Section */}
-              <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-6 rounded-lg border">
-                <h3 className="text-lg font-bold mb-4 text-right text-green-800 dark:text-green-200">المعلومات المالية</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-green-600 dark:text-green-300 mb-2">رقم التعميد المالي</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedContract.financialApprovalNumber || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-green-600 dark:text-green-300 mb-2">تاريخ التعميد</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedContract.approvalDate || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-green-600 dark:text-green-300 mb-2">التكلفة الإجمالية</label>
-                    <p className="font-semibold text-lg bg-white dark:bg-gray-800 p-2 rounded">
-                      {selectedContract.totalCost ? `${Number(selectedContract.totalCost).toLocaleString()} ريال` : '-'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Supplier Information Section */}
-              <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-6 rounded-lg border">
-                <h3 className="text-lg font-bold mb-4 text-right text-purple-800 dark:text-purple-200">معلومات المورد</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-purple-600 dark:text-purple-300 mb-2">شركة الأجهزة</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedContract.supplierName || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-purple-600 dark:text-purple-300 mb-2">بيانات التواصل</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedContract.supplierContact || '-'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status and Delivery Section */}
-              <div className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 p-6 rounded-lg border">
-                <h3 className="text-lg font-bold mb-4 text-right text-orange-800 dark:text-orange-200">الحالة والتسليم</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-orange-600 dark:text-orange-300 mb-2">حالة العقد</label>
-                    <div className="bg-white dark:bg-gray-800 p-2 rounded">
-                      <span className={`inline-block px-4 py-2 rounded-full text-sm font-semibold ${getStatusStyle(selectedContract.status)}`}>
-                        {selectedContract.status || '-'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <label className="block text-sm font-medium text-orange-600 dark:text-orange-300 mb-2">تاريخ التسليم المخطط</label>
-                    <p className="font-medium bg-white dark:bg-gray-800 p-2 rounded">{selectedContract.deliveryDate || '-'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes Section */}
               {selectedContract.notes && (
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/20 dark:to-gray-700/20 p-6 rounded-lg border">
-                  <h3 className="text-lg font-bold mb-4 text-right text-gray-800 dark:text-gray-200">الملاحظات</h3>
-                  <div className="text-right">
-                    <p className="font-medium bg-white dark:bg-gray-800 p-4 rounded-lg border">{selectedContract.notes}</p>
-                  </div>
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-700">
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">ملاحظات:</p>
+                  <p className="text-base text-yellow-900 dark:text-yellow-100">{selectedContract.notes}</p>
                 </div>
               )}
 
@@ -1167,24 +1335,216 @@ export default function DentalContracts() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* General Modify Dialog */}
+      <Dialog open={isGeneralModifyDialogOpen} onOpenChange={setIsGeneralModifyDialogOpen}>
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
+          <DialogHeader className="sticky top-0 bg-background pb-4 border-b">
+            <DialogTitle className="text-right text-xl font-bold">تعديل عام للعقد</DialogTitle>
+            <DialogDescription className="text-right">
+              تعديل جميع تفاصيل العقد رقم: {editingContract?.id}
+            </DialogDescription>
+          </DialogHeader>
+          {editingContract && (
+            <form onSubmit={handleUpdateContract} className="space-y-6 p-4">
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">تاريخ الطلب *</label>
+                  <input
+                    type="date"
+                    value={editingContract.orderDate}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, orderDate: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">رقم الصنف *</label>
+                  <input
+                    type="text"
+                    value={editingContract.itemNumber}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, itemNumber: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="رقم صنف الأسنان"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">اسم الصنف *</label>
+                  <input
+                    type="text"
+                    value={editingContract.itemName}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, itemName: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="جهاز أو مستلزم أسنان"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Quantity and Facility */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">الكمية *</label>
+                  <input
+                    type="number"
+                    value={editingContract.quantity}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, quantity: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="الكمية"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">عيادة الأسنان المستفيدة *</label>
+                  <select
+                    value={editingContract.beneficiaryFacility}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, beneficiaryFacility: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    required
+                  >
+                    <option value="">اختر العيادة</option>
+                    {facilities.map(facility => (
+                      <option key={facility.id} value={facility.name}>{facility.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Financial Approval */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">رقم التعميد المالي</label>
+                  <input
+                    type="text"
+                    value={editingContract.financialApprovalNumber}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, financialApprovalNumber: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="رقم التعميد"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">تاريخ التعميد</label>
+                  <input
+                    type="date"
+                    value={editingContract.approvalDate}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, approvalDate: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">التكلفة الإجمالية</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingContract.totalCost}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, totalCost: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="التكلفة بالريال"
+                  />
+                </div>
+              </div>
+
+              {/* Supplier Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">شركة أجهزة الأسنان</label>
+                  <input
+                    type="text"
+                    value={editingContract.supplierName}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, supplierName: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="اسم شركة أجهزة الأسنان"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">بيانات التواصل للشركة</label>
+                  <input
+                    type="text"
+                    value={editingContract.supplierContact}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, supplierContact: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="رقم الهاتف والإيميل"
+                  />
+                </div>
+              </div>
+
+              {/* Image Upload for General Modify */}
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">صورة التعميد</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleGeneralModifyImageUpload}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                />
+                {editingContract.image_url && (
+                  <div className="mt-2 text-right">
+                    <img src={editingContract.image_url} alt="Image Preview" className="max-w-[150px] max-h-[150px] object-contain border rounded-md" />
+                  </div>
+                )}
+              </div>
+
+              {/* Status and Delivery */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">حالة العقد</label>
+                  <select
+                    value={editingContract.status}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, status: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    required
+                  >
+                    {['جديد', 'موافق عليه', 'تم التعاقد', 'تم التسليم', 'مرفوض'].map(status => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">تاريخ التسليم المخطط</label>
+                  <input
+                    type="date"
+                    value={editingContract.deliveryDate}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, deliveryDate: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">ملاحظات</label>
+                <textarea
+                  value={editingContract.notes}
+                  onChange={(e) => setEditingContract(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  rows={3}
+                  placeholder="ملاحظات حول العقد أو التركيب..."
+                />
+              </div>
+
+              <div className="flex justify-start gap-3 pt-4">
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50"
+                >
+                  <Save size={18} />
+                  {loading ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setIsGeneralModifyDialogOpen(false)}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-all"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
-}
-
-// Helper function to get status styling
-function getStatusStyle(status: string) {
-  switch (status) {
-    case 'جديد':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-    case 'موافق عليه':
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-    case 'تم التعاقد':
-      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-    case 'تم التسليم':
-      return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200';
-    case 'مرفوض':
-      return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-    default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-  }
 }
