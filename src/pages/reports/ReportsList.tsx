@@ -36,6 +36,8 @@ const calculateDowntimePeriod = (reportDate, reportTime, resolvedAt) => {
 };
 
 const exportToPDF = (data, filename) => {
+  console.log('PDF Export Data:', data[0]); // Debug log
+  
   const printContent = `
     <!DOCTYPE html>
     <html dir="rtl">
@@ -109,20 +111,20 @@ const exportToPDF = (data, filename) => {
         <tbody>
           ${data.map(report => `
             <tr>
-              <td>${report.id}</td>
-              <td>${report.facilityName}</td>
-              <td>${report.category}</td>
-              <td>${report.deviceName}</td>
-<td>${report.serial_number || 'غير محدد'}</td>
-<td>${report.problem_description || 'غير محدد'}</td>
+              <td>${report.id || ''}</td>
+              <td>${report.facilityName || 'غير محدد'}</td>
+              <td>${report.category || 'غير محدد'}</td>
+              <td>${report.deviceName || 'غير محدد'}</td>
+              <td>${report.serial_number || 'غير محدد'}</td>
+              <td>${report.problem_description || 'غير محدد'}</td>
               <td>
                 <span class="status ${
                   report.status === 'مفتوح' ? 'status-open' :
                   report.status === 'مغلق' ? 'status-closed' : 'status-paused'
-                }">${report.status}</span>
+                }">${report.status || 'غير محدد'}</span>
               </td>
-              <td>${report.reportDate}</td>
-              <td>${report.downtimeDays}</td>
+              <td>${report.reportDate || 'غير محدد'}</td>
+              <td>${report.downtimeDays || 'غير محدد'}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -680,33 +682,34 @@ const handleFullEditClick = async (report) => {
 
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-6">
             <button
-              onClick={() => {
-                try {
-                    console.log('Sample report data:', filteredReports[0]); // Add this line
-                  const exportData = filteredReports.map(report => ({
-                    id: report.id,
-                    facilityName: report.facility?.name || '',
-                    category: report.category,
-                    deviceName: report.device_name,
-                    serial_number: report.serial_number || 'غير محدد',  // ← Change this line
-                    problem_description: report.problem_description || 'غير محدد',
-                    status: report.status,
-                    reportDate: `${report.report_date} ${report.report_time}`,
-                    downtimeDays: calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)
-                  }));
-                  exportToExcel(exportData, 'قائمة_البلاغات');
-                  toast({
-                    title: "تم تصدير البيانات بنجاح",
-                    description: "تم تصدير البلاغات إلى ملف Excel",
-                  });
-                } catch(e){
-                  toast({
-                    title: "خطأ في التصدير",
-                    description: "فشل في تصدير البيانات",
-                    variant: "destructive"
-                  });
-                }
-              }}
+          onClick={() => {
+  try {
+    console.log('Sample report data:', filteredReports[0]); // Debug log
+    const exportData = filteredReports.map(report => ({
+      id: report.id,
+      facilityName: report.facility?.name || '',
+      category: report.category,
+      deviceName: report.device_name,
+      serial_number: report.serial_number || 'غير محدد',  // Make sure this matches exactly
+      problem_description: report.problem_description || 'غير محدد',
+      status: report.status,
+      reportDate: `${report.report_date} ${report.report_time}`,
+      downtimeDays: calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)
+    }));
+    exportToPDF(exportData, 'قائمة_البلاغات');
+    toast({
+      title: "تم تصدير البيانات بنجاح",
+      description: "تم تصدير البلاغات إلى ملف PDF",
+    });
+  } catch(e){
+    console.error('PDF Export Error:', e);
+    toast({
+      title: "خطأ في التصدير",
+      description: "فشل في تصدير البيانات",
+      variant: "destructive"
+    });
+  }
+}}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2 text-sm transition-colors"
             >
               <Download size={16} />
