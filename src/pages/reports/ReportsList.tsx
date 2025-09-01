@@ -101,7 +101,6 @@ const exportToPDF = (data, filename) => {
             <th>المنشأة</th>
             <th>التصنيف</th>
             <th>اسم الجهاز</th>
-            <th>الرقم التسلسلي</th>
             <th>وصف المشكلة</th>
             <th>الحالة</th>
             <th>تاريخ البلاغ</th>
@@ -115,7 +114,6 @@ const exportToPDF = (data, filename) => {
               <td>${report.facilityName || 'غير محدد'}</td>
               <td>${report.category || 'غير محدد'}</td>
               <td>${report.deviceName || 'غير محدد'}</td>
-              <td>${report.serial_number || 'غير محدد'}</td>
               <td>${report.problem_description || 'غير محدد'}</td>
               <td>
                 <span class="status ${
