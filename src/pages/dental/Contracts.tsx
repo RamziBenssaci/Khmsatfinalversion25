@@ -10,7 +10,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import Swal from 'sweetalert2';
 
 export default function DentalContracts() {
   const [formData, setFormData] = useState({
@@ -217,46 +216,34 @@ export default function DentalContracts() {
   };
 
   const handleDeleteContract = async (id: string) => {
-    Swal.fire({
-      title: 'هل أنت متأكد؟',
-      text: "لن تتمكن من التراجع عن هذا!",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'نعم، احذفه!',
-      cancelButtonText: 'إلغاء'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          setLoading(true);
-          const response = await dentalContractsApi.deleteContract(id);
-          if (response.success) {
-            Swal.fire(
-              'تم الحذف!',
-              'تم حذف العقد بنجاح.',
-              'success'
-            );
-            fetchContracts();
-          } else {
-            Swal.fire(
-              'خطأ!',
-              response.message || 'فشل في حذف العقد.',
-              'error'
-            );
-          }
-        } catch (error: any) {
-          console.error('Error deleting contract:', error);
-          Swal.fire(
-            'خطأ!',
-            error.message || 'فشل في حذف العقد.',
-            'error'
-          );
-        } finally {
-          setLoading(false);
+    if (window.confirm('هل أنت متأكد أنك تريد حذف هذا العقد؟ لن تتمكن من التراجع عن هذا الإجراء.')) {
+      try {
+        setLoading(true);
+        const response = await dentalContractsApi.deleteContract(id);
+        if (response.success) {
+          toast({
+            title: "تم الحذف!",
+            description: "تم حذف العقد بنجاح.",
+          });
+          fetchContracts();
+        } else {
+          toast({
+            title: "خطأ!",
+            description: response.message || 'فشل في حذف العقد.',
+            variant: "destructive",
+          });
         }
+      } catch (error: any) {
+        console.error('Error deleting contract:', error);
+        toast({
+          title: "خطأ!",
+          description: error.message || 'فشل في حذف العقد.',
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
       }
-    });
+    }
   };
 
   const handlePrintContract = (contract: any) => {
@@ -1013,19 +1000,13 @@ export default function DentalContracts() {
                       <td className="p-3">
                         {contract.image_url ? (
                           <button
-                            onClick={() => Swal.fire({
-                              title: 'صورة التعميد',
-                              imageUrl: contract.image_url,
-                              imageAlt: 'صورة التعميد',
-                              width: 600,
-                              padding: '3em',
-                              backdrop: `
-                                rgba(0,0,123,0.4)
-                                url("/images/nyan-cat.gif")
-                                left top
-                                no-repeat
-                              `
-                            })}
+                            onClick={() => {
+                              const imgWindow = window.open('');
+                              if (imgWindow) {
+                                imgWindow.document.write(`<html><head><title>صورة التعميد</title></head><body><img src="${contract.image_url}" style="max-width:100%; height:auto;" /></body></html>`);
+                                imgWindow.document.close();
+                              }
+                            }}
                             className="text-blue-500 hover:text-blue-700"
                           >
                             <ImageIcon size={20} />
