@@ -56,9 +56,9 @@ export default function ReportsList() {
     resolved_at: '',
     resolved_by: ''
   });
- const [facilitiesData, setFacilitiesData] = useState([]);
- const [facilitiesLoading, setFacilitiesLoading] = useState(false);
-const [editFormData,setEditFormData] = useState({
+  const [facilitiesData, setFacilitiesData] = useState([]);
+  const [facilitiesLoading, setFacilitiesLoading] = useState(false);
+  const [editFormData,setEditFormData] = useState({
     facility_id: '',
     report_date: '',
     report_time: '',
@@ -78,6 +78,10 @@ const [editFormData,setEditFormData] = useState({
     resolved_by: ''
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const reportsPerPage = 10;
+
   const predefinedCategories = [
     'الصيانة الطبية',
     'الصيانة العامة',
@@ -91,6 +95,7 @@ const [editFormData,setEditFormData] = useState({
 
   useEffect(() => {
     const loadReports = async () => {
+      setLoading(true);
       try {
         const response = await reportsApi.getReports();
         if (response.success) {
@@ -131,6 +136,16 @@ const [editFormData,setEditFormData] = useState({
     );
   });
 
+  // Calculate total pages for pagination
+  const totalPages = Math.ceil(filteredReports.length / reportsPerPage);
+
+  // Get current page reports
+  const displayedReports = filteredReports.slice(
+    (currentPage -1) * reportsPerPage,
+    currentPage * reportsPerPage
+  );
+
+  // Facilities and categories for filters
   const facilities = [...new Set(reports.map(r => r.facility?.name).filter(Boolean))];
   const categories = [...new Set(reports.map(r => r.category).filter(Boolean))];
 
@@ -144,7 +159,7 @@ const [editFormData,setEditFormData] = useState({
     });
   };
 
-const handleFullEditClick = async (report) => {
+  const handleFullEditClick = async (report) => {
     setFullEditingReport(report);
     setEditFormData({
       facility_id: report.facility?.id?.toString() || '',
@@ -166,7 +181,6 @@ const handleFullEditClick = async (report) => {
       resolved_by: report.resolved_by || ''
     });
     
-    // Load facilities when opening full edit modal
     if (facilitiesData.length === 0) {
       setFacilitiesLoading(true);
       try {
@@ -401,7 +415,7 @@ const handleFullEditClick = async (report) => {
                 <td>${report.email || 'غير محدد'}</td>
                 <td>${report.reporter_name || 'غير محدد'}</td>
                 <td>${report.reporter_contact || 'غير محدد'}</td>
-                 <td>${report.resolved_at || 'غير محدد'}</td>
+                <td>${report.resolved_at || 'غير محدد'}</td>
                 <td>${calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)}</td>
               </tr>
             `).join('')}
@@ -545,8 +559,7 @@ const handleFullEditClick = async (report) => {
 
   const handlePrintReport = (report) => {
     const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
-    const statusLogHTML = generateStatusLogHTML(JSON.stringify(report)) || '';
-
+    const statusLogHTML = generateStatusLogHTML(report) || '';
     const printContent = `
       <!DOCTYPE html>
       <html dir="rtl">
@@ -616,12 +629,10 @@ const handleFullEditClick = async (report) => {
           <div class="info-item"><div class="info-label">رقم البلاغ:</div><div>${report.id}</div></div>
           <div class="info-item"><div class="info-label">المنشأة:</div><div>${report.facility?.name || 'غير محدد'}</div></div>
           <div class="info-item"><div class="info-label">تاريخ البلاغ:</div><div>${report.report_date} ${report.report_time}</div></div>
-          <div class="info-item"><div class="info-label">الحالة:</div><div>
-            <span class="status ${
-              report.status === 'مفتوح' ? 'status-open' :
-              report.status === 'مغلق' ? 'status-closed' : 'status-paused'
-            }">${report.status}</span>
-          </div></div>
+          <div class="info-item"><div class="info-label">الحالة:</div><div><span class="status ${
+            report.status === 'مفتوح' ? 'status-open' :
+            report.status === 'مغلق' ? 'status-closed' : 'status-paused'
+          }">${report.status}</span></div></div>
           <div class="info-item"><div class="info-label">التصنيف:</div><div>${report.category}</div></div>
           <div class="info-item"><div class="info-label">اسم الجهاز:</div><div>${report.device_name}</div></div>
           <div class="info-item"><div class="info-label">الرقم التسلسلي:</div><div>${report.serial_number || 'غير محدد'}</div></div>
@@ -648,11 +659,17 @@ const handleFullEditClick = async (report) => {
     if(printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
-      setTimeout(() => { printWindow.print() }, 500);
+      setTimeout(() => { printWindow.print(); }, 500);
     }
   };
 
-
+  // Pagination navigation handlers
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({top:0, behavior:'smooth'}); // scroll to top when page changes
+    }
+  };
 
   return (
     <div className="space-y-6 p-4 max-w-7xl mx-auto">
@@ -677,14 +694,14 @@ const handleFullEditClick = async (report) => {
                 type="text"
                 placeholder="البحث في البلاغات..."
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                 className="w-full pl-4 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
 
             <select
               value={selectedFacility}
-              onChange={e => setSelectedFacility(e.target.value)}
+              onChange={e => { setSelectedFacility(e.target.value); setCurrentPage(1); }}
               className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">جميع المنشآت</option>
@@ -695,7 +712,7 @@ const handleFullEditClick = async (report) => {
 
             <select
               value={selectedCategory}
-              onChange={e => setSelectedCategory(e.target.value)}
+              onChange={e => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
               className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">جميع التصنيفات</option>
@@ -706,7 +723,7 @@ const handleFullEditClick = async (report) => {
 
             <select
               value={selectedStatus}
-              onChange={e => setSelectedStatus(e.target.value)}
+              onChange={e => { setSelectedStatus(e.target.value); setCurrentPage(1); }}
               className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">جميع الحالات</option>
@@ -767,44 +784,7 @@ const handleFullEditClick = async (report) => {
         </div>
       </div>
 
-      <div className="md:hidden space-y-4">
-        {filteredReports.length === 0 && (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            <FileText size={48} className="mx-auto mb-4 opacity-50" />
-            <p className="text-lg">جارٍ التحميل..</p>
-          </div>
-        )}
-        {filteredReports.map((report, index) => {
-          const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
-          return (
-            <div key={report.id} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex flex-col space-y-2 text-right">
-              <div className="flex justify-between items-center">
-                <div className="text-blue-600 dark:text-blue-400 font-bold text-lg">بلاغ #{report.id}</div>
-                <div className="flex gap-2 flex-wrap">
-                  <button onClick={() => handleViewClick(report)} title="عرض" className="p-1 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded transition-colors"><Eye size={20} /></button>
-                  <button onClick={() => handleModifyClick(report)} title="تعديل الحالة" className="p-1 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded transition-colors"><Edit size={20} /></button>
-                  <button onClick={() => handleFullEditClick(report)} title="تعديل كامل" className="p-1 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/20 rounded transition-colors"><Settings size={20} /></button>
-                  <button onClick={() => handlePrintReport(report)} title="طباعة" className="p-1 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded transition-colors"><Printer size={20} /></button>
-                  <button onClick={() => handleDeleteClick(report)} disabled={deleteLoading === report.id} title="حذف" className="p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors">{deleteLoading === report.id ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}</button>
-                </div>
-              </div>
-              <div><strong>الرقم التسلسلي:</strong> {index + 1}</div>
-              <div><strong>المنشأة:</strong> {report.facility?.name || 'غير محدد'}</div>
-              <div><strong>التصنيف:</strong> {report.category}</div>
-              <div><strong>اسم الجهاز:</strong> {report.device_name}</div>
-              <div><strong>وصف المشكلة:</strong> {report.problem_description || 'غير محدد'}</div>
-              <div><strong>التاريخ:</strong> {report.report_date}</div>
-              <div><strong>الحالة:</strong> <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                report.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-                : report.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-              }`}>{report.status}</span></div>
-              <div><strong>فترة التوقف:</strong> {downtimePeriod}</div>
-            </div>
-          );
-        })}
-      </div>
-
+      {/* Reports Table Section */}
       <div className="hidden md:block bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -829,7 +809,7 @@ const handleFullEditClick = async (report) => {
               </tr>
             </thead>
             <tbody>
-              {filteredReports.length === 0 && (
+              {displayedReports.length === 0 && (
                 <tr>
                   <td colSpan="10" className="text-center py-12 text-gray-500 dark:text-gray-400">
                     <FileText size={48} className="mx-auto mb-4 opacity-50" />
@@ -837,11 +817,11 @@ const handleFullEditClick = async (report) => {
                   </td>
                 </tr>
               )}
-              {filteredReports.map((report, index) => {
+              {displayedReports.map((report, index) => {
                 const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
                 return (
                   <tr key={report.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="p-4 text-gray-900 dark:text-gray-100 font-medium">{index + 1}</td>
+                    <td className="p-4 text-gray-900 dark:text-gray-100 font-medium">{(currentPage - 1) * reportsPerPage + index + 1}</td>
                     <td className="p-4 text-blue-600 dark:text-blue-400 font-bold">{report.id}</td>
                     <td className="p-4 text-gray-700 dark:text-gray-300 hidden md:table-cell">{report.facility?.name || 'غير محدد'}</td>
                     <td className="p-4 text-gray-700 dark:text-gray-300">{report.category}</td>
@@ -860,11 +840,21 @@ const handleFullEditClick = async (report) => {
                     <td className="p-4 text-gray-700 dark:text-gray-300 hidden sm:table-cell">{downtimePeriod}</td>
                     <td className="p-4">
                       <div className="flex gap-1 justify-center">
-                        <button onClick={() => handleViewClick(report)} title="عرض" className="p-1 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded transition-colors"><Eye size={16} /></button>
-                        <button onClick={() => handleModifyClick(report)} title="تعديل الحالة" className="p-1 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded transition-colors"><Edit size={16} /></button>
-                        <button onClick={() => handleFullEditClick(report)} title="تعديل كامل" className="p-1 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/20 rounded transition-colors"><Settings size={16} /></button>
-                        <button onClick={() => handlePrintReport(report)} title="طباعة" className="p-1 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded transition-colors"><Printer size={16} /></button>
-                        <button onClick={() => handleDeleteClick(report)} disabled={deleteLoading === report.id} title="حذف" className="p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors">{deleteLoading === report.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button>
+                        <button onClick={() => handleViewClick(report)} title="عرض" className="p-1 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded transition-colors">
+                          <Eye size={16} />
+                        </button>
+                        <button onClick={() => handleModifyClick(report)} title="تعديل الحالة" className="p-1 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded transition-colors">
+                          <Edit size={16} />
+                        </button>
+                        <button onClick={() => handleFullEditClick(report)} title="تعديل كامل" className="p-1 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/20 rounded transition-colors">
+                          <Settings size={16} />
+                        </button>
+                        <button onClick={() => handlePrintReport(report)} title="طباعة" className="p-1 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded transition-colors">
+                          <Printer size={16} />
+                        </button>
+                        <button onClick={() => handleDeleteClick(report)} disabled={deleteLoading === report.id} title="حذف" className="p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors">
+                          {deleteLoading === report.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -873,9 +863,121 @@ const handleFullEditClick = async (report) => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        <nav className="flex flex-wrap justify-center items-center gap-2 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-b-md" aria-label="Pagination">
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`px-3 py-1 rounded-md text-sm font-semibold ${currentPage === 1 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 dark:text-blue-400'}`}
+          >
+            السابق
+          </button>
+
+          {Array.from({ length: totalPages }).map((_, i) => {
+            const pageNum = i + 1;
+            const isActive = pageNum === currentPage;
+            if (
+              pageNum === 1 ||
+              pageNum === totalPages ||
+              (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+            ) {
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => goToPage(pageNum)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`px-3 py-1 rounded-md text-sm font-semibold ${
+                    isActive
+                      ? 'bg-blue-600 text-white'
+                      : 'text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 dark:text-blue-400'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            } else if (
+              (pageNum === currentPage - 2 && pageNum > 1) ||
+              (pageNum === currentPage + 2 && pageNum < totalPages)
+            ) {
+              return <span key={pageNum} className="px-2 text-gray-400 select-none">...</span>;
+            } else {
+              return null;
+            }
+          })}
+
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage === totalPages || totalPages === 0}
+            className={`px-3 py-1 rounded-md text-sm font-semibold ${currentPage === totalPages || totalPages === 0 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 dark:text-blue-400'}`}
+          >
+            التالي
+          </button>
+        </nav>
       </div>
 
-      {/* Rest of the modals and components remain the same */}
+      {/* Mobile report cards */}
+      <div className="md:hidden space-y-4">
+        {displayedReports.length === 0 && (
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <FileText size={48} className="mx-auto mb-4 opacity-50" />
+            <p className="text-lg">لا توجد بلاغات تطابق معاييير البحث</p>
+          </div>
+        )}
+        {displayedReports.map((report, index) => {
+          const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
+          return (
+            <div key={report.id} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex flex-col space-y-2 text-right">
+              <div className="flex justify-between items-center">
+                <div className="text-blue-600 dark:text-blue-400 font-bold text-lg">بلاغ #{(currentPage - 1) * reportsPerPage + index + 1}</div>
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={() => handleViewClick(report)} title="عرض" className="p-1 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded transition-colors"><Eye size={20} /></button>
+                  <button onClick={() => handleModifyClick(report)} title="تعديل الحالة" className="p-1 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded transition-colors"><Edit size={20} /></button>
+                  <button onClick={() => handleFullEditClick(report)} title="تعديل كامل" className="p-1 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/20 rounded transition-colors"><Settings size={20} /></button>
+                  <button onClick={() => handlePrintReport(report)} title="طباعة" className="p-1 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded transition-colors"><Printer size={20} /></button>
+                  <button onClick={() => handleDeleteClick(report)} disabled={deleteLoading === report.id} title="حذف" className="p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors">{deleteLoading === report.id ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}</button>
+                </div>
+              </div>
+              <div><strong>الرقم التسلسلي:</strong> {(currentPage - 1) * reportsPerPage + index + 1}</div>
+              <div><strong>المنشأة:</strong> {report.facility?.name || 'غير محدد'}</div>
+              <div><strong>التصنيف:</strong> {report.category}</div>
+              <div><strong>اسم الجهاز:</strong> {report.device_name}</div>
+              <div><strong>وصف المشكلة:</strong> {report.problem_description || 'غير محدد'}</div>
+              <div><strong>التاريخ:</strong> {report.report_date}</div>
+              <div><strong>الحالة:</strong> <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                report.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                : report.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+              }`}>{report.status}</span></div>
+              <div><strong>فترة التوقف:</strong> {downtimePeriod}</div>
+            </div>
+          );
+        })}
+
+        {/* Mobile Pagination Controls */}
+        <nav className="flex justify-center items-center gap-1 p-4" aria-label="Pagination">
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`px-3 py-1 rounded-md text-sm font-semibold ${currentPage === 1 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 dark:text-blue-400'}`}
+          >
+            السابق
+          </button>
+
+          <span className="px-3 py-1 font-semibold text-gray-700 dark:text-gray-300">
+            الصفحة {currentPage} من {totalPages || 1}
+          </span>
+
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage === totalPages || totalPages === 0}
+            className={`px-3 py-1 rounded-md text-sm font-semibold ${currentPage === totalPages || totalPages === 0 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 dark:text-blue-400'}`}
+          >
+            التالي
+          </button>
+        </nav>
+      </div>
+
       {viewingReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -908,7 +1010,6 @@ const handleFullEditClick = async (report) => {
                       }`}>{viewingReport.status}</span></div>
                     </div>
                   </div>
-
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
                       <Settings size={20} />
@@ -922,7 +1023,6 @@ const handleFullEditClick = async (report) => {
                     </div>
                   </div>
                 </div>
-
                 <div className="space-y-4">
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">وصف المشكلة</h3>
@@ -930,7 +1030,6 @@ const handleFullEditClick = async (report) => {
                       {viewingReport.problem_description || 'لم يتم تقديم وصف للمشكلة'}
                     </p>
                   </div>
-
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">معلومات الاتصال</h3>
                     <div className="space-y-2 text-sm">
@@ -965,7 +1064,7 @@ const handleFullEditClick = async (report) => {
                       <div>
                         <strong>تاريخ الإغلاق/التكهين:</strong>
                         <span className="text-gray-700 dark:text-gray-300 mr-2">
-{new Date(viewingReport.resolved_at).toLocaleDateString('en-US')}
+                          {new Date(viewingReport.resolved_at).toLocaleDateString('en-US')}
                         </span>
                       </div>
                     )}
@@ -1127,7 +1226,7 @@ const handleFullEditClick = async (report) => {
                 <X size={24} />
               </button>
             </div>
-           <form onSubmit={handleFullEditSubmit} className="p-4 md:p-6 space-y-6" dir="rtl">
+            <form onSubmit={handleFullEditSubmit} className="p-4 md:p-6 space-y-6" dir="rtl">
 
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١- اسم المنشأة</label>
@@ -1143,7 +1242,7 @@ const handleFullEditClick = async (report) => {
                     className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">اختر اسم المنشأة</option>
-{facilitiesData.map((facility) => (
+                    {facilitiesData.map((facility) => (
                       <option key={facility.id} value={facility.id.toString()}>
                         {facility.name}
                       </option>
@@ -1301,7 +1400,9 @@ const handleFullEditClick = async (report) => {
                   className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">اختر حالة البلاغ</option>
-                  {predefinedStatuses.map(status => <option key={status} value={status}>{status}</option>)}
+                  {predefinedStatuses.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
                 </select>
               </div>
 
@@ -1339,8 +1440,18 @@ const handleFullEditClick = async (report) => {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button type="button" onClick={() => setFullEditingReport(null)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">إلغاء</button>
-                <button type="submit" disabled={updateLoading} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                <button
+                  type="button"
+                  onClick={() => setFullEditingReport(null)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
                   {updateLoading ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
