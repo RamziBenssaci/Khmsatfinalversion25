@@ -147,7 +147,7 @@ const exportToExcel = (data, filename) => {
       report.facilityName,
       report.category,
       report.deviceName,
-      report.serialNumber || 'غير محدد',
+      report.serial_number || 'غير محدد',
       report.problem_description || 'غير محدد',
       report.status,
       report.reportDate,
