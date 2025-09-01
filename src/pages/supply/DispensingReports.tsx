@@ -738,32 +738,54 @@ export default function DispensingReports() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm sm:text-base">توزيع الصرف حسب المنشأة</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[200px] sm:h-[250px] md:h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={filteredFacilityData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={30}
-                    outerRadius={70}
-                    dataKey="value"
-                  >
-                    {filteredFacilityData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color || '#3b82f6'} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`${value}%`, 'النسبة']} />
-                </PieChart>
-              </ResponsiveContainer>
+     <Card>
+  <CardHeader>
+    <CardTitle className="text-sm sm:text-base">توزيع الصرف حسب المنشأة</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <div className="h-[200px] sm:h-[250px] md:h-[300px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={filteredFacilityData}
+            cx="50%"
+            cy="50%"
+            innerRadius={30}
+            outerRadius={70}
+            dataKey="value"
+          >
+            {filteredFacilityData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color || '#3b82f6'} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(value) => [`${value}%`, 'النسبة']} />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+    
+    {/* Legend/Labels Section */}
+    <div className="mt-4 space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        {filteredFacilityData.map((entry, index) => (
+          <div key={`legend-${index}`} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
+            <div 
+              className="w-3 h-3 sm:w-4 sm:h-4 rounded-full flex-shrink-0"
+              style={{ backgroundColor: entry.color || '#3b82f6' }}
+            ></div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs sm:text-sm font-medium text-gray-900 truncate">
+                {entry.name}
+              </div>
+              <div className="text-xs font-bold text-primary">
+                {entry.value}%
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        ))}
+      </div>
+    </div>
+  </CardContent>
+</Card>
       </div>
 
       {/* Trend Comparison */}
