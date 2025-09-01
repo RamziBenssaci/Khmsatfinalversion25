@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Download, Filter, Users, Loader2 } from 'lucide-react';
+import { FileText, Download, Filter, Users, Loader2, Printer } from 'lucide-react';
 import { dentalContractsApi } from '@/lib/api';
 import { exportToExcel } from '@/utils/exportUtils';
 import { toast } from 'sonner';
@@ -87,6 +86,189 @@ export default function DentalReports() {
   const [facilities, setFacilities] = useState<string[]>([]);
   const [suppliers, setSuppliers] = useState<string[]>([]);
   const [statuses, setStatuses] = useState<string[]>([]);
+
+  // Print individual contract function
+  const printContract = (contract: any) => {
+    const cost = parseFloat(contract.totalCost) || 0;
+    const formattedCost = cost % 1 === 0 ? cost.toLocaleString() : cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    const statusClass = {
+      'موافق عليه': 'background-color: #fef3c7; color: #92400e;',
+      'تم التعاقد': 'background-color: #e9d5ff; color: #6b21a8;',
+      'تم التسليم': 'background-color: #d1fae5; color: #065f46;',
+      'مرفوض': 'background-color: #fee2e2; color: #991b1b;',
+      'جديد': 'background-color: #dbeafe; color: #1e40af;'
+    }[contract.status] || 'background-color: #f3f4f6; color: #374151;';
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <title>تفاصيل العقد - ${contract.id}</title>
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            direction: rtl; 
+            margin: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+          }
+          .header { 
+            text-align: center; 
+            color: #6B46C1; 
+            margin-bottom: 30px;
+            border-bottom: 2px solid #6B46C1;
+            padding-bottom: 20px;
+          }
+          .contract-details {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+          }
+          .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: white;
+            border-radius: 5px;
+            border-right: 4px solid #6B46C1;
+          }
+          .detail-label {
+            font-weight: bold;
+            color: #374151;
+            min-width: 150px;
+          }
+          .detail-value {
+            color: #1f2937;
+            flex: 1;
+            text-align: right;
+          }
+          .status-badge {
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+            ${statusClass}
+          }
+          .cost-highlight {
+            font-size: 18px;
+            font-weight: bold;
+            color: #059669;
+          }
+          .print-date {
+            text-align: center;
+            margin-top: 30px;
+            color: #6b7280;
+            font-size: 12px;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 15px;
+          }
+          @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>تفاصيل عقد الأسنان</h1>
+          <h2>${contract.id}</h2>
+        </div>
+        
+        <div class="contract-details">
+          <div class="detail-row">
+            <span class="detail-label">رقم العقد:</span>
+            <span class="detail-value">${contract.id}</span>
+          </div>
+          
+          <div class="detail-row">
+            <span class="detail-label">رقم الصنف:</span>
+            <span class="detail-value">${contract.itemNumber || 'غير محدد'}</span>
+          </div>
+          
+          <div class="detail-row">
+            <span class="detail-label">اسم الصنف:</span>
+            <span class="detail-value">${contract.itemName || 'غير محدد'}</span>
+          </div>
+          
+          <div class="detail-row">
+            <span class="detail-label">العيادة المستفيدة:</span>
+            <span class="detail-value">${contract.beneficiaryFacility || 'غير محدد'}</span>
+          </div>
+          
+          <div class="detail-row">
+            <span class="detail-label">الشركة الموردة:</span>
+            <span class="detail-value">${contract.supplierName || 'غير محدد'}</span>
+          </div>
+          
+          <div class="detail-row">
+            <span class="detail-label">حالة العقد:</span>
+            <span class="detail-value">
+              <span class="status-badge">${contract.status || 'غير محدد'}</span>
+            </span>
+          </div>
+          
+          <div class="detail-row">
+            <span class="detail-label">التكلفة الإجمالية:</span>
+            <span class="detail-value cost-highlight">${formattedCost} ريال سعودي</span>
+          </div>
+          
+          <div class="detail-row">
+            <span class="detail-label">تاريخ العقد:</span>
+            <span class="detail-value">${contract.orderDate || 'غير محدد'}</span>
+          </div>
+          
+          <div class="detail-row">
+            <span class="detail-label">تاريخ التسليم:</span>
+            <span class="detail-value">${contract.deliveryDate || 'لم يتم التسليم بعد'}</span>
+          </div>
+          
+          <div class="detail-row">
+            <span class="detail-label">رقم التعميد المالي:</span>
+            <span class="detail-value">${contract.financialApprovalNumber || 'غير محدد'}</span>
+          </div>
+          
+          <div class="detail-row">
+            <span class="detail-label">تاريخ التعميد:</span>
+            <span class="detail-value">${contract.approvalDate || 'غير محدد'}</span>
+          </div>
+        </div>
+        
+        <div class="print-date">
+          تم طباعة هذا التقرير في: ${new Date().toLocaleDateString('ar-SA')} - ${new Date().toLocaleTimeString('ar-SA')}
+        </div>
+      </body>
+      </html>
+    `;
+
+    try {
+      // Create a new window and trigger print
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        // Wait for content to load then trigger print
+        printWindow.onload = () => {
+          setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+          }, 500);
+        };
+        
+        toast.success(`تم فتح نافذة طباعة العقد ${contract.id}`);
+      } else {
+        toast.error('فشل في فتح نافذة الطباعة - تأكد من السماح للنوافذ المنبثقة');
+      }
+    } catch (error) {
+      console.error('Error printing contract:', error);
+      toast.error('فشل في طباعة العقد');
+    }
+  };
 
   // Fetch data on component mount
   useEffect(() => {
@@ -446,7 +628,7 @@ export default function DentalReports() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">حالة العقد</label>
+              <label className="block text-sm font-medium mb-2 text-right">الحالة</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="اختر الحالة" />
@@ -461,9 +643,9 @@ export default function DentalReports() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">رقم أو اسم الصنف</label>
+              <label className="block text-sm font-medium mb-2 text-right">البحث في الأصناف</label>
               <Input
-                placeholder="أدخل رقم أو اسم الصنف"
+                placeholder="رقم أو اسم الصنف"
                 value={itemFilter}
                 onChange={(e) => setItemFilter(e.target.value)}
                 className="text-right"
@@ -471,7 +653,7 @@ export default function DentalReports() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">العيادة/القسم</label>
+              <label className="block text-sm font-medium mb-2 text-right">العيادة المستفيدة</label>
               <Select value={facilityFilter} onValueChange={setFacilityFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="اختر العيادة" />
@@ -486,10 +668,10 @@ export default function DentalReports() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">الشركة الموردة</label>
+              <label className="block text-sm font-medium mb-2 text-right">الشركة الموردة</label>
               <Select value={supplierFilter} onValueChange={setSupplierFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="اختر الشركة الموردة" />
+                  <SelectValue placeholder="اختر الشركة" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">جميع الشركات</SelectItem>
@@ -562,6 +744,7 @@ export default function DentalReports() {
                 <table className="w-full text-right">
                   <thead>
                     <tr className="border-b">
+                      <th className="p-2 text-right">طباعة</th>
                       <th className="p-2 text-right">رقم العقد</th>
                       <th className="p-2 text-right">رقم الصنف</th>
                       <th className="p-2 text-right">اسم الصنف</th>
@@ -581,6 +764,17 @@ export default function DentalReports() {
                       
                       return (
                         <tr key={contract.id} className="border-b hover:bg-gray-50">
+                          <td className="p-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => printContract(contract)}
+                              className="h-8 w-8 p-0 hover:bg-purple-100"
+                              title={`طباعة العقد ${contract.id}`}
+                            >
+                              <Printer className="h-4 w-4 text-purple-600" />
+                            </Button>
+                          </td>
                           <td className="p-2 font-medium">{contract.id}</td>
                           <td className="p-2">{contract.itemNumber}</td>
                           <td className="p-2">{contract.itemName}</td>
@@ -613,9 +807,20 @@ export default function DentalReports() {
                       <CardContent className="p-4">
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
-                            <Badge className={statusConfig[contract.status as keyof typeof statusConfig]}>
-                              {contract.status}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge className={statusConfig[contract.status as keyof typeof statusConfig]}>
+                                {contract.status}
+                              </Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => printContract(contract)}
+                                className="h-8 w-8 p-0 hover:bg-purple-100"
+                                title={`طباعة العقد ${contract.id}`}
+                              >
+                                <Printer className="h-4 w-4 text-purple-600" />
+                              </Button>
+                            </div>
                             <span className="font-bold">{contract.id}</span>
                           </div>
                           <div className="text-sm space-y-1">
@@ -641,4 +846,3 @@ export default function DentalReports() {
     </div>
   );
 }
-           
