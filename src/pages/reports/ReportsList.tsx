@@ -401,7 +401,7 @@ const handleFullEditClick = async (report) => {
                 <td>${report.email || 'غير محدد'}</td>
                 <td>${report.reporter_name || 'غير محدد'}</td>
                 <td>${report.reporter_contact || 'غير محدد'}</td>
-                <td>${report.resolved_at ? new Date(report.resolved_at).toLocaleDateString(\'ar-SA\') : \'غير محدد\'}</td>
+                 <td>${report.resolved_at || 'غير محدد'}</td>
                 <td>${calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)}</td>
               </tr>
             `).join('')}
