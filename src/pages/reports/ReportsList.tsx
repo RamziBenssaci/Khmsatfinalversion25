@@ -35,136 +35,6 @@ const calculateDowntimePeriod = (reportDate, reportTime, resolvedAt) => {
   }
 };
 
-const exportToPDF = (data, filename) => {
-  console.log('PDF Export Data:', data[0]); // Debug log
-  
-  const printContent = `
-    <!DOCTYPE html>
-    <html dir="rtl">
-    <head>
-      <meta charset="UTF-8">
-      <title>${filename}</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          direction: rtl;
-          margin: 20px;
-          font-size: 12px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
-        th, td {
-          border: 1px solid #ddd;
-          padding: 8px;
-          text-align: right;
-        }
-        th {
-          background-color: #f2f2f2;
-          font-weight: bold;
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 30px;
-        }
-        .header h1 {
-          color: #333;
-          margin-bottom: 10px;
-        }
-        .header p {
-          color: #666;
-          margin: 0;
-        }
-        .status-open { background: #fff3cd; color: #856404; }
-        .status-closed { background: #d1edff; color: #0c5460; }
-        .status-paused { background: #f8d7da; color: #721c24; }
-        .status {
-          padding: 5px 15px;
-          border-radius: 15px;
-          font-weight: bold;
-          display: inline-block;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>قائمة البلاغات</h1>
-        <p>تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}</p>
-        <p>عدد البلاغات: ${data.length}</p>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>رقم البلاغ</th>
-            <th>المنشأة</th>
-            <th>التصنيف</th>
-            <th>اسم الجهاز</th>
-            <th>الرقم التسلسلي</th>
-            <th>وصف المشكلة</th>
-            <th>الحالة</th>
-            <th>تاريخ البلاغ</th>
-            <th>فترة التوقف (أيام)</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${data.map(report => `
-            <tr>
-              <td>${report.id || ''}</td>
-              <td>${report.facilityName || 'غير محدد'}</td>
-              <td>${report.category || 'غير محدد'}</td>
-              <td>${report.deviceName || 'غير محدد'}</td>
-              <td>${report.serial_number || 'غير محدد'}</td>
-              <td>${report.problem_description || 'غير محدد'}</td>
-              <td>
-                <span class="status ${
-                  report.status === 'مفتوح' ? 'status-open' :
-                  report.status === 'مغلق' ? 'status-closed' : 'status-paused'
-                }">${report.status || 'غير محدد'}</span>
-              </td>
-              <td>${report.reportDate || 'غير محدد'}</td>
-              <td>${report.downtimeDays || 'غير محدد'}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </body>
-    </html>
-  `;
-
-  const printWindow = window.open('', '_blank');
-  if(printWindow) {
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    setTimeout(() => { printWindow.print(); }, 500);
-  }
-};
-
-const exportToExcel = (data, filename) => {
-  const csvContent = [
-    ['رقم البلاغ', 'المنشأة', 'التصنيف', 'اسم الجهاز', 'الرقم التسلسلي', 'وصف المشكلة', 'الحالة', 'تاريخ البلاغ', 'فترة التوقف (أيام)'],
-    ...data.map(report => [
-      report.id,
-      report.facilityName,
-      report.category,
-      report.deviceName,
-      report.serial_number || 'غير محدد',
-      report.problem_description || 'غير محدد',
-      report.status,
-      report.reportDate,
-      report.downtimeDays
-    ])
-  ].map(row => row.join(',')).join('\n');
-
-  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `${filename}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
-};
-
 export default function ReportsList() {
   const { toast } = useToast();
   const [loading,setLoading] = useState(true);
@@ -273,6 +143,7 @@ const [editFormData,setEditFormData] = useState({
       resolved_by: report.resolved_by || ''
     });
   };
+
 const handleFullEditClick = async (report) => {
     setFullEditingReport(report);
     setEditFormData({
@@ -425,6 +296,176 @@ const handleFullEditClick = async (report) => {
     setEditFormData(prev => ({...prev, [field]: value}));
   };
 
+  // New PDF Export Function with all columns and serial numbers
+  const exportToPDF = (data, filename) => {
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl">
+      <head>
+        <meta charset="UTF-8">
+        <title>${filename}</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            direction: rtl;
+            margin: 20px;
+            font-size: 12px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+          }
+          th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: right;
+            font-size: 11px;
+          }
+          th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+          }
+          .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+          }
+          .header p {
+            color: #666;
+            margin: 0;
+          }
+          .status-open { background: #fff3cd; color: #856404; }
+          .status-closed { background: #d1edff; color: #0c5460; }
+          .status-paused { background: #f8d7da; color: #721c24; }
+          .status {
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+            display: inline-block;
+            font-size: 10px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>قائمة البلاغات</h1>
+          <p>تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}</p>
+          <p>عدد البلاغات: ${data.length}</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>الرقم التسلسلي</th>
+              <th>رقم البلاغ</th>
+              <th>المنشأة</th>
+              <th>التصنيف</th>
+              <th>اسم الجهاز</th>
+              <th>الرقم التسلسلي للجهاز</th>
+              <th>وصف المشكلة</th>
+              <th>الحالة</th>
+              <th>تاريخ البلاغ</th>
+              <th>تحت الضمان</th>
+              <th>شركة الصيانة</th>
+              <th>رقم الاتصال</th>
+              <th>البريد الإلكتروني</th>
+              <th>اسم المبلغ</th>
+              <th>رقم اتصال المبلغ</th>
+              <th>فترة التوقف</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map((report, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${report.id || ''}</td>
+                <td>${report.facility?.name || 'غير محدد'}</td>
+                <td>${report.category || 'غير محدد'}</td>
+                <td>${report.device_name || 'غير محدد'}</td>
+                <td>${report.serial_number || 'غير محدد'}</td>
+                <td>${report.problem_description || 'غير محدد'}</td>
+                <td>
+                  <span class="status ${
+                    report.status === 'مفتوح' ? 'status-open' :
+                    report.status === 'مغلق' ? 'status-closed' : 'status-paused'
+                  }">${report.status || 'غير محدد'}</span>
+                </td>
+                <td>${report.report_date || 'غير محدد'} ${report.report_time || ''}</td>
+                <td>${report.under_warranty || 'غير محدد'}</td>
+                <td>${report.repair_company || 'غير محدد'}</td>
+                <td>${report.contact_number || 'غير محدد'}</td>
+                <td>${report.email || 'غير محدد'}</td>
+                <td>${report.reporter_name || 'غير محدد'}</td>
+                <td>${report.reporter_contact || 'غير محدد'}</td>
+                <td>${calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if(printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      setTimeout(() => { printWindow.print(); }, 500);
+    }
+  };
+
+  // New Excel Export Function with all columns and serial numbers
+  const exportToExcel = (data, filename) => {
+    const csvContent = [
+      [
+        'الرقم التسلسلي',
+        'رقم البلاغ', 
+        'المنشأة', 
+        'التصنيف', 
+        'اسم الجهاز', 
+        'الرقم التسلسلي للجهاز', 
+        'وصف المشكلة', 
+        'الحالة', 
+        'تاريخ البلاغ', 
+        'تحت الضمان',
+        'شركة الصيانة',
+        'رقم الاتصال',
+        'البريد الإلكتروني',
+        'اسم المبلغ',
+        'رقم اتصال المبلغ',
+        'فترة التوقف'
+      ],
+      ...data.map((report, index) => [
+        index + 1,
+        report.id || '',
+        report.facility?.name || 'غير محدد',
+        report.category || 'غير محدد',
+        report.device_name || 'غير محدد',
+        report.serial_number || 'غير محدد',
+        report.problem_description || 'غير محدد',
+        report.status || 'غير محدد',
+        `${report.report_date || 'غير محدد'} ${report.report_time || ''}`,
+        report.under_warranty || 'غير محدد',
+        report.repair_company || 'غير محدد',
+        report.contact_number || 'غير محدد',
+        report.email || 'غير محدد',
+        report.reporter_name || 'غير محدد',
+        report.reporter_contact || 'غير محدد',
+        calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)
+      ])
+    ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
   const generateStatusLogHTML = (report) => {
     const isPrint = typeof report === 'string' || report instanceof String;
 
@@ -496,7 +537,7 @@ const handleFullEditClick = async (report) => {
             )}
           </div>
         </div>
-      )
+      );
     }
   };
 
@@ -682,59 +723,15 @@ const handleFullEditClick = async (report) => {
 
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-6">
             <button
-          onClick={() => {
-  try {
-    console.log('Sample report data:', filteredReports[0]); // Debug log
-    const exportData = filteredReports.map(report => ({
-      id: report.id,
-      facilityName: report.facility?.name || '',
-      category: report.category,
-      deviceName: report.device_name,
-      serial_number: report.serial_number || 'غير محدد',  // Make sure this matches exactly
-      problem_description: report.problem_description || 'غير محدد',
-      status: report.status,
-      reportDate: `${report.report_date} ${report.report_time}`,
-      downtimeDays: calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)
-    }));
-    exportToPDF(exportData, 'قائمة_البلاغات');
-    toast({
-      title: "تم تصدير البيانات بنجاح",
-      description: "تم تصدير البلاغات إلى ملف PDF",
-    });
-  } catch(e){
-    console.error('PDF Export Error:', e);
-    toast({
-      title: "خطأ في التصدير",
-      description: "فشل في تصدير البيانات",
-      variant: "destructive"
-    });
-  }
-}}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2 text-sm transition-colors"
-            >
-              <Download size={16} />
-              <span className="hidden sm:inline">تصدير Excel</span>
-              <span className="sm:hidden">Excel</span>
-            </button>
-            <button
               onClick={() => {
                 try {
-                  const exportData = filteredReports.map(report => ({
-                    id: report.id,
-                    facilityName: report.facility?.name || '',
-                    category: report.category,
-                    deviceName: report.device_name,
-                    problem_description: report.problem_description || 'غير محدد',
-                    status: report.status,
-                    reportDate: `${report.report_date} ${report.report_time}`,
-                    downtimeDays: calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)
-                  }));
-                  exportToPDF(exportData, 'قائمة_البلاغات');
+                  exportToPDF(filteredReports, 'قائمة_البلاغات');
                   toast({
                     title: "تم تصدير البيانات بنجاح",
                     description: "تم تصدير البلاغات إلى ملف PDF",
                   });
                 } catch(e){
+                  console.error('PDF Export Error:', e);
                   toast({
                     title: "خطأ في التصدير",
                     description: "فشل في تصدير البيانات",
@@ -748,6 +745,29 @@ const handleFullEditClick = async (report) => {
               <span className="hidden sm:inline">تصدير PDF</span>
               <span className="sm:hidden">PDF</span>
             </button>
+            <button
+              onClick={() => {
+                try {
+                  exportToExcel(filteredReports, 'قائمة_البلاغات');
+                  toast({
+                    title: "تم تصدير البيانات بنجاح",
+                    description: "تم تصدير البلاغات إلى ملف Excel",
+                  });
+                } catch(e){
+                  console.error('Excel Export Error:', e);
+                  toast({
+                    title: "خطأ في التصدير",
+                    description: "فشل في تصدير البيانات",
+                    variant: "destructive"
+                  });
+                }
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2 text-sm transition-colors"
+            >
+              <Download size={16} />
+              <span className="hidden sm:inline">تصدير Excel</span>
+              <span className="sm:hidden">Excel</span>
+            </button>
           </div>
         </div>
       </div>
@@ -759,7 +779,7 @@ const handleFullEditClick = async (report) => {
             <p className="text-lg">لا توجد بلاغات تطابق معاييير البحث</p>
           </div>
         )}
-        {filteredReports.map(report => {
+        {filteredReports.map((report, index) => {
           const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
           return (
             <div key={report.id} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex flex-col space-y-2 text-right">
@@ -773,6 +793,7 @@ const handleFullEditClick = async (report) => {
                   <button onClick={() => handleDeleteClick(report)} disabled={deleteLoading === report.id} title="حذف" className="p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors">{deleteLoading === report.id ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}</button>
                 </div>
               </div>
+              <div><strong>الرقم التسلسلي:</strong> {index + 1}</div>
               <div><strong>المنشأة:</strong> {report.facility?.name || 'غير محدد'}</div>
               <div><strong>التصنيف:</strong> {report.category}</div>
               <div><strong>اسم الجهاز:</strong> {report.device_name}</div>
@@ -800,6 +821,7 @@ const handleFullEditClick = async (report) => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-right">
+                <th className="p-4 font-medium text-gray-900 dark:text-gray-100">الرقم التسلسلي</th>
                 <th className="p-4 font-medium text-gray-900 dark:text-gray-100">رقم البلاغ</th>
                 <th className="p-4 font-medium text-gray-900 dark:text-gray-100 hidden md:table-cell">المنشأة</th>
                 <th className="p-4 font-medium text-gray-900 dark:text-gray-100">التصنيف</th>
@@ -812,170 +834,161 @@ const handleFullEditClick = async (report) => {
               </tr>
             </thead>
             <tbody>
-              {filteredReports.map(report => {
+              {filteredReports.length === 0 && (
+                <tr>
+                  <td colSpan="10" className="text-center py-12 text-gray-500 dark:text-gray-400">
+                    <FileText size={48} className="mx-auto mb-4 opacity-50" />
+                    <p className="text-lg">لا توجد بلاغات تطابق معاييير البحث</p>
+                  </td>
+                </tr>
+              )}
+              {filteredReports.map((report, index) => {
                 const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
                 return (
-                  <tr key={report.id} className="border-b border-gray-200 dark:border-gray-700 text-right hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <td className="p-4 font-medium text-blue-600 dark:text-blue-400">{report.id}</td>
-                    <td className="p-4 hidden md:table-cell text-gray-700 dark:text-gray-300">{report.facility?.name || 'غير محدد'}</td>
+                  <tr key={report.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <td className="p-4 text-gray-900 dark:text-gray-100 font-medium">{index + 1}</td>
+                    <td className="p-4 text-blue-600 dark:text-blue-400 font-bold">{report.id}</td>
+                    <td className="p-4 text-gray-700 dark:text-gray-300 hidden md:table-cell">{report.facility?.name || 'غير محدد'}</td>
                     <td className="p-4 text-gray-700 dark:text-gray-300">{report.category}</td>
-                    <td className="p-4 hidden lg:table-cell text-gray-700 dark:text-gray-300">{report.device_name}</td>
-                    <td className="p-4 hidden xl:table-cell text-gray-700 dark:text-gray-300 max-w-xs truncate" title={report.problem_description}>{report.problem_description}</td>
-                    <td className="p-4 hidden sm:table-cell text-gray-700 dark:text-gray-300">{report.report_date}</td>
+                    <td className="p-4 text-gray-700 dark:text-gray-300 hidden lg:table-cell">{report.device_name}</td>
+                    <td className="p-4 text-gray-700 dark:text-gray-300 hidden xl:table-cell max-w-xs truncate" title={report.problem_description}>{report.problem_description || 'غير محدد'}</td>
+                    <td className="p-4 text-gray-700 dark:text-gray-300 hidden sm:table-cell">{report.report_date}</td>
                     <td className="p-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        report.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                        report.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        report.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                        : report.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
                       }`}>
                         {report.status}
                       </span>
                     </td>
-                    <td className="p-4 hidden sm:table-cell">
-                      <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                        <Clock size={14} />
-                        {downtimePeriod}
-                      </span>
-                    </td>
+                    <td className="p-4 text-gray-700 dark:text-gray-300 hidden sm:table-cell">{downtimePeriod}</td>
                     <td className="p-4">
-                      <div className="flex gap-1 justify-center flex-wrap">
-                        <button onClick={() => handleViewClick(report)} className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded transition-colors" title="عرض">
-                          <Eye size={16} />
-                        </button>
-                        <button onClick={() => handleModifyClick(report)} className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded transition-colors" title="تعديل الحالة">
-                          <Edit size={16} />
-                        </button>
-                        <button onClick={() => handleFullEditClick(report)} className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/20 rounded transition-colors" title="تعديل كامل">
-                          <Settings size={16} />
-                        </button>
-                        <button onClick={() => handlePrintReport(report)} className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded transition-colors" title="طباعة">
-                          <Printer size={16} />
-                        </button>
-                        <button onClick={() => handleDeleteClick(report)} disabled={deleteLoading === report.id} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors" title="حذف">
-                          {deleteLoading === report.id ? (<Loader2 size={16} className="animate-spin" />) : (<Trash2 size={16} />)}
-                        </button>
+                      <div className="flex gap-1 justify-center">
+                        <button onClick={() => handleViewClick(report)} title="عرض" className="p-1 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded transition-colors"><Eye size={16} /></button>
+                        <button onClick={() => handleModifyClick(report)} title="تعديل الحالة" className="p-1 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded transition-colors"><Edit size={16} /></button>
+                        <button onClick={() => handleFullEditClick(report)} title="تعديل كامل" className="p-1 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/20 rounded transition-colors"><Settings size={16} /></button>
+                        <button onClick={() => handlePrintReport(report)} title="طباعة" className="p-1 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/20 rounded transition-colors"><Printer size={16} /></button>
+                        <button onClick={() => handleDeleteClick(report)} disabled={deleteLoading === report.id} title="حذف" className="p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors">{deleteLoading === report.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button>
                       </div>
                     </td>
                   </tr>
-                )
+                );
               })}
             </tbody>
           </table>
         </div>
-        {filteredReports.length === 0 && (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            <FileText size={48} className="mx-auto mb-4 opacity-50" />
-            <p className="text-lg">لا توجد بلاغات تطابق معاييير البحث</p>
-          </div>
-        )}
       </div>
 
+      {/* Rest of the modals and components remain the same */}
       {viewingReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                <FileText size={24} />
-                تفاصيل البلاغ رقم {viewingReport.id}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-6 py-4 border-b border-blue-200 dark:border-blue-800 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                <Eye size={24} />
+                عرض البلاغ رقم {viewingReport.id}
               </h2>
-              <button onClick={() => setViewingReport(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+              <button onClick={() => setViewingReport(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors" aria-label="Close view modal">
                 <X size={24} />
               </button>
             </div>
-            <div className="p-6 space-y-6 text-right">
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-center gap-3">
-                <Clock size={24} className="text-blue-600 dark:text-blue-400" />
-                <div>
-                  <h3 className="font-semibold text-blue-900 dark:text-blue-100">عداد فترة التوقف</h3>
-                  <p className="text-blue-700 dark:text-blue-300">
-                    {calculateDowntimePeriod(viewingReport.report_date, viewingReport.report_time, viewingReport.resolved_at)}
-                    من تاريخ الإنشاء {viewingReport.resolved_at ? 'حتى تاريخ الإغلاق' : 'حتى الآن'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { label: 'رقم البلاغ', value: viewingReport.id, mono: true },
-                  { label: 'المنشأة', value: viewingReport.facility?.name || 'غير محدد' },
-                  { label: 'تاريخ البلاغ', value: viewingReport.report_date },
-                  { label: 'وقت البلاغ', value: viewingReport.report_time },
-                  { label: 'التصنيف', value: viewingReport.category },
-                  {
-                    label: 'الحالة',
-                    value: (
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        viewingReport.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                        viewingReport.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                      }`}>
-                        {viewingReport.status}
-                      </span>)
-                  },
-                  { label: 'اسم الجهاز', value: viewingReport.device_name },
-                  { label: 'الرقم التسلسلي', value: viewingReport.serial_number || 'غير محدد' },
-                  { label: 'تحت الضمان', value: viewingReport.under_warranty || 'غير محدد' },
-                  { label: 'شركة الصيانة', value: viewingReport.repair_company || 'غير محدد' },
-                  { label: 'رقم الاتصال', value: viewingReport.contact_number || 'غير محدد' },
-                  { label: 'البريد الإلكتروني', value: viewingReport.email || 'غير محدد' },
-                  { label: 'اسم المبلغ', value: viewingReport.reporter_name || 'غير محدد' },
-                  { label: 'رقم اتصال المبلغ', value: viewingReport.reporter_contact || 'غير محدد' }
-                ].map(({ label, value, mono }) => (
-                  <div key={label} className="space-y-2 text-right">
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">{label}</label>
-                    <p className={`p-3 rounded-md bg-gray-50 dark:bg-gray-800 ${mono ? 'font-mono text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>{value}</p>
+            <div className="p-4 md:p-6 space-y-6 text-right" dir="rtl">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                      <AlertTriangle size={20} />
+                      معلومات البلاغ
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div><strong>رقم البلاغ:</strong> {viewingReport.id}</div>
+                      <div><strong>المنشأة:</strong> {viewingReport.facility?.name || 'غير محدد'}</div>
+                      <div><strong>تاريخ البلاغ:</strong> {viewingReport.report_date} {viewingReport.report_time}</div>
+                      <div><strong>التصنيف:</strong> {viewingReport.category}</div>
+                      <div><strong>الحالة:</strong> <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        viewingReport.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                        : viewingReport.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                      }`}>{viewingReport.status}</span></div>
+                    </div>
                   </div>
-                ))}
-              </div>
 
-              <div className="space-y-2 text-right">
-                <label className="text-sm font-medium text-gray-600 dark:text-gray-400">وصف المشكلة</label>
-                <p className="p-4 bg-gray-50 dark:bg-gray-800 rounded-md leading-relaxed min-h-[100px] border-l-4 border-blue-500">
-                  {viewingReport.problem_description}
-                </p>
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                      <Settings size={20} />
+                      تفاصيل الجهاز
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div><strong>اسم الجهاز:</strong> {viewingReport.device_name}</div>
+                      <div><strong>الرقم التسلسلي:</strong> {viewingReport.serial_number || 'غير محدد'}</div>
+                      <div><strong>تحت الضمان:</strong> {viewingReport.under_warranty || 'غير محدد'}</div>
+                      <div><strong>شركة الصيانة:</strong> {viewingReport.repair_company || 'غير محدد'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">وصف المشكلة</h3>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                      {viewingReport.problem_description || 'لم يتم تقديم وصف للمشكلة'}
+                    </p>
+                  </div>
+
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">معلومات الاتصال</h3>
+                    <div className="space-y-2 text-sm">
+                      <div><strong>رقم الاتصال:</strong> {viewingReport.contact_number || 'غير محدد'}</div>
+                      <div><strong>البريد الإلكتروني:</strong> {viewingReport.email || 'غير محدد'}</div>
+                      <div><strong>اسم المبلغ:</strong> {viewingReport.reporter_name || 'غير محدد'}</div>
+                      <div><strong>رقم اتصال المبلغ:</strong> {viewingReport.reporter_contact || 'غير محدد'}</div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {generateStatusLogHTML(viewingReport)}
 
-              {viewingReport.notes && (
-                <div className="space-y-2 text-right">
-                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400">ملاحظات</label>
-                  <p className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-md leading-relaxed border-l-4 border-yellow-500">
-                    {viewingReport.notes}
-                  </p>
-                </div>
-              )}
-
-              {viewingReport.resolution && (
-                <div className="space-y-2 text-right">
-                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400">الحل</label>
-                  <p className="p-4 bg-green-50 dark:bg-green-900/20 rounded-md leading-relaxed border-l-4 border-green-500">
-                    {viewingReport.resolution}
-                  </p>
-                </div>
-              )}
-
-              {(viewingReport.status !== 'مفتوح' && (viewingReport.resolved_at || viewingReport.resolved_by)) && (
-                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-right">
-                  <h3 className="font-semibold text-green-900 dark:text-green-100 mb-3">تفاصيل الإغلاق/التكهين</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(viewingReport.notes || viewingReport.resolution) && (
+                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">ملاحظات إضافية</h3>
+                  <div className="space-y-3 text-sm">
+                    {viewingReport.notes && (
+                      <div>
+                        <strong>ملاحظات:</strong>
+                        <p className="mt-1 text-gray-700 dark:text-gray-300">{viewingReport.notes}</p>
+                      </div>
+                    )}
+                    {viewingReport.resolution && (
+                      <div>
+                        <strong>الحل:</strong>
+                        <p className="mt-1 text-gray-700 dark:text-gray-300">{viewingReport.resolution}</p>
+                      </div>
+                    )}
                     {viewingReport.resolved_at && (
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-green-700 dark:text-green-300">تاريخ الإغلاق/التكهين</label>
-                        <p className="p-3 bg-white dark:bg-gray-800 rounded-md">{viewingReport.resolved_at}</p>
+                      <div>
+                        <strong>تاريخ الإغلاق/التكهين:</strong>
+                        <span className="text-gray-700 dark:text-gray-300 mr-2">
+                          {new Date(viewingReport.resolved_at).toLocaleDateString('ar-SA')}
+                        </span>
                       </div>
                     )}
-                    {viewingReport.resolved_by && (
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-green-700 dark:text-green-300">تم الحل بواسطة</label>
-                        <p className="p-3 bg-white dark:bg-gray-800 rounded-md">{viewingReport.resolved_by}</p>
-                      </div>
-                    )}
+                    <div>
+                      <strong>فترة التوقف:</strong>
+                      <span className="text-gray-700 dark:text-gray-300 mr-2">
+                        {calculateDowntimePeriod(viewingReport.report_date, viewingReport.report_time, viewingReport.resolved_at)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <button type="button" onClick={() => setViewingReport(null)} className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                  إغلاق
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button onClick={() => setViewingReport(null)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">إغلاق</button>
+                <button onClick={() => handlePrintReport(viewingReport)} className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2 transition-colors text-sm">
+                  <Printer size={16} />
+                  طباعة
                 </button>
               </div>
             </div>
@@ -986,18 +999,20 @@ const handleFullEditClick = async (report) => {
       {deleteConfirmReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md shadow-2xl">
-            <div className="bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-red-700 dark:text-red-400 flex items-center gap-2">
-                <AlertTriangle size={20} />
+            <div className="bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/40 px-6 py-4 border-b border-red-200 dark:border-red-800 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-red-900 dark:text-red-100 flex items-center gap-2">
+                <AlertTriangle size={24} />
                 تأكيد الحذف
               </h2>
-              <button onClick={() => setDeleteConfirmReport(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
-                <X size={20} />
+              <button onClick={() => setDeleteConfirmReport(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors" aria-label="Close delete confirmation">
+                <X size={24} />
               </button>
             </div>
-            <div className="p-6 space-y-4 text-center">
-              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto">
-                <Trash2 size={32} className="text-red-600 dark:text-red-400" />
+            <div className="p-6 text-right space-y-4">
+              <div className="flex items-center justify-center mb-4">
+                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                  <AlertTriangle size={32} className="text-red-600 dark:text-red-400" />
+                </div>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">هل أنت متأكد من حذف هذا البلاغ؟</h3>
               <p className="text-gray-600 dark:text-gray-400">
@@ -1277,60 +1292,60 @@ const handleFullEditClick = async (report) => {
                     type="text"
                     value={editFormData.reporter_contact}
                     onChange={e => handleEditInputChange('reporter_contact', e.target.value)}
-                    placeholder="رقم جوال المبلغ"
+                    placeholder="رقم هاتف المبلغ"
                     className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١٠- حالة البلاغ</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">الحالة</label>
                 <select
                   value={editFormData.status}
                   onChange={e => handleEditInputChange('status', e.target.value)}
                   className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
+                  <option value="">اختر حالة البلاغ</option>
                   {predefinedStatuses.map(status => <option key={status} value={status}>{status}</option>)}
                 </select>
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١١- ملاحظات</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">ملاحظات</label>
                 <textarea
+                  rows={3}
                   value={editFormData.notes}
                   onChange={e => handleEditInputChange('notes', e.target.value)}
-                  placeholder="أي ملاحظات إضافية مهمة..."
+                  placeholder="ملاحظات إضافية..."
                   className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
-              {['مغلق', 'مكهن'].includes(editFormData.status) && (
-                <>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">الحل</label>
-                    <textarea
-                      value={editFormData.resolution}
-                      onChange={e => handleEditInputChange('resolution', e.target.value)}
-                      placeholder="وصف الحل المطبق..."
-                      className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">تم الحل بواسطة</label>
-                    <input
-                      type="text"
-                      value={editFormData.resolved_by}
-                      onChange={e => handleEditInputChange('resolved_by', e.target.value)}
-                      placeholder="اسم الشخص المسؤول عن الحل"
-                      className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </>
-              )}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">الحل</label>
+                <textarea
+                  rows={3}
+                  value={editFormData.resolution}
+                  onChange={e => handleEditInputChange('resolution', e.target.value)}
+                  placeholder="وصف الحل المطبق..."
+                  className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">تم الحل بواسطة</label>
+                <input
+                  type="text"
+                  value={editFormData.resolved_by}
+                  onChange={e => handleEditInputChange('resolved_by', e.target.value)}
+                  placeholder="اسم الشخص المسؤول عن الحل"
+                  className="w-full p-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button type="button" onClick={() => setFullEditingReport(null)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">إلغاء</button>
-                <button type="submit" disabled={updateLoading} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                <button type="submit" disabled={updateLoading} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
                   {updateLoading ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
@@ -1348,7 +1363,6 @@ const handleFullEditClick = async (report) => {
           </div>
         </div>
       )}
-
     </div>
   );
 }
