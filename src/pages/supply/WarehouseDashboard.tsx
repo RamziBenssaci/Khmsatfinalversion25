@@ -64,6 +64,16 @@ export default function WarehouseDashboard() {
     !selectedSupplier || supplier.name === selectedSupplier
   );
 
+  // Prepare facilities data for the new bar-style layout
+  const facilitiesChartData = filteredFacilitiesData.map((facility: any, index: number) => ({
+    name: facility.name,
+    items: facility.items || facility.totalItems || 0,
+    fill: `hsl(${(index * 45) % 360}, 65%, 55%)`
+  })).sort((a, b) => b.items - a.items);
+
+  // Calculate total items for percentage calculation
+  const totalFacilityItems = facilitiesChartData.reduce((sum, facility) => sum + facility.items, 0);
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -112,27 +122,27 @@ export default function WarehouseDashboard() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6" dir="rtl">
+    <div className="p-2 sm:p-4 md:p-6 space-y-4 sm:space-y-6" dir="rtl">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-6 text-white">
-        <h1 className="text-2xl md:text-3xl font-bold text-right">لوحة تحكم المستودع</h1>
-        <p className="text-blue-100 mt-2 text-right">إدارة شاملة لمخزون المستودع والطلبات</p>
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-4 sm:p-6 text-white">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-right">لوحة تحكم المستودع</h1>
+        <p className="text-blue-100 mt-2 text-right text-sm sm:text-base">إدارة شاملة لمخزون المستودع والطلبات</p>
       </div>
 
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-right">فلاتر البحث</CardTitle>
+          <CardTitle className="text-right text-sm sm:text-base">فلاتر البحث</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <Select value={selectedFacility} onValueChange={setSelectedFacility}>
-              <SelectTrigger>
+              <SelectTrigger className="text-sm">
                 <SelectValue placeholder="اختر المنشأة" />
               </SelectTrigger>
               <SelectContent>
                 {facilities.map((facility) => (
-                  <SelectItem key={facility.id} value={facility.name}>
+                  <SelectItem key={facility.id} value={facility.name} className="text-sm">
                     {facility.name}
                   </SelectItem>
                 ))}
@@ -143,15 +153,16 @@ export default function WarehouseDashboard() {
               placeholder="رقم أو اسم الصنف"
               value={selectedItem}
               onChange={(e) => setSelectedItem(e.target.value)}
+              className="text-sm"
             />
 
             <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
-              <SelectTrigger>
+              <SelectTrigger className="text-sm">
                 <SelectValue placeholder="اختر الشركة الموردة" />
               </SelectTrigger>
               <SelectContent>
                 {topSuppliers.map((supplier, index) => (
-                  <SelectItem key={index} value={supplier.name}>
+                  <SelectItem key={index} value={supplier.name} className="text-sm">
                     {supplier.name}
                   </SelectItem>
                 ))}
@@ -159,10 +170,10 @@ export default function WarehouseDashboard() {
             </Select>
 
             <div className="flex gap-2">
-              <Button onClick={handleFilter} className="flex-1">
+              <Button onClick={handleFilter} className="flex-1 text-sm">
                 تطبيق الفلتر
               </Button>
-              <Button variant="outline" onClick={clearFilters}>
+              <Button variant="outline" onClick={clearFilters} className="text-sm">
                 مسح
               </Button>
             </div>
@@ -171,72 +182,71 @@ export default function WarehouseDashboard() {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div className="text-right">
-                <p className="text-sm font-medium text-blue-600">إجمالي الأصناف</p>
-                <p className="text-2xl font-bold text-blue-800">{currentData.totalItems}</p>
+                <p className="text-xs sm:text-sm font-medium text-blue-600">إجمالي الأصناف</p>
+                <p className="text-lg sm:text-2xl font-bold text-blue-800">{currentData.totalItems}</p>
               </div>
-              <Package className="h-8 w-8 text-blue-600" />
+              <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-orange-50 border-orange-200">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div className="text-right">
-                <p className="text-sm font-medium text-orange-600">المخزون المنخفض</p>
-                <p className="text-2xl font-bold text-orange-800">{currentData.lowStockItems}</p>
+                <p className="text-xs sm:text-sm font-medium text-orange-600">المخزون المنخفض</p>
+                <p className="text-lg sm:text-2xl font-bold text-orange-800">{currentData.lowStockItems}</p>
               </div>
-              <AlertTriangle className="h-8 w-8 text-orange-600" />
+              <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-green-50 border-green-200">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div className="text-right">
-                <p className="text-sm font-medium text-green-600">طلبات مصروفة</p>
-                <p className="text-2xl font-bold text-green-800">{currentData.orders.completed}</p>
+                <p className="text-xs sm:text-sm font-medium text-green-600">طلبات مصروفة</p>
+                <p className="text-lg sm:text-2xl font-bold text-green-800">{currentData.orders.completed}</p>
               </div>
-              <CheckCircle className="h-8 w-8 text-green-600" />
+              <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div className="text-right">
-                <p className="text-sm font-medium text-blue-600">طلبات مفتوحة</p>
-                <p className="text-2xl font-bold text-blue-800">{currentData.orders.open}</p>
+                <p className="text-xs sm:text-sm font-medium text-blue-600">طلبات مفتوحة</p>
+                <p className="text-lg sm:text-2xl font-bold text-blue-800">{currentData.orders.open}</p>
               </div>
-              <Clock className="h-8 w-8 text-blue-600" />
+              <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Order Status Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        {/* Order Status Chart - Modified with hover-only labels and legend */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-right">توزيع حالة الطلبات</CardTitle>
+            <CardTitle className="text-right text-sm sm:text-base">توزيع حالة الطلبات</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+          <CardContent className="p-3 sm:p-4">
+            <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                  <Pie
                   data={currentData.orderStatusData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -245,27 +255,81 @@ export default function WarehouseDashboard() {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip formatter={(value, name) => [`${value}`, `${name} (${((value / currentData.orderStatusData.reduce((sum, item) => sum + item.value, 0)) * 100).toFixed(0)}%)`]} />
               </PieChart>
             </ResponsiveContainer>
+            {/* Legend */}
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mt-3 sm:mt-4">
+              {currentData.orderStatusData.map((item) => {
+                const total = currentData.orderStatusData.reduce((sum, data) => sum + data.value, 0);
+                const percentage = total > 0 ? ((item.value / total) * 100).toFixed(0) : 0;
+                return (
+                  <div key={item.name} className="flex items-center gap-1 sm:gap-2 bg-gray-50 dark:bg-gray-800 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
+                    <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                    <span className="text-xs sm:text-sm font-medium">{item.name} ({item.value}) - {percentage}%</span>
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Facilities Distribution */}
+        {/* Facilities Distribution - Changed to match ReportsDashboard style */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-right">توزيع الأصناف حسب المنشآت</CardTitle>
+            <CardTitle className="text-right text-sm sm:text-base">توزيع الأصناف حسب المنشآت</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={filteredFacilitiesData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="items" fill="#3b82f6" />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent className="p-3 sm:p-4">
+            {facilitiesChartData.length > 0 ? (
+              <div className="space-y-3">
+                {facilitiesChartData.map((facility, index) => (
+                  <div key={facility.name} className="group">
+                    {/* Facility Name and Count */}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 sm:w-4 sm:h-4 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: facility.fill }}
+                        ></div>
+                        <span className="text-xs sm:text-sm font-medium text-foreground">
+                          {facility.items}
+                        </span>
+                      </div>
+                      <div className="text-right flex-1 min-w-0 mr-2 sm:mr-3">
+                        <span className="text-xs sm:text-sm font-medium text-foreground block truncate">
+                          {facility.name}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Progress Bar */}
+                    <div className="relative">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 sm:h-3 overflow-hidden">
+                        <div 
+                          className="h-full rounded-full transition-all duration-700 ease-out group-hover:shadow-lg"
+                          style={{ 
+                            backgroundColor: facility.fill,
+                            width: `${totalFacilityItems > 0 ? (facility.items / Math.max(...facilitiesChartData.map(f => f.items))) * 100 : 0}%`,
+                            background: `linear-gradient(90deg, ${facility.fill}, ${facility.fill}dd)`
+                          }}
+                        ></div>
+                      </div>
+                      
+                      {/* Percentage Label */}
+                      <div className="absolute left-1 sm:left-2 top-0 h-full flex items-center">
+                        <span className="text-xs font-medium text-white drop-shadow-sm">
+                          {totalFacilityItems > 0 ? Math.round((facility.items / totalFacilityItems) * 100) : 0}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
+                لا توجد بيانات لعرضها
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -273,22 +337,24 @@ export default function WarehouseDashboard() {
       {/* Top Suppliers */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-right">أكثر الشركات توريداً للأصناف</CardTitle>
+          <CardTitle className="text-right text-sm sm:text-base">أكثر الشركات توريداً للأصناف</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-4">
           {loading ? (
-            <div className="text-center p-4">جاري تحميل البيانات...</div>
+            <div className="text-center p-4 text-sm">جاري تحميل البيانات...</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               {filteredSuppliers.map((supplier, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div key={index} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div className="text-right">
-                    <p className="font-medium">{supplier.name}</p>
-                    <p className="text-sm text-gray-600">{supplier.items_supplied || supplier.itemsSupplied} صنف</p>
+                    <p className="font-medium text-sm sm:text-base">{supplier.name}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                      {supplier.items_supplied || supplier.itemsSupplied} صنف
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-blue-600" />
-                    <span className="font-bold text-blue-600">#{index + 1}</span>
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                    <span className="font-bold text-blue-600 text-sm">#{index + 1}</span>
                   </div>
                 </div>
               ))}
