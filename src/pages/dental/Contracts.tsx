@@ -119,7 +119,7 @@ export default function DentalContracts() {
         setEditingContract(prev => ({
           ...prev,
           imagebase64: reader.result as string,
-          image_url: reader.result as string, // Update image_url for preview
+          imagebase64: reader.result as string, // Update image_url for preview
         }));
       };
       reader.readAsDataURL(file);
@@ -476,8 +476,8 @@ export default function DentalContracts() {
                 </div>
                 <div className="info-item">
                   <label>صورة التعميد</label>
-                  {contract.image_url ? (
-                    <img src={contract.image_url} alt="Approval" style={{ maxWidth: '100px', maxHeight: '100px' }} />
+                  {contract.imagebase64 ? (
+                    <img src={contract.imagebase64} alt="Approval" style={{ maxWidth: '100px', maxHeight: '100px' }} />
                   ) : (
                     <span>لا توجد صورة</span>
                   )}
@@ -998,12 +998,12 @@ export default function DentalContracts() {
                       <td className="p-3 mobile-hidden">{contract.approvalDate || '-'}</td>
                       <td className="p-3 mobile-hidden">{contract.supplierName || '-'}</td>
                       <td className="p-3">
-                        {contract.image_url ? (
+                        {contract.imagebase64 ? (
                           <button
                             onClick={() => {
                               const imgWindow = window.open('');
                               if (imgWindow) {
-                                imgWindow.document.write(`<html><head><title>صورة التعميد</title></head><body><img src="${contract.image_url}" style="max-width:100%; height:auto;" /></body></html>`);
+                                imgWindow.document.write(`<html><head><title>صورة التعميد</title></head><body><img src="${contract.imagebase64}" style="max-width:100%; height:auto;" /></body></html>`);
                                 imgWindow.document.close();
                               }
                             }}
@@ -1134,8 +1134,8 @@ export default function DentalContracts() {
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg col-span-full">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">صورة التعميد:</p>
-                  {selectedContract.image_url ? (
-                    <img src={selectedContract.image_url} alt="Approval" className="mt-2 max-w-full h-auto rounded-md" />
+                  {selectedContract.imagebase64 ? (
+                    <img src={selectedContract.imagebase64} alt="Approval" className="mt-2 max-w-full h-auto rounded-md" />
                   ) : (
                     <p className="text-lg font-semibold">لا توجد صورة</p>
                   )}
@@ -1460,9 +1460,9 @@ export default function DentalContracts() {
                   onChange={handleGeneralModifyImageUpload}
                   className="w-full p-3 border border-input rounded-md text-right"
                 />
-                {editingContract.image_url && (
+                {editingContract.imagebase64 && (
                   <div className="mt-2 text-right">
-                    <img src={editingContract.image_url} alt="Image Preview" className="max-w-[150px] max-h-[150px] object-contain border rounded-md" />
+                    <img src={editingContract.imagebase64} alt="Image Preview" className="max-w-[150px] max-h-[150px] object-contain border rounded-md" />
                   </div>
                 )}
               </div>
