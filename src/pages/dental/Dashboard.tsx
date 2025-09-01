@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, Clock, CheckCircle, XCircle, AlertTriangle, DollarSign, TrendingUp, Loader2, FileX, Download, Printer, FileSpreadsheet, FileText } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { dentalContractsApi } from '@/lib/api';
 
 export default function DentalDashboard() {
@@ -81,6 +81,35 @@ export default function DentalDashboard() {
       totalValue: totalValue
     };
     return stats;
+  };
+
+  // Generate monthly trend from filtered data using orderDate
+  const generateMonthlyTrend = (data) => {
+    const monthCounts = {};
+    const months = [
+      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+
+    // Initialize all months with 0
+    months.forEach(month => {
+      monthCounts[month] = 0;
+    });
+
+    // Count contracts by month using orderDate
+    data.forEach(contract => {
+      const date = new Date(contract.orderDate || contract.createdAt);
+      if (!isNaN(date.getTime())) {
+        const monthIndex = date.getMonth();
+        const monthName = months[monthIndex];
+        monthCounts[monthName]++;
+      }
+    });
+
+    return months.map(month => ({
+      month,
+      count: monthCounts[month]
+    }));
   };
 
   // Load dashboard data
@@ -214,6 +243,10 @@ export default function DentalDashboard() {
     ];
     setStatusData(newStatusData);
 
+    // Update monthly data based on filtered results
+    const monthlyTrendData = generateMonthlyTrend(filtered);
+    setMonthlyData(monthlyTrendData);
+
   }, [selectedClinic, selectedSupplier, selectedStatus, allData]);
 
   const clearFilters = () => {
@@ -233,6 +266,10 @@ export default function DentalDashboard() {
       { name: 'مرفوض', value: originalDashboardData.rejected, color: '#ef4444' }
     ];
     setStatusData(originalStatusData);
+
+    // Reset monthly data to original
+    const originalMonthlyData = generateMonthlyTrend(allData);
+    setMonthlyData(originalMonthlyData);
   };
 
   const refreshData = async () => {
@@ -618,14 +655,17 @@ export default function DentalDashboard() {
         </Card>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Status Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-right">توزيع حالة العقود</CardTitle>
-          </CardHeader>
-          <CardContent>
+      {/* Charts Section - Updated with new styling */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Status Distribution - Enhanced styling like ReportsDashboard */}
+        <div className="bg-white dark:bg-card rounded-lg shadow-lg border border-border overflow-hidden">
+          <div className="bg-gradient-to-r from-success to-success/80 text-success-foreground px-4 py-3 border-b border-border">
+            <h3 className="font-semibold text-right flex items-center gap-2 text-sm sm:text-base">
+              <TrendingUp className="h-4 w-4" />
+              توزيع حالة العقود
+            </h3>
+          </div>
+          <div className="p-3 sm:p-4">
             {statusData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -633,10 +673,8 @@ export default function DentalDashboard() {
                     data={statusData}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    innerRadius={40}
                     outerRadius={80}
-                    fill="#8884d8"
                     dataKey="value"
                   >
                     {statusData.map((entry, index) => (
@@ -648,11 +686,76 @@ export default function DentalDashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-[300px]">
+                <p className="text-gray-500">لا توجد بيانات لعرضها</p>
+              </div>
+            )}
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mt-3 sm:mt-4">
+              {statusData.map((item) => (
+                <div key={item.name} className="flex items-center gap-1 sm:gap-2 bg-accent/50 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
+                  <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                  <span className="text-xs sm:text-sm font-medium">
+                    {item.name} ({item.value}) 
+                    {dashboardData.total > 0 && ` - ${Math.round((item.value / dashboardData.total) * 100)}%`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Monthly Trend Line Chart - New addition */}
+        <div className="bg-white dark:bg-card rounded-lg shadow-lg border border-border overflow-hidden">
+          <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 border-b border-border">
+            <h3 className="font-semibold text-right flex items-center gap-2 text-sm sm:text-base">
+              <TrendingUp className="h-4 w-4" />
+              الاتجاه الشهري
+            </h3>
+          </div>
+          <div className="p-3 sm:p-4">
+            {monthlyData.length > 0 ? (
+              <div className="h-[300px] sm:h-[350px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart 
+                    data={monthlyData} 
+                    margin={{ 
+                      top: 20, 
+                      right: 10, 
+                      left: 10, 
+                      bottom: 40 
+                    }}
+                  >
+                    <XAxis 
+                      dataKey="month" 
+                      fontSize={10}
+                      tick={{ fontSize: 10 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis 
+                      fontSize={10} 
+                      tick={{ fontSize: 10 }}
+                      width={30}
+                    />
+                    <Tooltip />
+                    <Line 
+                      type="monotone" 
+                      dataKey="count" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={3}
+                      dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: "hsl(var(--primary))", strokeWidth: 2 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-[300px]">
                 <p className="text-gray-500">لا توجد بيانات شهرية لعرضها</p>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Top Suppliers and Clinics */}
