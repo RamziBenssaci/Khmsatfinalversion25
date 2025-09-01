@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +21,9 @@ const mockContracts = [
     status: 'تم التعاقد',
     totalCost: '85000.00',
     orderDate: '2024-01-15',
-    deliveryDate: '2024-02-15'
+    deliveryDate: '2024-02-15',
+    financialApprovalNumber: 'FA-2024-001',
+    approvalDate: '2024-01-10'
   },
   {
     id: 'CONT-002',
@@ -31,7 +34,9 @@ const mockContracts = [
     status: 'موافق عليه',
     totalCost: '120000.00',
     orderDate: '2024-01-20',
-    deliveryDate: '2024-02-20'
+    deliveryDate: '2024-02-20',
+    financialApprovalNumber: 'FA-2024-002',
+    approvalDate: '2024-01-18'
   },
   {
     id: 'CONT-003',
@@ -42,7 +47,9 @@ const mockContracts = [
     status: 'تم التسليم',
     totalCost: '45000.00',
     orderDate: '2024-01-10',
-    deliveryDate: '2024-01-25'
+    deliveryDate: '2024-01-25',
+    financialApprovalNumber: 'FA-2024-003',
+    approvalDate: '2024-01-05'
   },
   {
     id: 'CONT-004',
@@ -53,7 +60,9 @@ const mockContracts = [
     status: 'مرفوض',
     totalCost: '25000.00',
     orderDate: '2024-01-12',
-    deliveryDate: null
+    deliveryDate: null,
+    financialApprovalNumber: null,
+    approvalDate: null
   }
 ];
 
@@ -192,14 +201,16 @@ export default function DentalReports() {
     try {
       const exportData = filteredContracts.map(contract => ({
         'رقم العقد': contract.id,
-        'رقم المعدة': contract.itemNumber,
-        'اسم المعدة': contract.itemName,
+        'رقم الصنف': contract.itemNumber,
+        'اسم الصنف': contract.itemName,
         'العيادة المستفيدة': contract.beneficiaryFacility,
         'الشركة الموردة': contract.supplierName,
         'الحالة': contract.status,
         'التكلفة (ريال)': contract.totalCost,
         'تاريخ العقد': contract.orderDate,
-        'تاريخ التسليم': contract.deliveryDate || 'لم يتم التسليم بعد'
+        'تاريخ التسليم': contract.deliveryDate || 'لم يتم التسليم بعد',
+        'رقم التعميد': contract.financialApprovalNumber || 'غير محدد',
+        'تاريخ التعميد': contract.approvalDate || 'غير محدد'
       }));
 
       await exportToExcel(exportData, 'تقرير_عقود_الأسنان');
@@ -229,7 +240,7 @@ export default function DentalReports() {
               font-family: Arial, sans-serif; 
               direction: rtl; 
               margin: 20px;
-              font-size: 12px;
+              font-size: 11px;
             }
             h1 { 
               text-align: center; 
@@ -243,8 +254,9 @@ export default function DentalReports() {
             }
             th, td { 
               border: 1px solid #ddd; 
-              padding: 8px; 
+              padding: 6px; 
               text-align: right;
+              font-size: 10px;
             }
             th { 
               background-color: #f5f5f5; 
@@ -257,9 +269,9 @@ export default function DentalReports() {
               border-radius: 5px;
             }
             .status-badge {
-              padding: 4px 8px;
-              border-radius: 4px;
-              font-size: 11px;
+              padding: 3px 6px;
+              border-radius: 3px;
+              font-size: 9px;
               font-weight: bold;
             }
             .status-approved { background-color: #fef3c7; color: #92400e; }
@@ -280,13 +292,15 @@ export default function DentalReports() {
             <thead>
               <tr>
                 <th>رقم العقد</th>
-                <th>رقم المعدة</th>
-                <th>اسم المعدة</th>
+                <th>رقم الصنف</th>
+                <th>اسم الصنف</th>
                 <th>العيادة المستفيدة</th>
                 <th>الشركة الموردة</th>
                 <th>الحالة</th>
                 <th>التكلفة</th>
                 <th>تاريخ العقد</th>
+                <th>رقم التعميد</th>
+                <th>تاريخ التعميد</th>
               </tr>
             </thead>
             <tbody>
@@ -312,6 +326,8 @@ export default function DentalReports() {
                     <td><span class="status-badge ${statusClass}">${contract.status || ''}</span></td>
                     <td>${formattedCost} ريال</td>
                     <td>${contract.orderDate || ''}</td>
+                    <td>${contract.financialApprovalNumber || 'غير محدد'}</td>
+                    <td>${contract.approvalDate || 'غير محدد'}</td>
                   </tr>
                 `;
               }).join('')}
@@ -445,9 +461,9 @@ export default function DentalReports() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">رقم أو اسم المعدة</label>
+              <label className="block text-sm font-medium mb-2">رقم أو اسم الصنف</label>
               <Input
-                placeholder="أدخل رقم أو اسم المعدة"
+                placeholder="أدخل رقم أو اسم الصنف"
                 value={itemFilter}
                 onChange={(e) => setItemFilter(e.target.value)}
                 className="text-right"
@@ -504,17 +520,17 @@ export default function DentalReports() {
               <p className="text-muted-foreground">لا توجد بيانات للتصدير</p>
             </div>
           ) : (
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
               <Button 
                 onClick={handleExportToExcel} 
-                className="bg-green-600 hover:bg-green-700 text-white"
+                className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto"
               >
                 <Download className="w-4 h-4 ml-2" />
                 تصدير إلى Excel
               </Button>
               <Button 
                 onClick={handleExportToPDF} 
-                className="bg-red-600 hover:bg-red-700 text-white"
+                className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
               >
                 <Download className="w-4 h-4 ml-2" />
                 تصدير إلى PDF
@@ -542,18 +558,20 @@ export default function DentalReports() {
           ) : (
             <>
               {/* Desktop View */}
-              <div className="hidden md:block overflow-x-auto">
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full text-right">
                   <thead>
                     <tr className="border-b">
                       <th className="p-2 text-right">رقم العقد</th>
-                      <th className="p-2 text-right">رقم المعدة</th>
-                      <th className="p-2 text-right">اسم المعدة</th>
+                      <th className="p-2 text-right">رقم الصنف</th>
+                      <th className="p-2 text-right">اسم الصنف</th>
                       <th className="p-2 text-right">العيادة المستفيدة</th>
                       <th className="p-2 text-right">الشركة الموردة</th>
                       <th className="p-2 text-right">الحالة</th>
                       <th className="p-2 text-right">التكلفة</th>
                       <th className="p-2 text-right">تاريخ العقد</th>
+                      <th className="p-2 text-right">رقم التعميد</th>
+                      <th className="p-2 text-right">تاريخ التعميد</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -575,6 +593,8 @@ export default function DentalReports() {
                           </td>
                           <td className="p-2">{formattedCost} ريال</td>
                           <td className="p-2">{contract.orderDate}</td>
+                          <td className="p-2">{contract.financialApprovalNumber || 'غير محدد'}</td>
+                          <td className="p-2">{contract.approvalDate || 'غير محدد'}</td>
                         </tr>
                       );
                     })}
@@ -583,7 +603,7 @@ export default function DentalReports() {
               </div>
 
               {/* Mobile View */}
-              <div className="md:hidden space-y-4">
+              <div className="lg:hidden space-y-4">
                 {filteredContracts.map((contract) => {
                   const cost = parseFloat(contract.totalCost) || 0;
                   const formattedCost = cost % 1 === 0 ? cost.toLocaleString() : cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -599,11 +619,14 @@ export default function DentalReports() {
                             <span className="font-bold">{contract.id}</span>
                           </div>
                           <div className="text-sm space-y-1">
-                            <p><strong>المعدة:</strong> {contract.itemName}</p>
+                            <p><strong>الصنف:</strong> {contract.itemName}</p>
+                            <p><strong>رقم الصنف:</strong> {contract.itemNumber}</p>
                             <p><strong>العيادة المستفيدة:</strong> {contract.beneficiaryFacility}</p>
                             <p><strong>الشركة الموردة:</strong> {contract.supplierName}</p>
                             <p><strong>التكلفة:</strong> {formattedCost} ريال</p>
                             <p><strong>تاريخ العقد:</strong> {contract.orderDate}</p>
+                            <p><strong>رقم التعميد:</strong> {contract.financialApprovalNumber || 'غير محدد'}</p>
+                            <p><strong>تاريخ التعميد:</strong> {contract.approvalDate || 'غير محدد'}</p>
                           </div>
                         </div>
                       </CardContent>
@@ -618,3 +641,4 @@ export default function DentalReports() {
     </div>
   );
 }
+           
