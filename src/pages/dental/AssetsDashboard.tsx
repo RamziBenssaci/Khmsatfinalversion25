@@ -138,7 +138,7 @@ export default function DentalDashboard() {
         if (selectedWorkingStatus === 'working') {
           return item.deviceStatus === 'يعمل';
         } else if (selectedWorkingStatus === 'not_working') {
-          return item.deviceStatus === 'معطل' || item.deviceStatus === 'لا يعمل';
+          return item.deviceStatus === 'مكهن' || item.deviceStatus === 'لا يعمل';
         }
         return true;
       });
