@@ -117,7 +117,7 @@ export default function Sidebar() {
             نظام الإدارة المتكامل
           </h1>
           <p className="text-sm text-muted-foreground text-right">
-            تجمع الرياض الصحي الثاني
+            ادارة التشغيل بخدمات الاسنان
           </p>
         </div>
 
