@@ -452,6 +452,7 @@ export default function ReportsList() {
         'البريد الإلكتروني',
         'اسم المبلغ',
         'رقم اتصال المبلغ',
+        'تاريخ اغلاق البلاغ',
         'فترة التوقف'
       ],
       ...data.map((report, index) => [
@@ -470,6 +471,7 @@ export default function ReportsList() {
         report.email || 'غير محدد',
         report.reporter_name || 'غير محدد',
         report.reporter_contact || 'غير محدد',
+        report.resolved_at ? new Date(report.resolved_at).toLocaleDateString('en-US') : 'غير محدد',
         calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)
       ])
     ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
@@ -492,9 +494,7 @@ export default function ReportsList() {
     const rejectionDate = report.rejection_date;
     const rejectionNote = report.rejection_date_note;
 
-    if(!creationDate && !approvalDate && !rejectionDate) {
-      return isPrint ? '' : null;
-    }
+    
 
     if(isPrint) {
       let html = `
@@ -1008,6 +1008,12 @@ export default function ReportsList() {
                         : viewingReport.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                         : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
                       }`}>{viewingReport.status}</span></div>
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
+      <strong className="text-blue-800 dark:text-blue-200">فترة التوقف:</strong> 
+      <span className="text-blue-700 dark:text-blue-300 font-medium mr-2">
+        {calculateDowntimePeriod(viewingReport.report_date, viewingReport.report_time, viewingReport.resolved_at)}
+      </span>
+    </div>
                     </div>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
