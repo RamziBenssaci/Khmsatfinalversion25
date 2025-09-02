@@ -494,9 +494,10 @@ export default function ReportsList() {
     const rejectionDate = report.rejection_date;
     const rejectionNote = report.rejection_date_note;
 
-    if(!creationDate && !approvalDate && !rejectionDate) {
+ if (true) {
   return isPrint ? '' : null;
 }
+
 
     if(isPrint) {
       let html = `
