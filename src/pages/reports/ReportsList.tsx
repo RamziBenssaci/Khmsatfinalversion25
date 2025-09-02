@@ -172,14 +172,14 @@ export default function ReportsList() {
       under_warranty: report.under_warranty || '',
       repair_company: report.repair_company || '',
       contact_number: report.contact_number || '',
-      email: report.email || '',
+      email: '',
       reporter_name: report.reporter_name || '',
       reporter_contact: report.reporter_contact || '',
       status: report.status || '',
-      notes: report.notes || '',
-      resolution: report.resolution || '',
-      resolved_by: report.resolved_by || ''
-    });
+      notes: '',
+      resolution: '',
+      resolved_by: ''
+  });
     
     if (facilitiesData.length === 0) {
       setFacilitiesLoading(true);
@@ -543,14 +543,14 @@ export default function ReportsList() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
                 <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ الغلق:</span>
                 <span className="text-gray-700 dark:text-gray-300">{approvalDate}</span>
-                {approvalNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({approvalNote})</span>}
+                {approvalNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">(${approvalNote})</span>}
               </div>
             )}
             {rejectionDate && (
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-md">
                 <span className="font-medium text-purple-700 dark:text-purple-300 min-w-[120px]">تاريخ التكهين:</span>
                 <span className="text-gray-700 dark:text-gray-300">{rejectionDate}</span>
-                {rejectionNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">({rejectionNote})</span>}
+                {rejectionNote && <span className="text-sm text-gray-500 dark:text-gray-400 italic">(${rejectionNote})</span>}
               </div>
             )}
           </div>
@@ -646,7 +646,7 @@ export default function ReportsList() {
           <div class="info-item"><div class="info-label">اسم المبلغ:</div><div>${report.reporter_name || 'غير محدد'}</div></div>
           <div class="info-item"><div class="info-label">رقم اتصال المبلغ:</div><div>${report.reporter_contact || 'غير محدد'}</div></div>
 
-          ${statusLogHTML.replace(/<div dir="rtl">|<\/div>/g, '')}
+          ${statusLogHTML.replace(/<div dir="rtl">|</div>/g, '')}
 
           ${report.notes ? `<div class="info-item full-width"><div class="info-label">ملاحظات:</div><div>${report.notes}</div></div>` : ''}
           ${report.resolution ? `<div class="info-item full-width"><div class="info-label">الحل:</div><div>${report.resolution}</div></div>` : ''}
