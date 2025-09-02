@@ -415,7 +415,7 @@ export default function ReportsList() {
                 <td>${report.email || 'غير محدد'}</td>
                 <td>${report.reporter_name || 'غير محدد'}</td>
                 <td>${report.reporter_contact || 'غير محدد'}</td>
-                <td>${report.resolved_at ? new Date(report.resolved_at).toLocaleDateString('ar-SA') : 'غير محدد'}</td>
+                <td>${report.resolved_at || 'غير محدد'}</td>
                 <td>${calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)}</td>
               </tr>
             `).join('')}
@@ -429,19 +429,11 @@ export default function ReportsList() {
     if(printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
-      printWindow.onload = function() {
-        setTimeout(() => {
-          printWindow.print();
-          printWindow.close();
-        }, 500);
-      };
-      printWindow.onafterprint = function() {
-        printWindow.close();
-      };
+      setTimeout(() => { printWindow.print(); }, 500);
     }
   };
 
-  // Modified Excel Export Function with "تاريخ اغلاق البلاغ" added
+  // New Excel Export Function with all columns and serial numbers - MODIFIED TO INCLUDE تاريخ اغلاق البلاغ
   const exportToExcel = (data, filename) => {
     const csvContent = [
       [
@@ -479,7 +471,7 @@ export default function ReportsList() {
         report.email || 'غير محدد',
         report.reporter_name || 'غير محدد',
         report.reporter_contact || 'غير محدد',
-        report.resolved_at ? new Date(report.resolved_at).toLocaleDateString('ar-SA') : 'غير محدد',
+        report.resolved_at || 'غير محدد',
         calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at)
       ])
     ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
@@ -567,7 +559,6 @@ export default function ReportsList() {
     }
   };
 
-  // Fixed Print Report Function - closes window after printing
   const handlePrintReport = (report) => {
     const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
     const statusLogHTML = generateStatusLogHTML(report) || '';
@@ -659,7 +650,7 @@ export default function ReportsList() {
 
           ${report.notes ? `<div class="info-item full-width"><div class="info-label">ملاحظات:</div><div>${report.notes}</div></div>` : ''}
           ${report.resolution ? `<div class="info-item full-width"><div class="info-label">الحل:</div><div>${report.resolution}</div></div>` : ''}
-          ${report.resolved_at ? `<div class="info-item"><div class="info-label">تاريخ الإغلاق/التكهين:</div><div>${new Date(report.resolved_at).toLocaleDateString('ar-SA')}</div></div>` : ''}
+          ${report.resolved_at ? `<div class="info-item"><div class="info-label">تاريخ الإغلاق/التكهين:</div><div>${new Date(report.resolved_at).toLocaleDateString('en-US')}</div></div>` : ''}
           <div class="info-item"><div class="info-label">فترة التوقف:</div><div>${downtimePeriod}</div></div>
         </div>
       </body>
@@ -670,17 +661,7 @@ export default function ReportsList() {
     if(printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
-      
-      // Wait for content to load, then print and close
-      printWindow.onload = function() {
-        setTimeout(() => {
-          printWindow.print();
-          printWindow.close();
-        }, 500);
-      };
-      printWindow.onafterprint = function() {
-        printWindow.close();
-      };
+      setTimeout(() => { printWindow.print(); }, 500);
     }
   };
 
@@ -840,10 +821,9 @@ export default function ReportsList() {
               )}
               {displayedReports.map((report, index) => {
                 const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
-                const serialNumber = (currentPage - 1) * reportsPerPage + index + 1;
                 return (
-                  <tr key={report.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <td className="p-4 text-gray-900 dark:text-gray-100">{serialNumber}</td>
+                  <tr key={report.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <td className="p-4 text-gray-900 dark:text-gray-100">{(currentPage - 1) * reportsPerPage + index + 1}</td>
                     <td className="p-4 text-gray-900 dark:text-gray-100 font-medium">{report.id}</td>
                     <td className="p-4 text-gray-700 dark:text-gray-300 hidden md:table-cell">{report.facility?.name || 'غير محدد'}</td>
                     <td className="p-4 text-gray-700 dark:text-gray-300">{report.category}</td>
@@ -859,22 +839,22 @@ export default function ReportsList() {
                         {report.status}
                       </span>
                     </td>
-                    <td className="p-4 text-gray-700 dark:text-gray-300 hidden sm:table-cell text-sm">{downtimePeriod}</td>
+                    <td className="p-4 text-gray-700 dark:text-gray-300 hidden sm:table-cell">{downtimePeriod}</td>
                     <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => handleViewClick(report)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" title="عرض التفاصيل">
+                      <div className="flex gap-2">
+                        <button onClick={() => handleViewClick(report)} className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" title="عرض">
                           <Eye size={16} />
                         </button>
-                        <button onClick={() => handleModifyClick(report)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors" title="تعديل الحالة">
+                        <button onClick={() => handleModifyClick(report)} className="p-1 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors" title="تعديل الحالة">
                           <Edit size={16} />
                         </button>
-                        <button onClick={() => handleFullEditClick(report)} className="text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" title="تعديل كامل">
+                        <button onClick={() => handleFullEditClick(report)} className="p-1 text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" title="تعديل كامل">
                           <Settings size={16} />
                         </button>
-                        <button onClick={() => handleDeleteClick(report)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors" title="حذف البلاغ">
+                        <button onClick={() => handleDeleteClick(report)} className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors" title="حذف">
                           <Trash2 size={16} />
                         </button>
-                        <button onClick={() => handlePrintReport(report)} className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 transition-colors" title="طباعة البلاغ">
+                        <button onClick={() => handlePrintReport(report)} className="p-1 text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 transition-colors" title="طباعة">
                           <Printer size={16} />
                         </button>
                       </div>
@@ -887,7 +867,7 @@ export default function ReportsList() {
         </div>
       </div>
 
-      {/* Mobile Cards View */}
+      {/* Mobile Cards Section */}
       <div className="md:hidden space-y-4">
         {displayedReports.length === 0 && (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
@@ -897,13 +877,12 @@ export default function ReportsList() {
         )}
         {displayedReports.map((report, index) => {
           const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
-          const serialNumber = (currentPage - 1) * reportsPerPage + index + 1;
           return (
             <div key={report.id} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">بلاغ رقم {report.id}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">الرقم التسلسلي: {serialNumber}</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">البلاغ #{report.id}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{report.facility?.name || 'غير محدد'}</p>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                   report.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
@@ -913,33 +892,24 @@ export default function ReportsList() {
                   {report.status}
                 </span>
               </div>
-              <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300 mb-4">
-                <div><strong>المنشأة:</strong> {report.facility?.name || 'غير محدد'}</div>
+              <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                 <div><strong>التصنيف:</strong> {report.category}</div>
                 <div><strong>الجهاز:</strong> {report.device_name}</div>
                 <div><strong>التاريخ:</strong> {report.report_date}</div>
                 <div><strong>فترة التوقف:</strong> {downtimePeriod}</div>
+                <div className="truncate"><strong>المشكلة:</strong> {report.problem_description}</div>
               </div>
-              <div className="flex items-center gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                <button onClick={() => handleViewClick(report)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors flex items-center gap-1 text-sm">
+              <div className="flex gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <button onClick={() => handleViewClick(report)} className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md text-sm flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors">
                   <Eye size={16} />
                   عرض
                 </button>
-                <button onClick={() => handleModifyClick(report)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors flex items-center gap-1 text-sm">
+                <button onClick={() => handleModifyClick(report)} className="flex-1 bg-green-600 text-white px-3 py-2 rounded-md text-sm flex items-center justify-center gap-2 hover:bg-green-700 transition-colors">
                   <Edit size={16} />
                   تعديل
                 </button>
-                <button onClick={() => handleFullEditClick(report)} className="text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 transition-colors flex items-center gap-1 text-sm">
-                  <Settings size={16} />
-                  تعديل كامل
-                </button>
-                <button onClick={() => handleDeleteClick(report)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors flex items-center gap-1 text-sm">
+                <button onClick={() => handleDeleteClick(report)} className="bg-red-600 text-white px-3 py-2 rounded-md text-sm flex items-center justify-center gap-2 hover:bg-red-700 transition-colors">
                   <Trash2 size={16} />
-                  حذف
-                </button>
-                <button onClick={() => handlePrintReport(report)} className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 transition-colors flex items-center gap-1 text-sm">
-                  <Printer size={16} />
-                  طباعة
                 </button>
               </div>
             </div>
@@ -949,11 +919,11 @@ export default function ReportsList() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2 mt-6">
+        <div className="flex justify-center items-center gap-2 mt-8">
           <button
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage === 1}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
           >
             السابق
           </button>
@@ -974,7 +944,7 @@ export default function ReportsList() {
               <button
                 key={pageNum}
                 onClick={() => goToPage(pageNum)}
-                className={`px-3 py-2 border rounded-md transition-colors text-sm ${
+                className={`px-3 py-2 border rounded-md text-sm transition-colors ${
                   currentPage === pageNum
                     ? 'bg-blue-600 text-white border-blue-600'
                     : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
@@ -988,18 +958,18 @@ export default function ReportsList() {
           <button
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
           >
             التالي
           </button>
         </div>
       )}
 
-      {/* View Report Modal */}
+      {/* View Report Modal - MODIFIED TO INCLUDE فترة التوقف */}
       {viewingReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/40 px-6 py-4 border-b border-blue-200 dark:border-blue-800 flex justify-between items-center">
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/40 px-6 py-4 border-b border-blue-200 dark:border-blue-800 flex justify-between items-center">
               <h2 className="text-xl font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
                 <Eye size={24} />
                 عرض البلاغ رقم {viewingReport.id}
@@ -1008,68 +978,55 @@ export default function ReportsList() {
                 <X size={24} />
               </button>
             </div>
-            
-            {/* Added Downtime Period at the top with nice styling */}
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
-                <div className="flex items-center justify-center gap-3">
-                  <Clock size={24} className="text-orange-600 dark:text-orange-400" />
-                  <div className="text-center">
-                    <h3 className="text-lg font-bold text-orange-900 dark:text-orange-100 mb-1">فترة التوقف</h3>
-                    <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">
-                      {calculateDowntimePeriod(viewingReport.report_date, viewingReport.report_time, viewingReport.resolved_at)}
+            <div className="p-4 md:p-6 space-y-6 text-right" dir="rtl">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                      <FileText size={20} />
+                      معلومات البلاغ
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div><strong>رقم البلاغ:</strong> {viewingReport.id}</div>
+                      <div><strong>المنشأة:</strong> {viewingReport.facility?.name || 'غير محدد'}</div>
+                      <div><strong>تاريخ البلاغ:</strong> {viewingReport.report_date} {viewingReport.report_time}</div>
+                      <div><strong>التصنيف:</strong> {viewingReport.category}</div>
+                      <div><strong>الحالة:</strong> <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        viewingReport.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                        : viewingReport.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                      }`}>{viewingReport.status}</span></div>
+                      <div><strong>فترة التوقف:</strong> {calculateDowntimePeriod(viewingReport.report_date, viewingReport.report_time, viewingReport.resolved_at)}</div>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                      <Settings size={20} />
+                      تفاصيل الجهاز
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div><strong>اسم الجهاز:</strong> {viewingReport.device_name}</div>
+                      <div><strong>الرقم التسلسلي:</strong> {viewingReport.serial_number || 'غير محدد'}</div>
+                      <div><strong>تحت الضمان:</strong> {viewingReport.under_warranty || 'غير محدد'}</div>
+                      <div><strong>شركة الصيانة:</strong> {viewingReport.repair_company || 'غير محدد'}</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">وصف المشكلة</h3>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                      {viewingReport.problem_description || 'لم يتم تقديم وصف للمشكلة'}
                     </p>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 md:p-6 space-y-6 text-right" dir="rtl">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                    <FileText size={20} />
-                    معلومات البلاغ
-                  </h3>
-                  <div className="space-y-2 text-sm">
-                    <div><strong>رقم البلاغ:</strong> {viewingReport.id}</div>
-                    <div><strong>المنشأة:</strong> {viewingReport.facility?.name || 'غير محدد'}</div>
-                    <div><strong>تاريخ البلاغ:</strong> {viewingReport.report_date} {viewingReport.report_time}</div>
-                    <div><strong>التصنيف:</strong> {viewingReport.category}</div>
-                    <div><strong>الحالة:</strong> <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      viewingReport.status === 'مفتوح' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-                      : viewingReport.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                      : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                    }`}>{viewingReport.status}</span></div>
-                  </div>
-                </div>
-                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                    <Settings size={20} />
-                    تفاصيل الجهاز
-                  </h3>
-                  <div className="space-y-2 text-sm">
-                    <div><strong>اسم الجهاز:</strong> {viewingReport.device_name}</div>
-                    <div><strong>الرقم التسلسلي:</strong> {viewingReport.serial_number || 'غير محدد'}</div>
-                    <div><strong>تحت الضمان:</strong> {viewingReport.under_warranty || 'غير محدد'}</div>
-                    <div><strong>شركة الصيانة:</strong> {viewingReport.repair_company || 'غير محدد'}</div>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">وصف المشكلة</h3>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                    {viewingReport.problem_description || 'لم يتم تقديم وصف للمشكلة'}
-                  </p>
-                </div>
-                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">معلومات الاتصال</h3>
-                  <div className="space-y-2 text-sm">
-                    <div><strong>رقم الاتصال:</strong> {viewingReport.contact_number || 'غير محدد'}</div>
-                    <div><strong>البريد الإلكتروني:</strong> {viewingReport.email || 'غير محدد'}</div>
-                    <div><strong>اسم المبلغ:</strong> {viewingReport.reporter_name || 'غير محدد'}</div>
-                    <div><strong>رقم اتصال المبلغ:</strong> {viewingReport.reporter_contact || 'غير محدد'}</div>
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">معلومات الاتصال</h3>
+                    <div className="space-y-2 text-sm">
+                      <div><strong>رقم الاتصال:</strong> {viewingReport.contact_number || 'غير محدد'}</div>
+                      <div><strong>البريد الإلكتروني:</strong> {viewingReport.email || 'غير محدد'}</div>
+                      <div><strong>اسم المبلغ:</strong> {viewingReport.reporter_name || 'غير محدد'}</div>
+                      <div><strong>رقم اتصال المبلغ:</strong> {viewingReport.reporter_contact || 'غير محدد'}</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1096,7 +1053,7 @@ export default function ReportsList() {
                       <div>
                         <strong>تاريخ الإغلاق/التكهين:</strong>
                         <span className="text-gray-700 dark:text-gray-300 mr-2">
-                          {new Date(viewingReport.resolved_at).toLocaleDateString('ar-SA')}
+                          {new Date(viewingReport.resolved_at).toLocaleDateString('en-US')}
                         </span>
                       </div>
                     )}
@@ -1332,7 +1289,7 @@ export default function ReportsList() {
                   type="text"
                   value={editFormData.device_name}
                   onChange={e => handleEditInputChange('device_name', e.target.value)}
-                  placeholder="أدخل اسم الجهاز"
+                  placeholder="اسم الجهاز أو المعدة"
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
@@ -1392,7 +1349,7 @@ export default function ReportsList() {
                     type="email"
                     value={editFormData.email}
                     onChange={e => handleEditInputChange('email', e.target.value)}
-                    placeholder="البريد الإلكتروني للتواصل"
+                    placeholder="البريد الإلكتروني"
                     className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -1405,7 +1362,7 @@ export default function ReportsList() {
                     type="text"
                     value={editFormData.reporter_name}
                     onChange={e => handleEditInputChange('reporter_name', e.target.value)}
-                    placeholder="اسم الشخص الذي أبلغ عن المشكلة"
+                    placeholder="اسم الشخص الذي قدم البلاغ"
                     className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -1422,7 +1379,7 @@ export default function ReportsList() {
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١٤- حالة البلاغ</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١٤- الحالة</label>
                 <select
                   value={editFormData.status}
                   onChange={e => handleEditInputChange('status', e.target.value)}
@@ -1446,12 +1403,12 @@ export default function ReportsList() {
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١٦- الحل المطبق</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١٦- الحل</label>
                 <textarea
                   value={editFormData.resolution}
                   onChange={e => handleEditInputChange('resolution', e.target.value)}
                   rows={3}
-                  placeholder="وصف الحل المطبق للمشكلة..."
+                  placeholder="وصف الحل المطبق..."
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -1462,14 +1419,14 @@ export default function ReportsList() {
                   type="text"
                   value={editFormData.resolved_by}
                   onChange={e => handleEditInputChange('resolved_by', e.target.value)}
-                  placeholder="اسم الشخص أو الفريق المسؤول عن الحل"
+                  placeholder="اسم الشخص المسؤول عن الحل"
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button type="button" onClick={() => setFullEditingReport(null)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">إلغاء</button>
-                <button type="submit" disabled={updateLoading} className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+              <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" onClick={() => setFullEditingReport(null)} className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">إلغاء</button>
+                <button type="submit" disabled={updateLoading} className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   {updateLoading ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
@@ -1478,7 +1435,7 @@ export default function ReportsList() {
                   ) : (
                     <>
                       <Save size={16} />
-                      حفظ جميع التغييرات
+                      حفظ التغييرات
                     </>
                   )}
                 </button>
@@ -1492,7 +1449,7 @@ export default function ReportsList() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-900 rounded-lg p-6 flex items-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-            <span className="text-gray-900 dark:text-gray-100">جاري تحميل البلاغات...</span>
+            <span className="text-gray-900 dark:text-gray-100">جاري التحميل...</span>
           </div>
         </div>
       )}
