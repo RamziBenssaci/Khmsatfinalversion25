@@ -42,7 +42,7 @@ export default function DentalDashboard() {
   // Equipment filter options
   const workingStatusOptions = [
     { value: 'working', label: 'الأجهزة التي تعمل' },
-    { value: 'not_working', label: 'الأجهزة المعطلة' }
+    { value: 'not_working', label: 'الأجهزة المكهنة' }
   ];
 
   const warrantyStatusOptions = [
@@ -227,7 +227,7 @@ export default function DentalDashboard() {
             <div class="stats-grid">
               <div class="stat-card"><h3>إجمالي الأجهزة</h3><p>${dashboardData.total}</p></div>
               <div class="stat-card"><h3>الأجهزة التي تعمل</h3><p>${dashboardData.working}</p></div>
-              <div class="stat-card"><h3>الأجهزة المعطلة</h3><p>${dashboardData.notWorking}</p></div>
+              <div class="stat-card"><h3>الأجهزة المكهنة</h3><p>${dashboardData.notWorking}</p></div>
               <div class="stat-card"><h3>تحت الضمان</h3><p>${dashboardData.underWarranty}</p></div>
               <div class="stat-card"><h3>خارج الضمان</h3><p>${dashboardData.outOfWarranty}</p></div>
             </div>
@@ -546,7 +546,7 @@ export default function DentalDashboard() {
           <CardContent className="p-4">
             <div className="text-center">
               <XCircle className="h-6 w-6 text-red-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-red-600">معطلة</p>
+              <p className="text-sm font-medium text-red-600">مكهنة</p>
               <p className="text-xl font-bold text-red-800">{dashboardData.notWorking}</p>
             </div>
           </CardContent>
@@ -822,7 +822,7 @@ export default function DentalDashboard() {
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div className="text-right">
-                      <p className="text-sm font-medium text-red-800">الأجهزة المعطلة</p>
+                      <p className="text-sm font-medium text-red-800">الأجهزة المكهنة</p>
                       <p className="text-xs text-red-600">تحتاج إلى إصلاح أو صيانة</p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -864,7 +864,7 @@ export default function DentalDashboard() {
                       <tr className="border-b border-gray-100">
                         <td className="p-3">
                           <div className="flex items-center gap-2 justify-end">
-                            <span>الأجهزة المعطلة</span>
+                            <span>الأجهزة المكهنة</span>
                             <XCircle className="h-4 w-4 text-red-600" />
                           </div>
                         </td>
