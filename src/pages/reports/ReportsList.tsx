@@ -429,10 +429,15 @@ export default function ReportsList() {
     if(printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
-      setTimeout(() => { 
-        printWindow.print(); 
-        printWindow.close(); // Close the window after printing
-      }, 500);
+      printWindow.onload = function() {
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 500);
+      };
+      printWindow.onafterprint = function() {
+        printWindow.close();
+      };
     }
   };
 
@@ -673,12 +678,9 @@ export default function ReportsList() {
           printWindow.close();
         }, 500);
       };
-      
-      // Fallback for browsers that don't support onload
-      setTimeout(() => {
-        printWindow.print();
+      printWindow.onafterprint = function() {
         printWindow.close();
-      }, 1000);
+      };
     }
   };
 
