@@ -292,29 +292,18 @@ export default function NewReport() {
               />
             </div>
 
-            {/* 5. الرقم التسلسلي */}
-            <div className="space-y-2">
-              <Label htmlFor="serialNumber">٥- الرقم التسلسلي </Label>
-              {serialNumbersLoading ? (
-                <div className="flex items-center justify-center p-4">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="mr-2">جاري تحميل الأرقام التسلسلية...</span>
-                </div>
-              ) : (
-                <Select value={formData.serialNumber} onValueChange={(value) => handleInputChange('serialNumber', value)}>
-                  <SelectTrigger className="text-right">
-                    <SelectValue placeholder="اختر الرقم التسلسلي" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {serialNumbers.map((serialNumber, index) => (
-                      <SelectItem key={index} value={serialNumber}>
-                        {serialNumber}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+       {/* 5. الرقم التسلسلي */}
+<div className="space-y-2">
+  <Label htmlFor="serialNumber">٥- الرقم التسلسلي (اختياري)</Label>
+  <Input
+    id="serialNumber"
+    type="text"
+    value={formData.serialNumber || ''}
+    onChange={(e) => handleInputChange('serialNumber', e.target.value)}
+    placeholder="أدخل الرقم التسلسلي"
+    className="text-right"
+  />
+</div>
 
             {/* 6. وصف مشكلة البلاغ */}
             <div className="space-y-2">
