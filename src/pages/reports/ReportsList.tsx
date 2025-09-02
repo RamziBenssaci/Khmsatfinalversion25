@@ -822,7 +822,7 @@ export default function ReportsList() {
               {displayedReports.map((report, index) => {
                 const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
                 return (
-                  <tr key={report.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  <tr key={report.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     <td className="p-4 text-gray-900 dark:text-gray-100">{(currentPage - 1) * reportsPerPage + index + 1}</td>
                     <td className="p-4 text-gray-900 dark:text-gray-100 font-medium">{report.id}</td>
                     <td className="p-4 text-gray-700 dark:text-gray-300 hidden md:table-cell">{report.facility?.name || 'غير محدد'}</td>
@@ -839,23 +839,17 @@ export default function ReportsList() {
                         {report.status}
                       </span>
                     </td>
-                    <td className="p-4 text-gray-700 dark:text-gray-300 hidden sm:table-cell">{downtimePeriod}</td>
+                    <td className="p-4 text-gray-700 dark:text-gray-300 hidden sm:table-cell font-medium">{downtimePeriod}</td>
                     <td className="p-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => handleViewClick(report)} className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" title="عرض">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleViewClick(report)} className="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 transition-colors" title="عرض البلاغ">
                           <Eye size={16} />
                         </button>
-                        <button onClick={() => handleModifyClick(report)} className="p-1 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors" title="تعديل الحالة">
+                        <button onClick={() => handleModifyClick(report)} className="bg-green-600 text-white p-2 rounded-md hover:bg-green-700 transition-colors" title="تعديل الحالة">
                           <Edit size={16} />
                         </button>
-                        <button onClick={() => handleFullEditClick(report)} className="p-1 text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" title="تعديل كامل">
-                          <Settings size={16} />
-                        </button>
-                        <button onClick={() => handleDeleteClick(report)} className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors" title="حذف">
+                        <button onClick={() => handleDeleteClick(report)} className="bg-red-600 text-white p-2 rounded-md hover:bg-red-700 transition-colors" title="حذف البلاغ">
                           <Trash2 size={16} />
-                        </button>
-                        <button onClick={() => handlePrintReport(report)} className="p-1 text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 transition-colors" title="طباعة">
-                          <Printer size={16} />
                         </button>
                       </div>
                     </td>
@@ -867,10 +861,10 @@ export default function ReportsList() {
         </div>
       </div>
 
-      {/* Mobile Cards Section */}
+      {/* Mobile Cards View */}
       <div className="md:hidden space-y-4">
         {displayedReports.length === 0 && (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
             <FileText size={48} className="mx-auto mb-4 opacity-50" />
             <p className="text-lg">لا توجد بلاغات تطابق معاييير البحث</p>
           </div>
@@ -878,10 +872,10 @@ export default function ReportsList() {
         {displayedReports.map((report, index) => {
           const downtimePeriod = calculateDowntimePeriod(report.report_date, report.report_time, report.resolved_at);
           return (
-            <div key={report.id} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+            <div key={report.id} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">البلاغ #{report.id}</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">البلاغ رقم {report.id}</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">{report.facility?.name || 'غير محدد'}</p>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
@@ -896,7 +890,7 @@ export default function ReportsList() {
                 <div><strong>التصنيف:</strong> {report.category}</div>
                 <div><strong>الجهاز:</strong> {report.device_name}</div>
                 <div><strong>التاريخ:</strong> {report.report_date}</div>
-                <div><strong>فترة التوقف:</strong> {downtimePeriod}</div>
+                <div><strong>فترة التوقف:</strong> <span className="font-medium">{downtimePeriod}</span></div>
                 <div className="truncate"><strong>المشكلة:</strong> {report.problem_description}</div>
               </div>
               <div className="flex gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
@@ -986,6 +980,16 @@ export default function ReportsList() {
                       <FileText size={20} />
                       معلومات البلاغ
                     </h3>
+                    {/* فترة التوقف Display - Added at the top with nice styling */}
+                    <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mb-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Clock size={18} className="text-orange-600 dark:text-orange-400" />
+                        <span className="font-semibold text-orange-800 dark:text-orange-200 text-sm">فترة التوقف</span>
+                      </div>
+                      <div className="text-lg font-bold text-orange-900 dark:text-orange-100">
+                        {calculateDowntimePeriod(viewingReport.report_date, viewingReport.report_time, viewingReport.resolved_at)}
+                      </div>
+                    </div>
                     <div className="space-y-2 text-sm">
                       <div><strong>رقم البلاغ:</strong> {viewingReport.id}</div>
                       <div><strong>المنشأة:</strong> {viewingReport.facility?.name || 'غير محدد'}</div>
@@ -996,7 +1000,6 @@ export default function ReportsList() {
                         : viewingReport.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                         : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
                       }`}>{viewingReport.status}</span></div>
-                      <div><strong>فترة التوقف:</strong> {calculateDowntimePeriod(viewingReport.report_date, viewingReport.report_time, viewingReport.resolved_at)}</div>
                     </div>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
@@ -1289,7 +1292,7 @@ export default function ReportsList() {
                   type="text"
                   value={editFormData.device_name}
                   onChange={e => handleEditInputChange('device_name', e.target.value)}
-                  placeholder="اسم الجهاز أو المعدة"
+                  placeholder="أدخل اسم الجهاز"
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
@@ -1301,35 +1304,36 @@ export default function ReportsList() {
                   value={editFormData.problem_description}
                   onChange={e => handleEditInputChange('problem_description', e.target.value)}
                   rows={4}
-                  placeholder="اكتب وصفاً مفصلاً للمشكلة..."
+                  placeholder="وصف تفصيلي للمشكلة"
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٨- هل الجهاز تحت الضمان؟</label>
-                <select
-                  value={editFormData.under_warranty}
-                  onChange={e => handleEditInputChange('under_warranty', e.target.value)}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">اختر...</option>
-                  <option value="نعم">نعم</option>
-                  <option value="لا">لا</option>
-                  <option value="غير معروف">غير معروف</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٩- شركة الصيانة</label>
-                <input
-                  type="text"
-                  value={editFormData.repair_company}
-                  onChange={e => handleEditInputChange('repair_company', e.target.value)}
-                  placeholder="اسم شركة الصيانة المسؤولة"
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٨- تحت الضمان</label>
+                  <select
+                    value={editFormData.under_warranty}
+                    onChange={e => handleEditInputChange('under_warranty', e.target.value)}
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">اختر الحالة</option>
+                    <option value="نعم">نعم</option>
+                    <option value="لا">لا</option>
+                    <option value="غير معروف">غير معروف</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">٩- شركة الصيانة</label>
+                  <input
+                    type="text"
+                    value={editFormData.repair_company}
+                    onChange={e => handleEditInputChange('repair_company', e.target.value)}
+                    placeholder="اسم شركة الصيانة"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1339,7 +1343,7 @@ export default function ReportsList() {
                     type="tel"
                     value={editFormData.contact_number}
                     onChange={e => handleEditInputChange('contact_number', e.target.value)}
-                    placeholder="رقم الهاتف للتواصل"
+                    placeholder="رقم الاتصال"
                     className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -1362,7 +1366,7 @@ export default function ReportsList() {
                     type="text"
                     value={editFormData.reporter_name}
                     onChange={e => handleEditInputChange('reporter_name', e.target.value)}
-                    placeholder="اسم الشخص الذي قدم البلاغ"
+                    placeholder="اسم الشخص المبلغ"
                     className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -1372,7 +1376,7 @@ export default function ReportsList() {
                     type="tel"
                     value={editFormData.reporter_contact}
                     onChange={e => handleEditInputChange('reporter_contact', e.target.value)}
-                    placeholder="رقم هاتف المبلغ"
+                    placeholder="رقم اتصال المبلغ"
                     className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -1392,12 +1396,12 @@ export default function ReportsList() {
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١٥- ملاحظات إضافية</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">١٥- ملاحظات</label>
                 <textarea
                   value={editFormData.notes}
                   onChange={e => handleEditInputChange('notes', e.target.value)}
                   rows={3}
-                  placeholder="أي ملاحظات إضافية..."
+                  placeholder="ملاحظات إضافية"
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -1408,7 +1412,7 @@ export default function ReportsList() {
                   value={editFormData.resolution}
                   onChange={e => handleEditInputChange('resolution', e.target.value)}
                   rows={3}
-                  placeholder="وصف الحل المطبق..."
+                  placeholder="وصف الحل المطبق"
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -1424,9 +1428,9 @@ export default function ReportsList() {
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <button type="button" onClick={() => setFullEditingReport(null)} className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">إلغاء</button>
-                <button type="submit" disabled={updateLoading} className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" onClick={() => setFullEditingReport(null)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">إلغاء</button>
+                <button type="submit" disabled={updateLoading} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
                   {updateLoading ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
@@ -1441,15 +1445,6 @@ export default function ReportsList() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {loading && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg p-6 flex items-center gap-3">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-            <span className="text-gray-900 dark:text-gray-100">جاري التحميل...</span>
           </div>
         </div>
       )}
