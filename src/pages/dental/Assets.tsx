@@ -849,7 +849,7 @@ export default function Assets() {
       </div>
 
       {/* Assets Dashboard */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="admin-card">
           <div className="p-4 text-center">
             <div className="text-2xl md:text-3xl font-bold text-primary">{filteredAssets.length}</div>
@@ -878,6 +878,14 @@ export default function Assets() {
               {filteredAssets.filter(asset => asset.warrantyStatus === 'تحت الضمان' && asset.warrantyActive !== 'no').length}
             </div>
             <div className="text-sm text-muted-foreground">تحت الضمان</div>
+          </div>
+        </div>
+        <div className="admin-card">
+          <div className="p-4 text-center">
+            <div className="text-2xl md:text-3xl font-bold text-orange-500">
+              {filteredAssets.length - filteredAssets.filter(asset => asset.warrantyStatus === 'تحت الضمان' && asset.warrantyActive !== 'no').length}
+            </div>
+            <div className="text-sm text-muted-foreground">خارج الضمان</div>
           </div>
         </div>
       </div>
