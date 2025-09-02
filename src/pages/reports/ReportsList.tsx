@@ -1000,6 +1000,12 @@ export default function ReportsList() {
                       <AlertTriangle size={20} />
                       معلومات البلاغ
                     </h3>
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
+      <strong className="text-blue-800 dark:text-blue-200">فترة التوقف:</strong> 
+      <span className="text-blue-700 dark:text-blue-300 font-medium mr-2">
+        {calculateDowntimePeriod(viewingReport.report_date, viewingReport.report_time, viewingReport.resolved_at)}
+      </span>
+    </div>
                     <div className="space-y-2 text-sm">
                       <div><strong>رقم البلاغ:</strong> {viewingReport.id}</div>
                       <div><strong>المنشأة:</strong> {viewingReport.facility?.name || 'غير محدد'}</div>
@@ -1010,12 +1016,7 @@ export default function ReportsList() {
                         : viewingReport.status === 'مغلق' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                         : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
                       }`}>{viewingReport.status}</span></div>
-                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
-      <strong className="text-blue-800 dark:text-blue-200">فترة التوقف:</strong> 
-      <span className="text-blue-700 dark:text-blue-300 font-medium mr-2">
-        {calculateDowntimePeriod(viewingReport.report_date, viewingReport.report_time, viewingReport.resolved_at)}
-      </span>
-    </div>
+              
                     </div>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
