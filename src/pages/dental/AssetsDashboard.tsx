@@ -55,7 +55,7 @@ export default function DentalDashboard() {
     const stats = {
       total: data.length,
       working: data.filter(item => item.deviceStatus === 'يعمل').length,
-      notWorking: data.filter(item => item.deviceStatus === 'معطل' || item.deviceStatus === 'لا يعمل').length,
+      notWorking: data.filter(item => item.deviceStatus === 'مكهن' || item.deviceStatus === 'لا يعمل').length,
       underWarranty: data.filter(item => item.warrantyActive === 'yes').length,
       outOfWarranty: data.filter(item => item.warrantyActive === 'no').length
     };
