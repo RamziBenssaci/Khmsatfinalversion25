@@ -501,7 +501,7 @@ export default function ReportsList() {
     if(isPrint) {
       let html = `
       <div style="background:#e9d5ff; border:1px solid #c4b5fd; border-radius:8px; padding:16px; margin:12px 0; direction:rtl; font-family:Arial, sans-serif;">
-        <h3 style="color:#5b21b6; margin-bottom:16px;"><svg xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c-1.104 0-2 .896-2 2v4h-2v2h6v-2h-2v-4c0-1.104-.896-2-2-2z"></path><circle cx="12" cy="4" r="2"></circle><path d="M4 20h16v2H4z"></path></svg> سجل حالات البلاغ</h3>
+        <h3 style="color:#5b21b6; margin-bottom:16px;"> سجل حالات البلاغ</h3>
       `;
 
       if (creationDate) {
