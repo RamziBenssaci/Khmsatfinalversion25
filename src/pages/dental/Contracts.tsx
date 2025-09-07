@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Save, Plus, Eye, Edit, Trash2, Printer, Settings, Image as ImageIcon, X, AlertTriangle } from 'lucide-react';
+import { Save, Plus, Eye, Edit, Trash2, Printer, Settings, Image as ImageIcon, X, AlertTriangle, Download } from 'lucide-react';
 import { dentalContractsApi, dashboardApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -16,15 +16,26 @@ export default function DentalContracts() {
     orderDate: '',
     itemNumber: '',
     itemName: '',
-    quantity: '',
-    beneficiaryFacility: '',
+    competitionName: '',
+    facilityName: '',
+    facilityCode: '',
+    quantityRequested: '',
+    quantityReceived: '',
+    quantityRemaining: '',
     financialApprovalNumber: '',
     approvalDate: '',
-    totalCost: '',
-    supplierName: '',
-    supplierContact: '',
+    unitPrice: '',
+    totalValue: '',
+    receivedValue: '',
+    remainingValue: '',
+    supplierCompanyName: '',
+    contactPerson: '',
+    contactNumber: '',
+    companyEmail: '',
+    extractNumber: '',
     status: 'جديد',
     deliveryDate: '',
+    actualDeliveryDate: '',
     notes: '',
     imagebase64: null as string | null,
   });
@@ -102,7 +113,7 @@ export default function DentalContracts() {
     fetchFacilities();
   }, [fetchContracts, fetchFacilities]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -113,7 +124,7 @@ export default function DentalContracts() {
     }
   };
 
-  const handleGeneralModifyImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGeneralModifyFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -121,7 +132,6 @@ export default function DentalContracts() {
         setEditingContract(prev => ({
           ...prev,
           imagebase64: reader.result as string,
-          imagebase64: reader.result as string, // Update image_url for preview
         }));
       };
       reader.readAsDataURL(file);
@@ -139,9 +149,11 @@ export default function DentalContracts() {
           description: "تم إنشاء عقد الأسنان بنجاح",
         });
         setFormData({
-          orderDate: '', itemNumber: '', itemName: '', quantity: '', beneficiaryFacility: '',
-          financialApprovalNumber: '', approvalDate: '', totalCost: '', supplierName: '',
-          supplierContact: '', status: 'جديد', deliveryDate: '', notes: '', imagebase64: null,
+          orderDate: '', itemNumber: '', itemName: '', competitionName: '', facilityName: '',
+          facilityCode: '', quantityRequested: '', quantityReceived: '', quantityRemaining: '',
+          financialApprovalNumber: '', approvalDate: '', unitPrice: '', totalValue: '', receivedValue: '',
+          remainingValue: '', supplierCompanyName: '', contactPerson: '', contactNumber: '', companyEmail: '',
+          extractNumber: '', status: 'جديد', deliveryDate: '', actualDeliveryDate: '', notes: '', imagebase64: null,
         });
         fetchContracts();
       } else {
@@ -254,6 +266,47 @@ export default function DentalContracts() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const downloadFile = (base64Data: string, filename: string) => {
+    try {
+      // Extract the actual base64 data (remove data:type;base64, prefix)
+      const base64Content = base64Data.split(',')[1];
+      const byteCharacters = atob(base64Content);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      
+      // Determine MIME type
+      let mimeType = 'application/octet-stream';
+      if (base64Data.startsWith('data:application/pdf')) {
+        mimeType = 'application/pdf';
+      } else if (base64Data.startsWith('data:image/')) {
+        mimeType = base64Data.substring(5, base64Data.indexOf(';'));
+      }
+      
+      const blob = new Blob([byteArray], { type: mimeType });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+    }
+  };
+
+  const isImageFile = (base64Data: string): boolean => {
+    return base64Data.startsWith('data:image/');
+  };
+
+  const isPdfFile = (base64Data: string): boolean => {
+    return base64Data.startsWith('data:application/pdf');
   };
 
   const handlePrintContract = (contract: any) => {
@@ -473,16 +526,58 @@ export default function DentalContracts() {
                   <span>${contract.itemName || '-'}</span>
                 </div>
                 <div class="info-item">
-                  <label>الكمية</label>
-                  <span>${contract.quantity || '-'}</span>
+                  <label>اسم المنافسة</label>
+                  <span>${contract.competitionName || '-'}</span>
                 </div>
                 <div class="info-item">
-                  <label>العيادة المستفيدة</label>
-                  <span>${contract.beneficiaryFacility || '-'}</span>
+                  <label>اسم المنشأة</label>
+                  <span>${contract.facilityName || '-'}</span>
+                </div>
+                <div class="info-item">
+                  <label>رمز المنشأة</label>
+                  <span>${contract.facilityCode || '-'}</span>
                 </div>
                 <div class="info-item">
                   <label>تاريخ الطلب</label>
                   <span>${contract.orderDate || '-'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-header">
+              <h2>معلومات الكمية والقيمة</h2>
+            </div>
+            <div class="section-content">
+              <div class="info-grid">
+                <div class="info-item">
+                  <label>الكمية المطلوبة</label>
+                  <span>${contract.quantityRequested || '-'}</span>
+                </div>
+                <div class="info-item">
+                  <label>الكمية المستلمة</label>
+                  <span>${contract.quantityReceived || '-'}</span>
+                </div>
+                <div class="info-item">
+                  <label>الكمية المتبقية</label>
+                  <span>${contract.quantityRemaining || '-'}</span>
+                </div>
+                <div class="info-item">
+                  <label>سعر الوحدة</label>
+                  <span>${contract.unitPrice ? `${Number(contract.unitPrice).toLocaleString()} ريال` : '-'}</span>
+                </div>
+                <div class="info-item">
+                  <label>القيمة الإجمالية</label>
+                  <span>${contract.totalValue ? `${Number(contract.totalValue).toLocaleString()} ريال` : '-'}</span>
+                </div>
+                <div class="info-item">
+                  <label>القيمة المستلمة</label>
+                  <span>${contract.receivedValue ? `${Number(contract.receivedValue).toLocaleString()} ريال` : '-'}</span>
+                </div>
+                <div class="info-item">
+                  <label>القيمة المتبقية</label>
+                  <span>${contract.remainingValue ? `${Number(contract.remainingValue).toLocaleString()} ريال` : '-'}</span>
                 </div>
               </div>
             </div>
@@ -503,8 +598,8 @@ export default function DentalContracts() {
                   <span>${contract.approvalDate || '-'}</span>
                 </div>
                 <div class="info-item">
-                  <label>التكلفة الإجمالية</label>
-                  <span>${contract.totalCost ? `${Number(contract.totalCost).toLocaleString()} ريال` : '-'}</span>
+                  <label>رقم المستخلص</label>
+                  <span>${contract.extractNumber || '-'}</span>
                 </div>
               </div>
             </div>
@@ -517,12 +612,20 @@ export default function DentalContracts() {
             <div class="section-content">
               <div class="info-grid">
                 <div class="info-item">
-                  <label>شركة الأجهزة</label>
-                  <span>${contract.supplierName || '-'}</span>
+                  <label>اسم الشركة الموردة</label>
+                  <span>${contract.supplierCompanyName || '-'}</span>
                 </div>
                 <div class="info-item">
-                  <label>بيانات التواصل</label>
-                  <span>${contract.supplierContact || '-'}</span>
+                  <label>اسم المسؤول</label>
+                  <span>${contract.contactPerson || '-'}</span>
+                </div>
+                <div class="info-item">
+                  <label>رقم التواصل</label>
+                  <span>${contract.contactNumber || '-'}</span>
+                </div>
+                <div class="info-item">
+                  <label>إيميل الشركة</label>
+                  <span>${contract.companyEmail || '-'}</span>
                 </div>
               </div>
             </div>
@@ -541,6 +644,10 @@ export default function DentalContracts() {
                 <div class="info-item">
                   <label>تاريخ التسليم المخطط</label>
                   <span>${contract.deliveryDate || '-'}</span>
+                </div>
+                <div class="info-item">
+                  <label>تاريخ التسليم الفعلي</label>
+                  <span>${contract.actualDeliveryDate || '-'}</span>
                 </div>
               </div>
             </div>
@@ -690,43 +797,129 @@ export default function DentalContracts() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2 text-right">اسم الصنف *</label>
-                <input
-                  type="text"
+                <textarea
                   value={formData.itemName}
                   onChange={(e) => setFormData(prev => ({ ...prev, itemName: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
+                  className="w-full p-3 border border-input rounded-md text-right min-h-[60px]"
                   placeholder="جهاز أو مستلزم أسنان"
                   required
                 />
               </div>
             </div>
 
-            {/* Quantity and Facility */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Competition and Facility Info */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-2 text-right">الكمية *</label>
+                <label className="block text-sm font-medium mb-2 text-right">اسم المنافسة</label>
                 <input
-                  type="number"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
+                  type="text"
+                  value={formData.competitionName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, competitionName: e.target.value }))}
                   className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="الكمية"
-                  required
+                  placeholder="اسم المنافسة"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2 text-right">عيادة الأسنان المستفيدة *</label>
-                <select
-                  value={formData.beneficiaryFacility}
-                  onChange={(e) => setFormData(prev => ({ ...prev, beneficiaryFacility: e.target.value }))}
+                <label className="block text-sm font-medium mb-2 text-right">اسم المنشأة</label>
+                <input
+                  type="text"
+                  value={formData.facilityName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, facilityName: e.target.value }))}
                   className="w-full p-3 border border-input rounded-md text-right"
-                  required
-                >
-                  <option value="">اختر العيادة</option>
-                  {facilities.map(facility => (
-                    <option key={facility.id} value={facility.name}>{facility.name}</option>
-                  ))}
-                </select>
+                  placeholder="اسم المنشأة"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">رمز المنشأة</label>
+                <input
+                  type="text"
+                  value={formData.facilityCode}
+                  onChange={(e) => setFormData(prev => ({ ...prev, facilityCode: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  placeholder="رمز المنشأة"
+                />
+              </div>
+            </div>
+
+            {/* Quantity Information */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">الكمية المطلوبة</label>
+                <input
+                  type="number"
+                  value={formData.quantityRequested}
+                  onChange={(e) => setFormData(prev => ({ ...prev, quantityRequested: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  placeholder="الكمية المطلوبة"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">الكمية المستلمة</label>
+                <input
+                  type="number"
+                  value={formData.quantityReceived}
+                  onChange={(e) => setFormData(prev => ({ ...prev, quantityReceived: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  placeholder="الكمية المستلمة"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">الكمية المتبقية</label>
+                <input
+                  type="number"
+                  value={formData.quantityRemaining}
+                  onChange={(e) => setFormData(prev => ({ ...prev, quantityRemaining: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  placeholder="الكمية المتبقية"
+                />
+              </div>
+            </div>
+
+            {/* Financial Information */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">سعر الوحدة</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.unitPrice}
+                  onChange={(e) => setFormData(prev => ({ ...prev, unitPrice: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  placeholder="سعر الوحدة بالريال"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">القيمة الإجمالية</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.totalValue}
+                  onChange={(e) => setFormData(prev => ({ ...prev, totalValue: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  placeholder="القيمة الإجمالية بالريال"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">القيمة المستلمة</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.receivedValue}
+                  onChange={(e) => setFormData(prev => ({ ...prev, receivedValue: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  placeholder="القيمة المستلمة بالريال"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">القيمة المتبقية</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.remainingValue}
+                  onChange={(e) => setFormData(prev => ({ ...prev, remainingValue: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  placeholder="القيمة المتبقية بالريال"
+                />
               </div>
             </div>
 
@@ -752,60 +945,85 @@ export default function DentalContracts() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2 text-right">التكلفة الإجمالية</label>
+                <label className="block text-sm font-medium mb-2 text-right">رقم المستخلص</label>
                 <input
-                  type="number"
-                  step="0.01"
-                  value={formData.totalCost}
-                  onChange={(e) => setFormData(prev => ({ ...prev, totalCost: e.target.value }))}
+                  type="text"
+                  value={formData.extractNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, extractNumber: e.target.value }))}
                   className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="التكلفة بالريال"
+                  placeholder="رقم المستخلص"
                 />
               </div>
             </div>
 
             {/* Supplier Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-2 text-right">شركة أجهزة الأسنان</label>
+                <label className="block text-sm font-medium mb-2 text-right">اسم الشركة الموردة</label>
                 <input
                   type="text"
-                  value={formData.supplierName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, supplierName: e.target.value }))}
+                  value={formData.supplierCompanyName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, supplierCompanyName: e.target.value }))}
                   className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="اسم شركة أجهزة الأسنان"
+                  placeholder="اسم الشركة الموردة"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2 text-right">بيانات التواصل للشركة</label>
+                <label className="block text-sm font-medium mb-2 text-right">اسم المسؤول</label>
                 <input
                   type="text"
-                  value={formData.supplierContact}
-                  onChange={(e) => setFormData(prev => ({ ...prev, supplierContact: e.target.value }))}
+                  value={formData.contactPerson}
+                  onChange={(e) => setFormData(prev => ({ ...prev, contactPerson: e.target.value }))}
                   className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="رقم الهاتف والإيميل"
+                  placeholder="اسم المسؤول"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">رقم التواصل</label>
+                <input
+                  type="text"
+                  value={formData.contactNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, contactNumber: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  placeholder="رقم التواصل"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">إيميل الشركة</label>
+                <input
+                  type="email"
+                  value={formData.companyEmail}
+                  onChange={(e) => setFormData(prev => ({ ...prev, companyEmail: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                  placeholder="إيميل الشركة"
                 />
               </div>
             </div>
 
-            {/* Image Upload */}
+            {/* File Upload */}
             <div>
-              <label className="block text-sm font-medium mb-2 text-right">صورة التعميد</label>
+              <label className="block text-sm font-medium mb-2 text-right">صورة التعميد أو ملف PDF</label>
               <input
                 type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
+                accept="image/*,application/pdf"
+                onChange={handleFileUpload}
                 className="w-full p-3 border border-input rounded-md text-right"
               />
               {formData.imagebase64 && (
                 <div className="mt-2 text-right">
-                  <img src={formData.imagebase64} alt="Image Preview" className="max-w-[150px] max-h-[150px] object-contain border rounded-md" />
+                  {isImageFile(formData.imagebase64) ? (
+                    <img src={formData.imagebase64} alt="Image Preview" className="max-w-[150px] max-h-[150px] object-contain border rounded-md" />
+                  ) : (
+                    <div className="flex items-center gap-2 text-blue-600">
+                      <span>تم رفع ملف PDF</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Status and Delivery */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2 text-right">حالة العقد</label>
                 <div className="flex items-center gap-2 text-right">
@@ -828,11 +1046,20 @@ export default function DentalContracts() {
                   className="w-full p-3 border border-input rounded-md text-right"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-right">تاريخ التسليم الفعلي</label>
+                <input
+                  type="date"
+                  value={formData.actualDeliveryDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, actualDeliveryDate: e.target.value }))}
+                  className="w-full p-3 border border-input rounded-md text-right"
+                />
+              </div>
             </div>
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium mb-2 text-right">ملاحظات</label>
+              <label className="block text-sm font-medium mb-2 text-right">الملاحظات</label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
@@ -884,11 +1111,11 @@ export default function DentalContracts() {
                         <th className="p-4 text-right font-semibold text-sm">رقم العقد</th>
                         <th className="p-4 text-right font-semibold text-sm">تاريخ الطلب</th>
                         <th className="p-4 text-right font-semibold text-sm">اسم الصنف</th>
-                        <th className="p-4 text-right font-semibold text-sm">العيادة المستفيدة</th>
-                        <th className="p-4 text-right font-semibold text-sm">الكمية</th>
-                        <th className="p-4 text-right font-semibold text-sm">صورة التعميد</th>
+                        <th className="p-4 text-right font-semibold text-sm">اسم المنافسة</th>
+                        <th className="p-4 text-right font-semibold text-sm">الكمية المطلوبة</th>
+                        <th className="p-4 text-right font-semibold text-sm">صورة التعميد أو ملف</th>
                         <th className="p-4 text-right font-semibold text-sm">الحالة</th>
-                        <th className="p-4 text-right font-semibold text-sm">التكلفة</th>
+                        <th className="p-4 text-right font-semibold text-sm">القيمة الإجمالية</th>
                         <th className="p-4 text-right font-semibold text-sm">الإجراءات</th>
                       </tr>
                     </thead>
@@ -923,32 +1150,44 @@ export default function DentalContracts() {
                           </td>
                           <td className="p-4">
                             <div className="text-sm text-gray-700 dark:text-gray-300 max-w-[150px] truncate">
-                              {contract.beneficiaryFacility || '-'}
+                              {contract.competitionName || '-'}
                             </div>
                           </td>
                           <td className="p-4">
                             <div className="font-medium text-gray-900 dark:text-gray-100">
-                              {contract.quantity || '-'}
+                              {contract.quantityRequested || '-'}
                             </div>
                           </td>
                           <td className="p-4">
                             {contract.imagebase64 ? (
-                              <button
-                                onClick={() => {
-                                  const imgWindow = window.open('');
-                                  if (imgWindow) {
-                                    imgWindow.document.write(`<html><head><title>صورة التعميد</title></head><body style="margin:0;padding:20px;background:#f5f5f5;"><img src="${contract.imagebase64}" style="max-width:100%; height:auto; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);" /></body></html>`);
-                                    imgWindow.document.close();
-                                  }
-                                }}
-                                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                              >
-                                <ImageIcon size={16} />
-                                <span className="text-xs">عرض</span>
-                              </button>
+                              <div>
+                                {isImageFile(contract.imagebase64) ? (
+                                  <button
+                                    onClick={() => {
+                                      const imgWindow = window.open('');
+                                      if (imgWindow) {
+                                        imgWindow.document.write(`<html><head><title>صورة التعميد</title></head><body style="margin:0;padding:20px;background:#f5f5f5;"><img src="${contract.imagebase64}" style="max-width:100%; height:auto; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);" /></body></html>`);
+                                        imgWindow.document.close();
+                                      }
+                                    }}
+                                    className="flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                                  >
+                                    <ImageIcon size={16} />
+                                    <span className="text-xs">عرض</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => downloadFile(contract.imagebase64, `contract_${contract.id}_document.pdf`)}
+                                    className="flex items-center gap-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors bg-red-50 dark:bg-red-900/30 px-3 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50"
+                                  >
+                                    <Download size={16} />
+                                    <span className="text-xs">تحميل</span>
+                                  </button>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg">
-                                لا توجد صورة
+                                لا يوجد ملف
                               </span>
                             )}
                           </td>
@@ -959,7 +1198,7 @@ export default function DentalContracts() {
                           </td>
                           <td className="p-4">
                             <div className="font-semibold text-green-700 dark:text-green-400">
-                              {contract.totalCost ? `${Number(contract.totalCost).toLocaleString()} ريال` : '-'}
+                              {contract.totalValue ? `${Number(contract.totalValue).toLocaleString()} ريال` : '-'}
                             </div>
                           </td>
                           <td className="p-4">
@@ -1045,39 +1284,49 @@ export default function DentalContracts() {
                         
                         <div className="grid grid-cols-2 gap-3">
                           <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">الكمية</label>
-                            <p className="font-medium text-gray-900 dark:text-gray-100">{contract.quantity || '-'}</p>
+                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">الكمية المطلوبة</label>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">{contract.quantityRequested || '-'}</p>
                           </div>
                           <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg">
-                            <label className="block text-xs font-semibold text-green-700 dark:text-green-300 mb-1">التكلفة</label>
+                            <label className="block text-xs font-semibold text-green-700 dark:text-green-300 mb-1">القيمة الإجمالية</label>
                             <p className="font-medium text-green-800 dark:text-green-200">
-                              {contract.totalCost ? `${Number(contract.totalCost).toLocaleString()} ريال` : '-'}
+                              {contract.totalValue ? `${Number(contract.totalValue).toLocaleString()} ريال` : '-'}
                             </p>
                           </div>
                         </div>
 
                         <div className="bg-purple-50 dark:bg-purple-900/30 p-3 rounded-lg">
-                          <label className="block text-xs font-semibold text-purple-700 dark:text-purple-300 mb-1">العيادة المستفيدة</label>
-                          <p className="font-medium text-gray-900 dark:text-gray-100">{contract.beneficiaryFacility || '-'}</p>
+                          <label className="block text-xs font-semibold text-purple-700 dark:text-purple-300 mb-1">اسم المنافسة</label>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{contract.competitionName || '-'}</p>
                         </div>
 
-                        {/* Image Section */}
+                        {/* File Section */}
                         {contract.imagebase64 && (
                           <div className="bg-yellow-50 dark:bg-yellow-900/30 p-3 rounded-lg">
-                            <label className="block text-xs font-semibold text-yellow-700 dark:text-yellow-300 mb-2">صورة التعميد</label>
-                            <button
-                              onClick={() => {
-                                const imgWindow = window.open('');
-                                if (imgWindow) {
-                                  imgWindow.document.write(`<html><head><title>صورة التعميد</title></head><body style="margin:0;padding:20px;background:#f5f5f5;"><img src="${contract.imagebase64}" style="max-width:100%; height:auto; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);" /></body></html>`);
-                                  imgWindow.document.close();
-                                }
-                              }}
-                              className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 transition-colors bg-yellow-100 dark:bg-yellow-900/50 px-3 py-2 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-900/70 w-full justify-center"
-                            >
-                              <ImageIcon size={16} />
-                              <span className="text-sm font-medium">عرض الصورة</span>
-                            </button>
+                            <label className="block text-xs font-semibold text-yellow-700 dark:text-yellow-300 mb-2">صورة التعميد أو ملف</label>
+                            {isImageFile(contract.imagebase64) ? (
+                              <button
+                                onClick={() => {
+                                  const imgWindow = window.open('');
+                                  if (imgWindow) {
+                                    imgWindow.document.write(`<html><head><title>صورة التعميد</title></head><body style="margin:0;padding:20px;background:#f5f5f5;"><img src="${contract.imagebase64}" style="max-width:100%; height:auto; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);" /></body></html>`);
+                                    imgWindow.document.close();
+                                  }
+                                }}
+                                className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 transition-colors bg-yellow-100 dark:bg-yellow-900/50 px-3 py-2 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-900/70 w-full justify-center"
+                              >
+                                <ImageIcon size={16} />
+                                <span className="text-sm font-medium">عرض الصورة</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => downloadFile(contract.imagebase64, `contract_${contract.id}_document.pdf`)}
+                                className="flex items-center gap-2 text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 transition-colors bg-red-100 dark:bg-red-900/50 px-3 py-2 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/70 w-full justify-center"
+                              >
+                                <Download size={16} />
+                                <span className="text-sm font-medium">تحميل الملف</span>
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1159,7 +1408,7 @@ export default function DentalContracts() {
               <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">تفاصيل العقد:</h4>
               <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
                 <p><span className="font-medium">اسم الصنف:</span> {contractToDelete.itemName || '-'}</p>
-                <p><span className="font-medium">العيادة:</span> {contractToDelete.beneficiaryFacility || '-'}</p>
+                <p><span className="font-medium">المنافسة:</span> {contractToDelete.competitionName || '-'}</p>
                 <p><span className="font-medium">التاريخ:</span> {contractToDelete.orderDate || '-'}</p>
               </div>
             </div>
@@ -1220,17 +1469,49 @@ export default function DentalContracts() {
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">رقم الصنف:</p>
                   <p className="text-lg font-semibold">{selectedContract.itemNumber}</p>
                 </div>
-                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg col-span-full md:col-span-2 lg:col-span-3">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">اسم الصنف:</p>
                   <p className="text-lg font-semibold">{selectedContract.itemName}</p>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">الكمية:</p>
-                  <p className="text-lg font-semibold">{selectedContract.quantity}</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">اسم المنافسة:</p>
+                  <p className="text-lg font-semibold">{selectedContract.competitionName || '-'}</p>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">العيادة المستفيدة:</p>
-                  <p className="text-lg font-semibold">{selectedContract.beneficiaryFacility}</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">اسم المنشأة:</p>
+                  <p className="text-lg font-semibold">{selectedContract.facilityName || '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">رمز المنشأة:</p>
+                  <p className="text-lg font-semibold">{selectedContract.facilityCode || '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">الكمية المطلوبة:</p>
+                  <p className="text-lg font-semibold">{selectedContract.quantityRequested || '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">الكمية المستلمة:</p>
+                  <p className="text-lg font-semibold">{selectedContract.quantityReceived || '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">الكمية المتبقية:</p>
+                  <p className="text-lg font-semibold">{selectedContract.quantityRemaining || '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">سعر الوحدة:</p>
+                  <p className="text-lg font-semibold">{selectedContract.unitPrice ? `${Number(selectedContract.unitPrice).toLocaleString()} ريال` : '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">القيمة الإجمالية:</p>
+                  <p className="text-lg font-semibold">{selectedContract.totalValue ? `${Number(selectedContract.totalValue).toLocaleString()} ريال` : '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">القيمة المستلمة:</p>
+                  <p className="text-lg font-semibold">{selectedContract.receivedValue ? `${Number(selectedContract.receivedValue).toLocaleString()} ريال` : '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">القيمة المتبقية:</p>
+                  <p className="text-lg font-semibold">{selectedContract.remainingValue ? `${Number(selectedContract.remainingValue).toLocaleString()} ريال` : '-'}</p>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">رقم التعميد المالي:</p>
@@ -1241,27 +1522,51 @@ export default function DentalContracts() {
                   <p className="text-lg font-semibold">{selectedContract.approvalDate || '-'}</p>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">التكلفة الإجمالية:</p>
-                  <p className="text-lg font-semibold">{selectedContract.totalCost ? `${Number(selectedContract.totalCost).toLocaleString()} ريال` : '-'}</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">رقم المستخلص:</p>
+                  <p className="text-lg font-semibold">{selectedContract.extractNumber || '-'}</p>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">شركة الأجهزة:</p>
-                  <p className="text-lg font-semibold">{selectedContract.supplierName || '-'}</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">اسم الشركة الموردة:</p>
+                  <p className="text-lg font-semibold">{selectedContract.supplierCompanyName || '-'}</p>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">بيانات التواصل للشركة:</p>
-                  <p className="text-lg font-semibold">{selectedContract.supplierContact || '-'}</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">اسم المسؤول:</p>
+                  <p className="text-lg font-semibold">{selectedContract.contactPerson || '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">رقم التواصل:</p>
+                  <p className="text-lg font-semibold">{selectedContract.contactNumber || '-'}</p>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">إيميل الشركة:</p>
+                  <p className="text-lg font-semibold">{selectedContract.companyEmail || '-'}</p>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">تاريخ التسليم المخطط:</p>
                   <p className="text-lg font-semibold">{selectedContract.deliveryDate || '-'}</p>
                 </div>
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">تاريخ التسليم الفعلي:</p>
+                  <p className="text-lg font-semibold">{selectedContract.actualDeliveryDate || '-'}</p>
+                </div>
                 <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg col-span-full">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">صورة التعميد:</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">صورة التعميد أو ملف:</p>
                   {selectedContract.imagebase64 ? (
-                    <img src={selectedContract.imagebase64} alt="Approval" className="mt-2 max-w-full h-auto rounded-md" />
+                    <div className="mt-2">
+                      {isImageFile(selectedContract.imagebase64) ? (
+                        <img src={selectedContract.imagebase64} alt="Approval" className="max-w-full h-auto rounded-md" />
+                      ) : (
+                        <button
+                          onClick={() => downloadFile(selectedContract.imagebase64, `contract_${selectedContract.id}_document.pdf`)}
+                          className="flex items-center gap-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors bg-red-50 dark:bg-red-900/30 px-4 py-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50"
+                        >
+                          <Download size={20} />
+                          <span className="text-lg font-medium">تحميل ملف PDF</span>
+                        </button>
+                      )}
+                    </div>
                   ) : (
-                    <p className="text-lg font-semibold">لا توجد صورة</p>
+                    <p className="text-lg font-semibold">لا يوجد ملف</p>
                   )}
                 </div>
               </div>
@@ -1477,43 +1782,129 @@ export default function DentalContracts() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2 text-right">اسم الصنف *</label>
-                  <input
-                    type="text"
+                  <textarea
                     value={editingContract.itemName || ''}
                     onChange={(e) => setEditingContract(prev => ({ ...prev, itemName: e.target.value }))}
-                    className="w-full p-3 border border-input rounded-md text-right"
+                    className="w-full p-3 border border-input rounded-md text-right min-h-[60px]"
                     placeholder="جهاز أو مستلزم أسنان"
                     required
                   />
                 </div>
               </div>
 
-              {/* Quantity and Facility */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Competition and Facility Info */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right">الكمية *</label>
+                  <label className="block text-sm font-medium mb-2 text-right">اسم المنافسة</label>
                   <input
-                    type="number"
-                    value={editingContract.quantity || ''}
-                    onChange={(e) => setEditingContract(prev => ({ ...prev, quantity: e.target.value }))}
+                    type="text"
+                    value={editingContract.competitionName || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, competitionName: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
-                    placeholder="الكمية"
-                    required
+                    placeholder="اسم المنافسة"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right">عيادة الأسنان المستفيدة *</label>
-                  <select
-                    value={editingContract.beneficiaryFacility || ''}
-                    onChange={(e) => setEditingContract(prev => ({ ...prev, beneficiaryFacility: e.target.value }))}
+                  <label className="block text-sm font-medium mb-2 text-right">اسم المنشأة</label>
+                  <input
+                    type="text"
+                    value={editingContract.facilityName || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, facilityName: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
-                    required
-                  >
-                    <option value="">اختر العيادة</option>
-                    {facilities.map(facility => (
-                      <option key={facility.id} value={facility.name}>{facility.name}</option>
-                    ))}
-                  </select>
+                    placeholder="اسم المنشأة"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">رمز المنشأة</label>
+                  <input
+                    type="text"
+                    value={editingContract.facilityCode || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, facilityCode: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="رمز المنشأة"
+                  />
+                </div>
+              </div>
+
+              {/* Quantity Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">الكمية المطلوبة</label>
+                  <input
+                    type="number"
+                    value={editingContract.quantityRequested || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, quantityRequested: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="الكمية المطلوبة"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">الكمية المستلمة</label>
+                  <input
+                    type="number"
+                    value={editingContract.quantityReceived || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, quantityReceived: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="الكمية المستلمة"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">الكمية المتبقية</label>
+                  <input
+                    type="number"
+                    value={editingContract.quantityRemaining || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, quantityRemaining: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="الكمية المتبقية"
+                  />
+                </div>
+              </div>
+
+              {/* Financial Information */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">سعر الوحدة</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingContract.unitPrice || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, unitPrice: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="سعر الوحدة بالريال"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">القيمة الإجمالية</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingContract.totalValue || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, totalValue: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="القيمة الإجمالية بالريال"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">القيمة المستلمة</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingContract.receivedValue || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, receivedValue: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="القيمة المستلمة بالريال"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">القيمة المتبقية</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingContract.remainingValue || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, remainingValue: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="القيمة المتبقية بالريال"
+                  />
                 </div>
               </div>
 
@@ -1539,54 +1930,79 @@ export default function DentalContracts() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right">التكلفة الإجمالية</label>
+                  <label className="block text-sm font-medium mb-2 text-right">رقم المستخلص</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    value={editingContract.totalCost || ''}
-                    onChange={(e) => setEditingContract(prev => ({ ...prev, totalCost: e.target.value }))}
+                    type="text"
+                    value={editingContract.extractNumber || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, extractNumber: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
-                    placeholder="التكلفة بالريال"
+                    placeholder="رقم المستخلص"
                   />
                 </div>
               </div>
 
               {/* Supplier Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right">شركة أجهزة الأسنان</label>
+                  <label className="block text-sm font-medium mb-2 text-right">اسم الشركة الموردة</label>
                   <input
                     type="text"
-                    value={editingContract.supplierName || ''}
-                    onChange={(e) => setEditingContract(prev => ({ ...prev, supplierName: e.target.value }))}
+                    value={editingContract.supplierCompanyName || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, supplierCompanyName: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
-                    placeholder="اسم شركة أجهزة الأسنان"
+                    placeholder="اسم الشركة الموردة"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-right">بيانات التواصل للشركة</label>
+                  <label className="block text-sm font-medium mb-2 text-right">اسم المسؤول</label>
                   <input
                     type="text"
-                    value={editingContract.supplierContact || ''}
-                    onChange={(e) => setEditingContract(prev => ({ ...prev, supplierContact: e.target.value }))}
+                    value={editingContract.contactPerson || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, contactPerson: e.target.value }))}
                     className="w-full p-3 border border-input rounded-md text-right"
-                    placeholder="رقم الهاتف والإيميل"
+                    placeholder="اسم المسؤول"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">رقم التواصل</label>
+                  <input
+                    type="text"
+                    value={editingContract.contactNumber || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, contactNumber: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="رقم التواصل"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">إيميل الشركة</label>
+                  <input
+                    type="email"
+                    value={editingContract.companyEmail || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, companyEmail: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                    placeholder="إيميل الشركة"
                   />
                 </div>
               </div>
 
-              {/* Image Upload */}
+              {/* File Upload */}
               <div>
-                <label className="block text-sm font-medium mb-2 text-right">صورة التعميد</label>
+                <label className="block text-sm font-medium mb-2 text-right">صورة التعميد أو ملف PDF</label>
                 <input
                   type="file"
-                  accept="image/*"
-                  onChange={handleGeneralModifyImageUpload}
+                  accept="image/*,application/pdf"
+                  onChange={handleGeneralModifyFileUpload}
                   className="w-full p-3 border border-input rounded-md text-right"
                 />
                 {editingContract.imagebase64 && (
                   <div className="mt-2 text-right">
-                    <img src={editingContract.imagebase64} alt="Image Preview" className="max-w-[150px] max-h-[150px] object-contain border rounded-md" />
+                    {isImageFile(editingContract.imagebase64) ? (
+                      <img src={editingContract.imagebase64} alt="Image Preview" className="max-w-[150px] max-h-[150px] object-contain border rounded-md" />
+                    ) : (
+                      <div className="flex items-center gap-2 text-blue-600">
+                        <span>تم رفع ملف PDF</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1602,11 +2018,20 @@ export default function DentalContracts() {
                     className="w-full p-3 border border-input rounded-md text-right"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">تاريخ التسليم الفعلي</label>
+                  <input
+                    type="date"
+                    value={editingContract.actualDeliveryDate || ''}
+                    onChange={(e) => setEditingContract(prev => ({ ...prev, actualDeliveryDate: e.target.value }))}
+                    className="w-full p-3 border border-input rounded-md text-right"
+                  />
+                </div>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-sm font-medium mb-2 text-right">ملاحظات</label>
+                <label className="block text-sm font-medium mb-2 text-right">الملاحظات</label>
                 <textarea
                   value={editingContract.notes || ''}
                   onChange={(e) => setEditingContract(prev => ({ ...prev, notes: e.target.value }))}
