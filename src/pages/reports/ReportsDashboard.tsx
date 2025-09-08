@@ -23,6 +23,10 @@ export default function ReportsDashboard() {
   const [reports, setReports] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  
+  // Date filter states
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // Load dashboard data and reports - Optimized
   useEffect(() => {
@@ -68,12 +72,34 @@ export default function ReportsDashboard() {
   const facilities = [...new Set(reports.map(r => r.facility?.name).filter(Boolean))];
   const categories = [...new Set(reports.map(r => r.category || r.type).filter(Boolean))];
 
-  // Filter reports based on selected facility and category (client-side)
+  // Helper function to check if a date is within the selected range
+  const isDateInRange = (reportDate) => {
+    if (!startDate && !endDate) return true;
+    
+    const reportDateObj = new Date(reportDate);
+    if (isNaN(reportDateObj.getTime())) return false;
+    
+    const startDateObj = startDate ? new Date(startDate) : null;
+    const endDateObj = endDate ? new Date(endDate) : null;
+    
+    if (startDateObj && endDateObj) {
+      return reportDateObj >= startDateObj && reportDateObj <= endDateObj;
+    } else if (startDateObj) {
+      return reportDateObj >= startDateObj;
+    } else if (endDateObj) {
+      return reportDateObj <= endDateObj;
+    }
+    
+    return true;
+  };
+
+  // Filter reports based on selected facility, category, and date range (client-side)
   const filteredReports = reports.filter(report => {
     const reportCategory = report.category || report.type;
     return (
       (selectedFacility === '' || report.facility?.name === selectedFacility) &&
-      (selectedCategory === '' || reportCategory === selectedCategory)
+      (selectedCategory === '' || reportCategory === selectedCategory) &&
+      isDateInRange(report.report_date)
     );
   });
 
@@ -135,6 +161,12 @@ export default function ReportsDashboard() {
 
   const monthlyTrendData = generateMonthlyTrend();
 
+  // Handle clearing date filters
+  const clearDateFilters = () => {
+    setStartDate('');
+    setEndDate('');
+  };
+
   // Handle showing report details
   const handleShowReportDetails = (report) => {
     setSelectedReport(report);
@@ -164,7 +196,7 @@ export default function ReportsDashboard() {
         </div>
       </div>
 
-      {/* AdminLTE 3 Style Filters */}
+      {/* AdminLTE 3 Style Filters - Enhanced with Date Filter */}
       <div className="bg-white dark:bg-card rounded-lg shadow-sm border border-border">
         <div className="bg-gradient-to-r from-secondary to-secondary/80 text-secondary-foreground px-3 sm:px-4 py-3 rounded-t-lg border-b border-border">
           <h3 className="font-semibold text-right flex items-center gap-2 text-sm sm:text-base">
@@ -173,7 +205,8 @@ export default function ReportsDashboard() {
           </h3>
         </div>
         <div className="p-3 sm:p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {/* Facility Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground block text-right">المنشأة</label>
               <select
@@ -187,6 +220,8 @@ export default function ReportsDashboard() {
                 ))}
               </select>
             </div>
+
+            {/* Category Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground block text-right">النوع</label>
               <select
@@ -200,7 +235,56 @@ export default function ReportsDashboard() {
                 ))}
               </select>
             </div>
+
+            {/* Start Date Filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground block text-right">من تاريخ</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full p-2 sm:p-3 border border-border rounded-lg text-right bg-background hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+              />
+            </div>
+
+            {/* End Date Filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground block text-right">إلى تاريخ</label>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="flex-1 p-2 sm:p-3 border border-border rounded-lg text-right bg-background hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+                />
+                {(startDate || endDate) && (
+                  <button
+                    onClick={clearDateFilters}
+                    className="px-3 py-2 bg-danger text-danger-foreground rounded-lg hover:bg-danger/90 transition-colors text-xs flex items-center gap-1"
+                    title="مسح فلتر التاريخ"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
+
+          {/* Date Filter Summary */}
+          {(startDate || endDate) && (
+            <div className="mt-3 p-2 bg-primary/10 rounded-lg">
+              <div className="text-sm text-primary text-right flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                <span>
+                  فلتر التاريخ: 
+                  {startDate && ` من ${startDate}`}
+                  {startDate && endDate && ' '}
+                  {endDate && ` إلى ${endDate}`}
+                  <span className="mr-2 text-primary/70">({totalReports} بلاغ)</span>
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
