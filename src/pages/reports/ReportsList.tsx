@@ -57,6 +57,8 @@ export default function ReportsList() {
     resolved_by: ''
   });
   const [facilitiesData, setFacilitiesData] = useState([]);
+  const [selectedDateFrom, setSelectedDateFrom] = useState('');
+  const [selectedDateTo, setSelectedDateTo] = useState('');
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
   const [editFormData,setEditFormData] = useState({
     facility_id: '',
@@ -120,21 +122,29 @@ export default function ReportsList() {
     loadReports();
   },[toast]);
 
-  const filteredReports = reports.filter(r => {
-    return (
-      (searchTerm === '' ||
-       r.facility?.name?.includes(searchTerm) ||
-       r.problem_description?.includes(searchTerm) ||
-       r.device_name?.includes(searchTerm) ||
-       r.id?.toString().includes(searchTerm))
-      &&
-      (selectedFacility === '' || r.facility?.name === selectedFacility)
-      &&
-      (selectedCategory === '' || r.category === selectedCategory)
-      &&
-      (selectedStatus === '' || r.status === selectedStatus)
-    );
-  });
+const filteredReports = reports.filter(r => {
+  const reportDate = r.report_date ? new Date(r.report_date) : null;
+  const fromDate = selectedDateFrom ? new Date(selectedDateFrom) : null;
+  const toDate = selectedDateTo ? new Date(selectedDateTo) : null;
+  
+  return (
+    (searchTerm === '' ||
+     r.facility?.name?.includes(searchTerm) ||
+     r.problem_description?.includes(searchTerm) ||
+     r.device_name?.includes(searchTerm) ||
+     r.id?.toString().includes(searchTerm))
+    &&
+    (selectedFacility === '' || r.facility?.name === selectedFacility)
+    &&
+    (selectedCategory === '' || r.category === selectedCategory)
+    &&
+    (selectedStatus === '' || r.status === selectedStatus)
+    &&
+    (!fromDate || !reportDate || reportDate >= fromDate)
+    &&
+    (!toDate || !reportDate || reportDate <= toDate)
+  );
+});
 
   // Calculate total pages for pagination
   const totalPages = Math.ceil(filteredReports.length / reportsPerPage);
@@ -734,6 +744,25 @@ export default function ReportsList() {
                 <option key={status} value={status}>{status}</option>
               ))}
             </select>
+            <div className="space-y-1">
+    <label className="block text-xs text-gray-600 dark:text-gray-400 text-right">من تاريخ</label>
+    <input
+      type="date"
+      value={selectedDateFrom}
+      onChange={e => { setSelectedDateFrom(e.target.value); setCurrentPage(1); }}
+      className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+    />
+  </div>
+
+  <div className="space-y-1">
+    <label className="block text-xs text-gray-600 dark:text-gray-400 text-right">إلى تاريخ</label>
+    <input
+      type="date"
+      value={selectedDateTo}
+      onChange={e => { setSelectedDateTo(e.target.value); setCurrentPage(1); }}
+      className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md text-right bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+    />
+  </div>
           </div>
 
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-6">
