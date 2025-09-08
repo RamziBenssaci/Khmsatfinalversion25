@@ -322,7 +322,7 @@ export default function DentalReports() {
         </div>
         
         <div class="print-date">
-          تم طباعة هذا التقرير في: ${new Date().toLocaleDateString('ar-SA')} - ${new Date().toLocaleTimeString('ar-SA')}
+          تم طباعة هذا التقرير في: ${new Date().toLocaleDateString()} - ${new Date().toLocaleTimeString()}
         </div>
       </body>
       </html>
@@ -604,7 +604,7 @@ export default function DentalReports() {
             <p><strong>إجمالي القيمة:</strong> ${calculateTotalValue()} ريال</p>
             <p><strong>القيمة المستلمة:</strong> ${calculateReceivedValue()} ريال</p>
             <p><strong>القيمة المتبقية:</strong> ${calculateRemainingValue()} ريال</p>
-            <p><strong>تاريخ التقرير:</strong> ${new Date().toLocaleDateString('ar-SA')}</p>
+            <p><strong>تاريخ التقرير:</strong> ${new Date().toLocaleDateString()}</p>
           </div>
           <table>
             <thead>
