@@ -459,30 +459,36 @@ export default function DentalReports() {
     setFilteredContracts(filtered);
   }, [statusFilter, itemFilter, facilityFilter, supplierFilter, extractNumberFilter, dateFromFilter, dateToFilter, allContracts]);
 
-  // Calculate totals with proper formatting
+  // Calculate totals with proper formatting - EXCLUDE rejected contracts
   const calculateTotalValue = () => {
-    const total = filteredContracts.reduce((sum, contract) => {
-      const value = parseFloat(contract.totalValue) || 0;
-      return sum + value;
-    }, 0);
+    const total = filteredContracts
+      .filter(contract => contract.status !== 'مرفوض') // Add this filter
+      .reduce((sum, contract) => {
+        const value = parseFloat(contract.totalValue) || 0;
+        return sum + value;
+      }, 0);
     
     return total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const calculateReceivedValue = () => {
-    const total = filteredContracts.reduce((sum, contract) => {
-      const value = parseFloat(contract.receivedValue) || 0;
-      return sum + value;
-    }, 0);
+    const total = filteredContracts
+      .filter(contract => contract.status !== 'مرفوض') // Add this filter
+      .reduce((sum, contract) => {
+        const value = parseFloat(contract.receivedValue) || 0;
+        return sum + value;
+      }, 0);
     
     return total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const calculateRemainingValue = () => {
-    const total = filteredContracts.reduce((sum, contract) => {
-      const value = parseFloat(contract.remainingValue) || 0;
-      return sum + value;
-    }, 0);
+    const total = filteredContracts
+      .filter(contract => contract.status !== 'مرفوض') // Add this filter
+      .reduce((sum, contract) => {
+        const value = parseFloat(contract.remainingValue) || 0;
+        return sum + value;
+      }, 0);
     
     return total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
