@@ -92,6 +92,7 @@ export default function DentalDashboard() {
   }, [allContracts, selectedClinic, selectedSupplier, selectedStatus, dateFrom, dateTo]);
 
   // Calculate dashboard statistics from filtered contracts
+ // Calculate dashboard statistics from filtered contracts - EXCLUDE rejected contracts
   const dashboardData = useMemo(() => {
     const nonRejectedContracts = filteredContracts.filter(item => item.status !== 'مرفوض');
     
@@ -119,7 +120,6 @@ export default function DentalDashboard() {
       remainingValue: remainingValue
     };
   }, [filteredContracts]);
-
   // Generate status data for pie chart
   const statusData = useMemo(() => {
     return statusOptions.map(status => ({
