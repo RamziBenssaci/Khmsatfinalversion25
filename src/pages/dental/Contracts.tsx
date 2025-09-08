@@ -684,7 +684,7 @@ export default function DentalContracts() {
           ` : ''}
 
           <div class="footer">
-            <p>تم طباعة هذا العقد في: ${new Date().toLocaleDateString('ar-SA')} - ${new Date().toLocaleTimeString('ar-SA')}</p>
+            <p>تم طباعة هذا العقد في: ${new Date().toLocaleDateString()} - ${new Date().toLocaleTimeString()}</p>
           </div>
         </div>
       </body>
