@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Clock, CheckCircle, XCircle, AlertTriangle, DollarSign, TrendingUp, Loader2, FileX, Download, Printer, FileSpreadsheet, FileText } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Users, Clock, CheckCircle, XCircle, AlertTriangle, DollarSign, TrendingUp, Loader2, FileX, Download, Printer, FileSpreadsheet, Calendar, Banknote, Package } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { dentalContractsApi } from '@/lib/api';
 
@@ -15,23 +17,13 @@ export default function DentalDashboard() {
     contracted: 0,
     delivered: 0,
     rejected: 0,
-    totalValue: 0
+    totalValue: 0,
+    receivedValue: 0,
+    remainingValue: 0
   });
-  const [dashboardData, setDashboardData] = useState({
-    total: 0,
-    new: 0,
-    approved: 0,
-    contracted: 0,
-    delivered: 0,
-    rejected: 0,
-    totalValue: 0
-  });
-  const [statusData, setStatusData] = useState([]);
-  const [monthlyData, setMonthlyData] = useState([]);
   const [topSuppliers, setTopSuppliers] = useState([]);
   const [topClinics, setTopClinics] = useState([]);
-  const [allData, setAllData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
+  const [allContracts, setAllContracts] = useState([]);
   
   // Loading states
   const [loading, setLoading] = useState(true);
@@ -44,6 +36,8 @@ export default function DentalDashboard() {
   const [selectedClinic, setSelectedClinic] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   // Status options mapping
   const statusOptions = [
@@ -54,37 +48,89 @@ export default function DentalDashboard() {
     { value: 'مرفوض', label: 'مرفوض', color: '#ef4444' }
   ];
 
-  // Helper function to format total cost (excluding rejected contracts)
-  const formatTotalCost = (data) => {
-    const total = data
-      .filter(item => item.status !== 'مرفوض') // Exclude rejected contracts
-      .reduce((sum, item) => {
-        const numericCost = parseFloat(item.totalCost) || 0;
-        return sum + numericCost;
-      }, 0);
-    
-    // Remove .00 if it's a whole number
-    return total % 1 === 0 ? total.toString() : total.toFixed(2);
-  };
+  // Filter contracts based on current filters
+  const filteredContracts = useMemo(() => {
+    let filtered = [...allContracts];
 
-  // Calculate filtered statistics
-  const calculateFilteredStats = (data) => {
-    const totalValue = parseFloat(formatTotalCost(data));
+    // Facility filter
+    if (selectedClinic && selectedClinic !== "all") {
+      filtered = filtered.filter(item => 
+        item.facilityName?.toLowerCase().includes(selectedClinic.toLowerCase())
+      );
+    }
+
+    // Supplier filter
+    if (selectedSupplier && selectedSupplier !== "all") {
+      filtered = filtered.filter(item => 
+        item.supplierCompanyName?.toLowerCase().includes(selectedSupplier.toLowerCase())
+      );
+    }
+
+    // Status filter
+    if (selectedStatus && selectedStatus !== "all") {
+      filtered = filtered.filter(item => item.status === selectedStatus);
+    }
+
+    // Date range filters
+    if (dateFrom) {
+      filtered = filtered.filter(item => {
+        const contractDate = new Date(item.orderDate);
+        const fromDate = new Date(dateFrom);
+        return contractDate >= fromDate;
+      });
+    }
+
+    if (dateTo) {
+      filtered = filtered.filter(item => {
+        const contractDate = new Date(item.orderDate);
+        const toDate = new Date(dateTo);
+        return contractDate <= toDate;
+      });
+    }
+
+    return filtered;
+  }, [allContracts, selectedClinic, selectedSupplier, selectedStatus, dateFrom, dateTo]);
+
+  // Calculate dashboard statistics from filtered contracts
+  const dashboardData = useMemo(() => {
+    const nonRejectedContracts = filteredContracts.filter(item => item.status !== 'مرفوض');
     
-    const stats = {
-      total: data.length,
-      new: data.filter(item => item.status === 'جديد').length,
-      approved: data.filter(item => item.status === 'موافق عليه').length,
-      contracted: data.filter(item => item.status === 'تم التعاقد').length,
-      delivered: data.filter(item => item.status === 'تم التسليم').length,
-      rejected: data.filter(item => item.status === 'مرفوض').length,
-      totalValue: totalValue
+    const totalValue = nonRejectedContracts.reduce((sum, item) => 
+      sum + (parseFloat(item.totalValue) || 0), 0
+    );
+    
+    const receivedValue = nonRejectedContracts.reduce((sum, item) => 
+      sum + (parseFloat(item.receivedValue) || 0), 0
+    );
+    
+    const remainingValue = nonRejectedContracts.reduce((sum, item) => 
+      sum + (parseFloat(item.remainingValue) || 0), 0
+    );
+
+    return {
+      total: filteredContracts.length,
+      new: filteredContracts.filter(item => item.status === 'جديد').length,
+      approved: filteredContracts.filter(item => item.status === 'موافق عليه').length,
+      contracted: filteredContracts.filter(item => item.status === 'تم التعاقد').length,
+      delivered: filteredContracts.filter(item => item.status === 'تم التسليم').length,
+      rejected: filteredContracts.filter(item => item.status === 'مرفوض').length,
+      totalValue: totalValue,
+      receivedValue: receivedValue,
+      remainingValue: remainingValue
     };
-    return stats;
-  };
+  }, [filteredContracts]);
 
-  // Generate monthly trend from filtered data using orderDate
-  const generateMonthlyTrend = (data) => {
+  // Generate status data for pie chart
+  const statusData = useMemo(() => {
+    return statusOptions.map(status => ({
+      name: status.label,
+      value: filteredContracts.filter(item => item.status === status.value).length,
+      color: status.color
+    }));
+  }, [filteredContracts]);
+
+  // Generate monthly trend from filtered data
+  const monthlyData = useMemo(() => {
     const monthCounts = {};
     const months = [
       'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
@@ -97,8 +143,8 @@ export default function DentalDashboard() {
     });
 
     // Count contracts by month using orderDate
-    data.forEach(contract => {
-      const date = new Date(contract.orderDate || contract.createdAt);
+    filteredContracts.forEach(contract => {
+      const date = new Date(contract.orderDate);
       if (!isNaN(date.getTime())) {
         const monthIndex = date.getMonth();
         const monthName = months[monthIndex];
@@ -110,7 +156,22 @@ export default function DentalDashboard() {
       month,
       count: monthCounts[month]
     }));
-  };
+  }, [filteredContracts]);
+
+  // Get unique values for dropdown options
+  const uniqueClinics = useMemo(() => {
+    return [...new Set(allContracts
+      .map(item => item.facilityName)
+      .filter(clinic => clinic && clinic.trim() !== '')
+    )].sort();
+  }, [allContracts]);
+  
+  const uniqueSuppliers = useMemo(() => {
+    return [...new Set(allContracts
+      .map(item => item.supplierCompanyName)
+      .filter(supplier => supplier && supplier.trim() !== '')
+    )].sort();
+  }, [allContracts]);
 
   // Load dashboard data
   const loadDashboardData = async () => {
@@ -122,42 +183,26 @@ export default function DentalDashboard() {
       
       if (response.success && response.data) {
         setOriginalDashboardData(response.data);
-        setDashboardData(response.data);
-        
-        // Update status data for pie chart
-        const newStatusData = [
-          { name: 'جديد', value: response.data.new, color: '#3b82f6' },
-          { name: 'موافق عليه', value: response.data.approved, color: '#f59e0b' },
-          { name: 'تم التعاقد', value: response.data.contracted, color: '#8b5cf6' },
-          { name: 'تم التسليم', value: response.data.delivered, color: '#10b981' },
-          { name: 'مرفوض', value: response.data.rejected, color: '#ef4444' }
-        ];
-        setStatusData(newStatusData);
-        
-        // If monthly data is included in dashboard response
-        if (response.data.monthlyData) {
-          setMonthlyData(response.data.monthlyData);
-        }
       }
     } catch (err) {
       setError(err.message || 'فشل في تحميل بيانات لوحة التحكم');
       console.error('Dashboard data loading error:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
-  // Load contracts data for filtering
+  // Load all contracts data for filtering
   const loadContractsData = async () => {
     try {
       const response = await dentalContractsApi.getContracts();
       
       if (response.success && response.data) {
-        setAllData(response.data);
-        setFilteredData(response.data);
+        setAllContracts(response.data);
       }
     } catch (err) {
       console.error('Contracts data loading error:', err);
+      setError(err.message || 'فشل في تحميل بيانات العقود');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -207,72 +252,16 @@ export default function DentalDashboard() {
     loadAllData();
   }, []);
 
-  // Real-time filtering with useEffect
-  useEffect(() => {
-    let filtered = [...allData];
-
-    if (selectedClinic && selectedClinic !== "all") {
-      filtered = filtered.filter(item => 
-        item.beneficiaryFacility?.toLowerCase().includes(selectedClinic.toLowerCase())
-      );
-    }
-
-    if (selectedSupplier && selectedSupplier !== "all") {
-      filtered = filtered.filter(item => 
-        item.supplierName?.toLowerCase().includes(selectedSupplier.toLowerCase())
-      );
-    }
-
-    if (selectedStatus && selectedStatus !== "all") {
-      filtered = filtered.filter(item => item.status === selectedStatus);
-    }
-
-    setFilteredData(filtered);
-    
-    // Update dashboard stats based on filtered data
-    const filteredStats = calculateFilteredStats(filtered);
-    setDashboardData(filteredStats);
-
-    // Update status data based on filtered results
-    const newStatusData = [
-      { name: 'جديد', value: filteredStats.new, color: '#3b82f6' },
-      { name: 'موافق عليه', value: filteredStats.approved, color: '#f59e0b' },
-      { name: 'تم التعاقد', value: filteredStats.contracted, color: '#8b5cf6' },
-      { name: 'تم التسليم', value: filteredStats.delivered, color: '#10b981' },
-      { name: 'مرفوض', value: filteredStats.rejected, color: '#ef4444' }
-    ];
-    setStatusData(newStatusData);
-
-    // Update monthly data based on filtered results
-    const monthlyTrendData = generateMonthlyTrend(filtered);
-    setMonthlyData(monthlyTrendData);
-
-  }, [selectedClinic, selectedSupplier, selectedStatus, allData]);
-
   const clearFilters = () => {
     setSelectedClinic('');
     setSelectedSupplier('');
     setSelectedStatus('');
-    // Reset to original dashboard data instead of reloading
-    setDashboardData(originalDashboardData);
-    setFilteredData(allData);
-    
-    // Reset status data to original
-    const originalStatusData = [
-      { name: 'جديد', value: originalDashboardData.new, color: '#3b82f6' },
-      { name: 'موافق عليه', value: originalDashboardData.approved, color: '#f59e0b' },
-      { name: 'تم التعاقد', value: originalDashboardData.contracted, color: '#8b5cf6' },
-      { name: 'تم التسليم', value: originalDashboardData.delivered, color: '#10b981' },
-      { name: 'مرفوض', value: originalDashboardData.rejected, color: '#ef4444' }
-    ];
-    setStatusData(originalStatusData);
-
-    // Reset monthly data to original
-    const originalMonthlyData = generateMonthlyTrend(allData);
-    setMonthlyData(originalMonthlyData);
+    setDateFrom('');
+    setDateTo('');
   };
 
   const refreshData = async () => {
+    setLoading(true);
     await Promise.all([
       loadDashboardData(),
       loadContractsData(),
@@ -285,7 +274,6 @@ export default function DentalDashboard() {
   const exportToPDF = async () => {
     setExportLoading(true);
     try {
-      // Create a print-friendly version
       const printContent = `
         <html dir="rtl">
           <head>
@@ -309,6 +297,8 @@ export default function DentalDashboard() {
             <div class="stats-grid">
               <div class="stat-card"><h3>إجمالي العقود</h3><p>${dashboardData.total}</p></div>
               <div class="stat-card"><h3>القيمة الإجمالية</h3><p>${dashboardData.totalValue?.toLocaleString()} ريال</p></div>
+              <div class="stat-card"><h3>قيمة الكميات المستلمة</h3><p>${dashboardData.receivedValue?.toLocaleString()} ريال</p></div>
+              <div class="stat-card"><h3>قيمة الكميات المتبقية</h3><p>${dashboardData.remainingValue?.toLocaleString()} ريال</p></div>
               <div class="stat-card"><h3>جديد</h3><p>${dashboardData.new}</p></div>
               <div class="stat-card"><h3>موافق عليه</h3><p>${dashboardData.approved}</p></div>
               <div class="stat-card"><h3>تم التعاقد</h3><p>${dashboardData.contracted}</p></div>
@@ -319,21 +309,23 @@ export default function DentalDashboard() {
             <table class="table">
               <thead>
                 <tr>
-                  <th>رقم العقد</th>
-                  <th>العيادة المستفيدة</th>
+                  <th>رقم الصنف</th>
+                  <th>اسم الصنف</th>
+                  <th>المنشأة</th>
                   <th>الشركة الموردة</th>
                   <th>الحالة</th>
-                  <th>التكلفة الإجمالية</th>
+                  <th>القيمة الإجمالية</th>
                 </tr>
               </thead>
               <tbody>
-                ${filteredData.map(item => `
+                ${filteredContracts.map(item => `
                   <tr>
-                    <td>${item.contractNumber || ''}</td>
-                    <td>${item.beneficiaryFacility || ''}</td>
-                    <td>${item.supplierName || ''}</td>
+                    <td>${item.itemNumber || ''}</td>
+                    <td>${item.itemName || ''}</td>
+                    <td>${item.facilityName || ''}</td>
+                    <td>${item.supplierCompanyName || ''}</td>
                     <td>${item.status || ''}</td>
-                    <td>${parseFloat(item.totalCost || 0).toLocaleString()}</td>
+                    <td>${parseFloat(item.totalValue || 0).toLocaleString()}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -357,21 +349,20 @@ export default function DentalDashboard() {
   const exportToExcel = async () => {
     setExportLoading(true);
     try {
-      // Create CSV content
-      const headers = ['رقم العقد', 'العيادة المستفيدة', 'الشركة الموردة', 'الحالة', 'التكلفة الإجمالية', 'تاريخ الإنشاء'];
+      const headers = ['رقم الصنف', 'اسم الصنف', 'المنشأة', 'الشركة الموردة', 'الحالة', 'القيمة الإجمالية', 'تاريخ الطلب'];
       const csvContent = [
         headers.join(','),
-        ...filteredData.map(item => [
-          `"${item.contractNumber || ''}"`,
-          `"${item.beneficiaryFacility || ''}"`,
-          `"${item.supplierName || ''}"`,
+        ...filteredContracts.map(item => [
+          `"${item.itemNumber || ''}"`,
+          `"${item.itemName || ''}"`,
+          `"${item.facilityName || ''}"`,
+          `"${item.supplierCompanyName || ''}"`,
           `"${item.status || ''}"`,
-          `"${item.totalCost || ''}"`,
-          `"${item.createdAt || ''}"`
+          `"${item.totalValue || ''}"`,
+          `"${item.orderDate || ''}"`
         ].join(','))
       ].join('\n');
       
-      // Add BOM for Arabic support
       const BOM = '\uFEFF';
       const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
@@ -392,17 +383,6 @@ export default function DentalDashboard() {
       setExportLoading(false);
     }
   };
-
-  // Get unique values for dropdown options from the actual contracts data
-  const uniqueClinics = [...new Set(allData
-    .map(item => item.beneficiaryFacility)
-    .filter(clinic => clinic && clinic.trim() !== '')
-  )].sort();
-  
-  const uniqueSuppliers = [...new Set(allData
-    .map(item => item.supplierName)
-    .filter(supplier => supplier && supplier.trim() !== '')
-  )].sort();
 
   if (loading) {
     return (
@@ -444,7 +424,6 @@ export default function DentalDashboard() {
             <p className="text-purple-100 mt-1 text-right">إدارة شاملة لعقود معدات طب الأسنان</p>
           </div>
           <div className="flex gap-2">
-            {/* Export buttons */}
             <Button 
               variant="secondary" 
               onClick={exportToPDF}
@@ -484,74 +463,114 @@ export default function DentalDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Select value={selectedClinic} onValueChange={setSelectedClinic}>
-              <SelectTrigger>
-                <SelectValue placeholder="اختر العيادة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع العيادات</SelectItem>
-                {uniqueClinics.map((clinic) => (
-                  <SelectItem key={clinic} value={clinic}>{clinic}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {/* Facility Filter */}
+            <div>
+              <Label htmlFor="facility-select" className="text-right block mb-2">المنشأة</Label>
+              <Select value={selectedClinic} onValueChange={setSelectedClinic}>
+                <SelectTrigger id="facility-select">
+                  <SelectValue placeholder="اختر المنشأة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع المنشآت</SelectItem>
+                  {uniqueClinics.map((clinic) => (
+                    <SelectItem key={clinic} value={clinic}>{clinic}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
-              <SelectTrigger>
-                <SelectValue placeholder="اختر الشركة الموردة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الموردين</SelectItem>
-                {uniqueSuppliers.map((supplier) => (
-                  <SelectItem key={supplier} value={supplier}>{supplier}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Supplier Filter */}
+            <div>
+              <Label htmlFor="supplier-select" className="text-right block mb-2">الشركة الموردة</Label>
+              <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
+                <SelectTrigger id="supplier-select">
+                  <SelectValue placeholder="اختر الشركة الموردة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الموردين</SelectItem>
+                  {uniqueSuppliers.map((supplier) => (
+                    <SelectItem key={supplier} value={supplier}>{supplier}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="اختر الحالة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الحالات</SelectItem>
-                {statusOptions.map((status) => (
-                  <SelectItem key={status.value} value={status.value}>
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: status.color }}
-                      ></div>
-                      {status.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Status Filter */}
+            <div>
+              <Label htmlFor="status-select" className="text-right block mb-2">الحالة</Label>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger id="status-select">
+                  <SelectValue placeholder="اختر الحالة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الحالات</SelectItem>
+                  {statusOptions.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: status.color }}
+                        ></div>
+                        {status.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={clearFilters} className="flex-1">
-                مسح الفلاتر
-              </Button>
+            {/* Date From Filter */}
+            <div>
+              <Label htmlFor="date-from" className="text-right block mb-2">من تاريخ</Label>
+              <Input
+                id="date-from"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="text-right"
+              />
+            </div>
+
+            {/* Date To Filter */}
+            <div>
+              <Label htmlFor="date-to" className="text-right block mb-2">إلى تاريخ</Label>
+              <Input
+                id="date-to"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="text-right"
+              />
             </div>
           </div>
           
+          {/* Clear Filters Button */}
+          <div className="mt-4 flex gap-2 justify-end">
+            <Button variant="outline" onClick={clearFilters}>
+              <Calendar className="h-4 w-4 mr-2" />
+              مسح الفلاتر
+            </Button>
+          </div>
+          
           {/* Filter Results Summary */}
-          {(selectedClinic || selectedSupplier || selectedStatus) && (
+          {(selectedClinic || selectedSupplier || selectedStatus || dateFrom || dateTo) && (
             <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-blue-800 text-right">
-                  عرض {filteredData.length} من أصل {allData.length} عقد
-                  {selectedClinic && <span className="block">العيادة: {selectedClinic}</span>}
+                  عرض {filteredContracts.length} من أصل {allContracts.length} عقد
+                  {selectedClinic && <span className="block">المنشأة: {selectedClinic}</span>}
                   {selectedSupplier && <span className="block">المورد: {selectedSupplier}</span>}
                   {selectedStatus && <span className="block">الحالة: {selectedStatus}</span>}
+                  {dateFrom && <span className="block">من: {dateFrom}</span>}
+                  {dateTo && <span className="block">إلى: {dateTo}</span>}
                 </p>
                 <div className="flex gap-2">
                   <Button 
                     size="sm" 
                     variant="outline" 
                     onClick={exportToPDF}
-                    disabled={exportLoading || filteredData.length === 0}
+                    disabled={exportLoading || filteredContracts.length === 0}
                     className="text-xs"
                   >
                     <Printer className="h-3 w-3 mr-1" />
@@ -561,7 +580,7 @@ export default function DentalDashboard() {
                     size="sm" 
                     variant="outline" 
                     onClick={exportToExcel}
-                    disabled={exportLoading || filteredData.length === 0}
+                    disabled={exportLoading || filteredContracts.length === 0}
                     className="text-xs"
                   >
                     <FileSpreadsheet className="h-3 w-3 mr-1" />
@@ -574,8 +593,8 @@ export default function DentalDashboard() {
         </CardContent>
       </Card>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Summary Cards - Updated with new value boxes */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="bg-purple-50 border-purple-200">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -597,6 +616,49 @@ export default function DentalDashboard() {
                 <p className="text-xs text-indigo-600">ريال سعودي</p>
               </div>
               <DollarSign className="h-8 w-8 text-indigo-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="text-right">
+                <p className="text-sm font-medium text-green-600">قيمة الكميات المستلمة</p>
+                <p className="text-xl font-bold text-green-800">{dashboardData.receivedValue?.toLocaleString()}</p>
+                <p className="text-xs text-green-600">ريال سعودي</p>
+              </div>
+              <Banknote className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-orange-50 border-orange-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="text-right">
+                <p className="text-sm font-medium text-orange-600">قيمة الكميات المتبقية</p>
+                <p className="text-xl font-bold text-orange-800">{dashboardData.remainingValue?.toLocaleString()}</p>
+                <p className="text-xs text-orange-600">ريال سعودي</p>
+              </div>
+              <Package className="h-8 w-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-slate-50 border-slate-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="text-right">
+                <p className="text-sm font-medium text-slate-600">نسبة الإنجاز</p>
+                <p className="text-xl font-bold text-slate-800">
+                  {dashboardData.totalValue > 0 
+                    ? Math.round((dashboardData.receivedValue / dashboardData.totalValue) * 100) 
+                    : 0}%
+                </p>
+                <p className="text-xs text-slate-600">من إجمالي القيمة</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-slate-600" />
             </div>
           </CardContent>
         </Card>
@@ -655,9 +717,9 @@ export default function DentalDashboard() {
         </Card>
       </div>
 
-      {/* Charts Section - Updated with new styling */}
+      {/* Charts Section */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Status Distribution - Enhanced styling like ReportsDashboard */}
+        {/* Status Distribution */}
         <div className="bg-white dark:bg-card rounded-lg shadow-lg border border-border overflow-hidden">
           <div className="bg-gradient-to-r from-success to-success/80 text-success-foreground px-4 py-3 border-b border-border">
             <h3 className="font-semibold text-right flex items-center gap-2 text-sm sm:text-base">
@@ -666,18 +728,18 @@ export default function DentalDashboard() {
             </h3>
           </div>
           <div className="p-3 sm:p-4">
-            {statusData.length > 0 ? (
+            {statusData.length > 0 && statusData.some(item => item.value > 0) ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={statusData}
+                    data={statusData.filter(item => item.value > 0)}
                     cx="50%"
                     cy="50%"
                     innerRadius={40}
                     outerRadius={80}
                     dataKey="value"
                   >
-                    {statusData.map((entry, index) => (
+                    {statusData.filter(item => item.value > 0).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -690,7 +752,7 @@ export default function DentalDashboard() {
               </div>
             )}
             <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mt-3 sm:mt-4">
-              {statusData.map((item) => (
+              {statusData.filter(item => item.value > 0).map((item) => (
                 <div key={item.name} className="flex items-center gap-1 sm:gap-2 bg-accent/50 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
                   <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
                   <span className="text-xs sm:text-sm font-medium">
@@ -703,7 +765,7 @@ export default function DentalDashboard() {
           </div>
         </div>
 
-        {/* Monthly Trend Line Chart - New addition */}
+        {/* Monthly Trend Line Chart */}
         <div className="bg-white dark:bg-card rounded-lg shadow-lg border border-border overflow-hidden">
           <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 border-b border-border">
             <h3 className="font-semibold text-right flex items-center gap-2 text-sm sm:text-base">
@@ -712,7 +774,7 @@ export default function DentalDashboard() {
             </h3>
           </div>
           <div className="p-3 sm:p-4">
-            {monthlyData.length > 0 ? (
+            {monthlyData.length > 0 && monthlyData.some(item => item.count > 0) ? (
               <div className="h-[300px] sm:h-[350px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart 
@@ -799,7 +861,7 @@ export default function DentalDashboard() {
         {/* Top Clinics */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-right">أكثر العيادات نشاطاً</CardTitle>
+            <CardTitle className="text-right">أكثر المنشآت نشاطاً</CardTitle>
           </CardHeader>
           <CardContent>
             {clinicsLoading ? (
@@ -826,7 +888,7 @@ export default function DentalDashboard() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <p className="text-gray-500">لا توجد بيانات عيادات</p>
+                <p className="text-gray-500">لا توجد بيانات منشآت</p>
               </div>
             )}
           </CardContent>
