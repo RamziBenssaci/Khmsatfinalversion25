@@ -56,7 +56,24 @@ export default function DentalContracts() {
   });
   const [facilities, setFacilities] = useState<any[]>([]);
   const { toast } = useToast();
+// Auto-calculation function
+  const calculateValues = (data) => {
+  const quantityRequested = parseFloat(data.quantityRequested) || 0;
+  const quantityReceived = parseFloat(data.quantityReceived) || 0;
+  const unitPrice = parseFloat(data.unitPrice) || 0;
 
+  const quantityRemaining = quantityRequested - quantityReceived;
+  const totalValue = quantityRequested * unitPrice;
+  const receivedValue = quantityReceived * unitPrice;
+  const remainingValue = quantityRemaining * unitPrice;
+
+  return {
+    quantityRemaining: quantityRemaining.toString(),
+    totalValue: totalValue.toFixed(2),
+    receivedValue: receivedValue.toFixed(2),
+    remainingValue: remainingValue.toFixed(2)
+  };
+};
   const fetchContracts = useCallback(async () => {
     try {
       setLoading(true);
@@ -841,87 +858,99 @@ export default function DentalContracts() {
               </div>
             </div>
 
-            {/* Quantity Information */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2 text-right">الكمية المطلوبة</label>
-                <input
-                  type="number"
-                  value={formData.quantityRequested}
-                  onChange={(e) => setFormData(prev => ({ ...prev, quantityRequested: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="الكمية المطلوبة"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2 text-right">الكمية المستلمة</label>
-                <input
-                  type="number"
-                  value={formData.quantityReceived}
-                  onChange={(e) => setFormData(prev => ({ ...prev, quantityReceived: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="الكمية المستلمة"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2 text-right">الكمية المتبقية</label>
-                <input
-                  type="number"
-                  value={formData.quantityRemaining}
-                  onChange={(e) => setFormData(prev => ({ ...prev, quantityRemaining: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="الكمية المتبقية"
-                />
-              </div>
-            </div>
+ {/* Quantity Information */}
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div>
+    <label className="block text-sm font-medium mb-2 text-right">الكمية المطلوبة</label>
+    <input
+      type="number"
+      value={formData.quantityRequested}
+      onChange={(e) => {
+        const newData = { ...formData, quantityRequested: e.target.value };
+        const calculated = calculateValues(newData);
+        setFormData(prev => ({ ...prev, ...newData, ...calculated }));
+      }}
+      className="w-full p-3 border border-input rounded-md text-right"
+      placeholder="الكمية المطلوبة"
+    />
+  </div>
+  <div>
+    <label className="block text-sm font-medium mb-2 text-right">الكمية المستلمة</label>
+    <input
+      type="number"
+      value={formData.quantityReceived}
+      onChange={(e) => {
+        const newData = { ...formData, quantityReceived: e.target.value };
+        const calculated = calculateValues(newData);
+        setFormData(prev => ({ ...prev, ...newData, ...calculated }));
+      }}
+      className="w-full p-3 border border-input rounded-md text-right"
+      placeholder="الكمية المستلمة"
+    />
+  </div>
+  <div>
+    <label className="block text-sm font-medium mb-2 text-right">الكمية المتبقية</label>
+    <input
+      type="number"
+      value={formData.quantityRemaining}
+      className="w-full p-3 border border-input rounded-md text-right bg-gray-100"
+      placeholder="الكمية المتبقية"
+      readOnly
+    />
+  </div>
+</div>
 
-            {/* Financial Information */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2 text-right">سعر الوحدة</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.unitPrice}
-                  onChange={(e) => setFormData(prev => ({ ...prev, unitPrice: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="سعر الوحدة بالريال"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2 text-right">القيمة الإجمالية</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.totalValue}
-                  onChange={(e) => setFormData(prev => ({ ...prev, totalValue: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="القيمة الإجمالية بالريال"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2 text-right">القيمة المستلمة</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.receivedValue}
-                  onChange={(e) => setFormData(prev => ({ ...prev, receivedValue: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="القيمة المستلمة بالريال"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2 text-right">القيمة المتبقية</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.remainingValue}
-                  onChange={(e) => setFormData(prev => ({ ...prev, remainingValue: e.target.value }))}
-                  className="w-full p-3 border border-input rounded-md text-right"
-                  placeholder="القيمة المتبقية بالريال"
-                />
-              </div>
-            </div>
+         {/* Financial Information */}
+<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+  <div>
+    <label className="block text-sm font-medium mb-2 text-right">سعر الوحدة</label>
+    <input
+      type="number"
+      step="0.01"
+      value={formData.unitPrice}
+      onChange={(e) => {
+        const newData = { ...formData, unitPrice: e.target.value };
+        const calculated = calculateValues(newData);
+        setFormData(prev => ({ ...prev, ...newData, ...calculated }));
+      }}
+      className="w-full p-3 border border-input rounded-md text-right"
+      placeholder="سعر الوحدة بالريال"
+    />
+  </div>
+  <div>
+    <label className="block text-sm font-medium mb-2 text-right">القيمة الإجمالية</label>
+    <input
+      type="number"
+      step="0.01"
+      value={formData.totalValue}
+      className="w-full p-3 border border-input rounded-md text-right bg-gray-100"
+      placeholder="القيمة الإجمالية بالريال"
+      readOnly
+    />
+  </div>
+  <div>
+    <label className="block text-sm font-medium mb-2 text-right">القيمة المستلمة</label>
+    <input
+      type="number"
+      step="0.01"
+      value={formData.receivedValue}
+      className="w-full p-3 border border-input rounded-md text-right bg-gray-100"
+      placeholder="القيمة المستلمة بالريال"
+      readOnly
+    />
+  </div>
+  <div>
+    <label className="block text-sm font-medium mb-2 text-right">القيمة المتبقية</label>
+    <input
+      type="number"
+      step="0.01"
+      value={formData.remainingValue}
+      className="w-full p-3 border border-input rounded-md text-right bg-gray-100"
+      placeholder="القيمة المتبقية بالريال"
+      readOnly
+    />
+  </div>
+</div>
 
             {/* Financial Approval */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
