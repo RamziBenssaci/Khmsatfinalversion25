@@ -646,22 +646,7 @@ export default function DentalDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-50 border-slate-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="text-right">
-                <p className="text-sm font-medium text-slate-600">نسبة الإنجاز</p>
-                <p className="text-xl font-bold text-slate-800">
-                  {dashboardData.totalValue > 0 
-                    ? Math.round((dashboardData.receivedValue / dashboardData.totalValue) * 100) 
-                    : 0}%
-                </p>
-                <p className="text-xs text-slate-600">من إجمالي القيمة</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-slate-600" />
-            </div>
-          </CardContent>
-        </Card>
+      
       </div>
 
       {/* Detailed Status Cards */}
